@@ -24,6 +24,13 @@ linters:
         - diagnostic
         - style
         - performance
+      disabled-checks:
+        # Identity and the page view models are passed by value on purpose.
+        # In authorization code, value semantics are a safety property: an
+        # Identity nobody holds a pointer to cannot be mutated behind a
+        # handler's back. Copying ~100 bytes once per request is not this
+        # service's bottleneck.
+        - hugeParam
     misspell:
       locale: US
     gocyclo:

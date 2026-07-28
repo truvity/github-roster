@@ -1,0 +1,12 @@
+{{define "content"}}
+<h1>Audit</h1>
+<p class="lede">
+  One record per run: what triggered it, who confirmed it, the diff it
+  computed, and what the reconciler did about it.
+</p>
+
+<p class="lede">
+  Records land in object storage rather than in this process's logs, so they
+  outlive the pod that wrote them. The list arrives with the audit phase.
+</p>
+{{end}}

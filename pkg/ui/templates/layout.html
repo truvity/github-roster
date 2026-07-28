@@ -1,0 +1,80 @@
+{{define "layout"}}<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Title}} · roster</title>
+<style>
+  :root {
+    --fg: #1c1d1f; --muted: #6a6f76; --line: #e2e5e9; --bg: #ffffff;
+    --accent: #2f5bd0; --warn: #8a5a00; --warn-bg: #fff5e0; --danger: #b3261e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fg: #e8eaed; --muted: #9aa0a6; --line: #33373d; --bg: #16181c;
+      --accent: #8ab0ff; --warn: #e0b566; --warn-bg: #3a2f14; --danger: #f2857d;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--fg); background: var(--bg); margin: 0;
+  }
+  header {
+    display: flex; align-items: baseline; gap: 24px;
+    padding: 14px 24px; border-bottom: 1px solid var(--line);
+  }
+  header .brand { font-weight: 650; letter-spacing: -0.01em; }
+  header nav { display: flex; gap: 18px; flex: 1; }
+  header nav a { color: var(--muted); text-decoration: none; }
+  header nav a:hover { color: var(--fg); }
+  header nav a.current { color: var(--fg); font-weight: 600; }
+  .who { color: var(--muted); font-size: 13px; }
+  .who .role {
+    border: 1px solid var(--line); border-radius: 10px;
+    padding: 1px 7px; margin-left: 6px; font-size: 12px;
+  }
+  main { padding: 24px; max-width: 1100px; }
+  h1 { font-size: 20px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .lede { color: var(--muted); margin: 0 0 20px; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 600; font-size: 13px; }
+  .banner {
+    background: var(--warn-bg); color: var(--warn); border: 1px solid var(--warn);
+    border-radius: 6px; padding: 10px 14px; margin-bottom: 20px; font-size: 14px;
+  }
+  footer {
+    color: var(--muted); font-size: 12px; padding: 20px 24px;
+    border-top: 1px solid var(--line); margin-top: 40px;
+  }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <span class="brand">roster</span>
+  <nav>
+    <a href="/" {{if eq .Nav "structure"}}class="current"{{end}}>Structure</a>
+    <a href="/mapping" {{if eq .Nav "mapping"}}class="current"{{end}}>Mapping</a>
+    <a href="/audit" {{if eq .Nav "audit"}}class="current"{{end}}>Audit</a>
+  </nav>
+  <span class="who">
+    {{if .Identity.Name}}{{.Identity.Name}}{{else}}{{.Identity.Subject}}{{end}}
+    <span class="role">{{.Identity.Role}}</span>
+    {{/* /logout is the gateway's logoutPath — Envoy ends the session, not this service. */}}
+    {{if .AuthOn}}· <a href="/logout">sign out</a>{{end}}
+  </span>
+</header>
+<main>
+{{if not .AuthOn}}
+  <div class="banner">
+    Token verification is disabled — every visitor is an operator. This is a
+    development mode; never run it where the console is reachable.
+  </div>
+{{end}}
+{{template "content" .}}
+</main>
+<footer>github-roster {{.Version}}</footer>
+</body>
+</html>{{end}}

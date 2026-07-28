@@ -40,7 +40,42 @@ envFrom: []
 
 # The service configuration document, rendered verbatim into a ConfigMap.
 # See docs/reference/configuration.md for the full schema.
-config: {}
+#
+# The oidc block is read twice: the service uses it to map claims to roles,
+# and the exposure templates below use it to build the gateway's
+# authorization rule — so the edge and the app cannot disagree about which
+# groups matter.
+config:
+  oidc:
+    rolesClaim: groups
+    roles:
+      viewer: ""
+      operator: ""
+
+# Browser exposure. The gateway runs the login and the session; this service
+# holds no client secret and mints no sessions of its own.
+exposure:
+  enabled: false
+  hostname: ""
+  # The identity provider, and where its keys live. The service discovers
+  # the JWKS itself from `config.oidc.issuer`; the gateway needs it spelled
+  # out because Envoy does not do discovery.
+  issuer: ""
+  jwksURI: ""
+  gateway:
+    name: tenants
+    namespace: envoy-gateway-system
+    sectionName: tenants
+  oidcApp:
+    # The Zitadel operator mints the client and writes the Secret Envoy
+    # reads. Turn this off to point at a client registered by hand.
+    create: true
+    name: ""
+    projectRef: ""
+
+networkPolicy:
+  enabled: false
+  extraIngress: []
 
 podAnnotations: {}
 podSecurityContext:

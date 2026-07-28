@@ -1,0 +1,138 @@
+{{- if .Values.exposure.enabled }}
+{{- $hostname := required "exposure.hostname is required when exposure.enabled" .Values.exposure.hostname }}
+{{- $name := include "github-roster.fullname" . }}
+{{- if .Values.exposure.oidcApp.create }}
+# The OIDC client, minted by the Zitadel operator, which also writes the
+# Secret that Envoy's clientIDRef/clientSecret read.
+apiVersion: zitadel.truvity.io/v1alpha2
+kind: OIDCApp
+metadata:
+  name: {{ $name }}-oidc
+  labels:
+    {{- include "github-roster.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  name: {{ .Values.exposure.oidcApp.name | default $name }}
+  {{- with .Values.exposure.oidcApp.projectRef }}
+  projectRef:
+    name: {{ . }}
+  {{- end }}
+  type: confidential
+  authMethod: basic
+  redirectUris:
+    - https://{{ $hostname }}/oauth2/callback
+  postLogoutRedirectUris:
+    # Envoy's oauth2 filter sends the root with a trailing slash and
+    # Zitadel matches exactly, so both spellings are registered.
+    - https://{{ $hostname }}
+    - https://{{ $hostname }}/
+  secretRef:
+    name: {{ $name }}-oidc-client
+    keys:
+      clientId: client-id
+      clientSecret: client-secret
+---
+{{- end }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "github-roster.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: {{ .Values.exposure.gateway.name }}
+      namespace: {{ .Values.exposure.gateway.namespace }}
+      {{- with .Values.exposure.gateway.sectionName }}
+      sectionName: {{ . }}
+      {{- end }}
+  hostnames:
+    - {{ $hostname | quote }}
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        # group/kind/weight are set explicitly: the Gateway API server
+        # defaults them, and omitted fields diff forever under ArgoCD.
+        - group: ""
+          kind: Service
+          name: {{ $name }}
+          port: {{ .Values.service.port }}
+          weight: 1
+---
+# Authentication AND authorization at the edge, the hubble-ui recipe.
+#
+# `oidc` runs the authorization code flow and owns the session cookie —
+# which is why this service holds no client secret and mints no sessions.
+# `forwardAccessToken` hands the app the token it verifies again itself.
+#
+# `jwt` + `authorization` matter as much as the login: being authenticated
+# is never sufficient, or any account in the organization would reach an
+# operator console. defaultAction Deny means a freshly created user with no
+# grants gets a 403 here, not a page.
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "github-roster.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: {{ $name }}
+  oidc:
+    provider:
+      issuer: {{ .Values.exposure.issuer | required "exposure.issuer is required when exposure.enabled" | quote }}
+    clientIDRef:
+      name: {{ $name }}-oidc-client
+    clientSecret:
+      name: {{ $name }}-oidc-client
+    scopes:
+      - openid
+      - profile
+      - email
+    redirectURL: "https://{{ $hostname }}/oauth2/callback"
+    logoutPath: /logout
+    # Without this the forwarded token goes stale while the session cookie
+    # lives on, and the app starts refusing requests mid-session.
+    refreshToken: true
+    # Expose the JWT access token to the jwt filter below and to the app.
+    forwardAccessToken: true
+  jwt:
+    providers:
+      - name: waist
+        issuer: {{ .Values.exposure.issuer | quote }}
+        remoteJWKS:
+          uri: {{ .Values.exposure.jwksURI | required "exposure.jwksURI is required when exposure.enabled" | quote }}
+          # Explicit (matches the CRD default): the API server injects it,
+          # and an undeclared default is a permanent ArgoCD OutOfSync.
+          cacheDuration: "300s"
+  authorization:
+    defaultAction: Deny
+    rules:
+      - name: console-roles
+        action: Allow
+        principal:
+          jwt:
+            provider: waist
+            claims:
+              - name: {{ .Values.config.oidc.rolesClaim | default "groups" }}
+                valueType: StringArray
+                values:
+                  {{- with .Values.config.oidc.roles.viewer }}
+                  - {{ . | quote }}
+                  {{- end }}
+                  {{- with .Values.config.oidc.roles.operator }}
+                  - {{ . | quote }}
+                  {{- end }}
+{{- end }}

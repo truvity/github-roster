@@ -1,0 +1,72 @@
+project_name: github-roster
+
+version: 2
+
+builds:
+  - id: github-roster
+    main: ./cmd/github-roster
+    binary: github-roster
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.Version={{.Version}} -X main.Commit={{.FullCommit}}
+
+archives:
+  - id: binary
+    ids:
+      - github-roster
+    formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+kos:
+  - id: github-roster
+    build: github-roster
+    tags:
+      - "{{ .Version }}"
+      - "{{ if not .IsSnapshot }}latest{{ end }}"
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    bare: true
+    preserve_import_paths: false
+    base_import_paths: true
+    base_image: gcr.io/distroless/static:nonroot
+    sbom: none
+    labels:
+      org.opencontainers.image.title: github-roster
+      org.opencontainers.image.version: "{{ .Version }}"
+      org.opencontainers.image.source: https://github.com/truvity/github-roster
+
+release:
+  github:
+    owner: truvity
+    name: github-roster
+  header: |
+    ## github-roster {{ .Tag }}
+
+    Docker image: `ghcr.io/truvity/github-roster:{{ .Version }}`
+    Helm chart: `oci://ghcr.io/truvity/charts/github-roster:{{ .Version }}`
+
+changelog:
+  use: github
+  groups:
+    - title: Features
+      regexp: '^feat'
+      order: 0
+    - title: Bug Fixes
+      regexp: '^fix'
+      order: 1
+    - title: Other
+      order: 999
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "^ci:"

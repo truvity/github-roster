@@ -1,0 +1,58 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/truvity/github-roster
+  tag: ""  # defaults to appVersion
+  pullPolicy: IfNotPresent
+
+serviceAccount:
+  create: true
+  name: ""
+  # Pod identity / IRSA annotations go here — the service reads the mapping
+  # from SSM and writes audit records to S3 with the pod's own identity.
+  annotations: {}
+
+service:
+  type: ClusterIP
+  port: 8080
+
+healthPort: 7070
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    memory: 256Mi
+
+# Instance-level settings only. Everything about *which* organizations,
+# directories and teams this instance manages lives in `config` below.
+env:
+  CONFIG_FILE: "/etc/github-roster/config.yaml"
+  LOG_LEVEL: "info"
+  LOG_FORMAT: "json"
+
+# Secret environment variables (e.g. the OIDC client secret and the session
+# key, from an ESO-managed Secret).
+envFrom: []
+# - secretRef:
+#     name: github-roster-secrets
+
+# The service configuration document, rendered verbatim into a ConfigMap.
+# See docs/reference/configuration.md for the full schema.
+config: {}
+
+podAnnotations: {}
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: [ALL]
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

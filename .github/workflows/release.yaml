@@ -1,0 +1,43 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+
+      - uses: DeterminateSystems/determinate-nix-action@v3
+
+      - name: Install devbox
+        run: curl -fsSL https://get.jetify.com/devbox | bash -s -- -f
+
+      - uses: ko-build/setup-ko@61b4d1d396f5b2e7d6bb6fefdce3dc38d1a13445 # v0.10
+
+      - name: Login to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: GoReleaser
+        run: devbox run -- goreleaser release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          KO_DOCKER_REPO: ghcr.io/truvity
+
+      # The git tag is the sole version authority: the chart's own version
+      # field is a placeholder that never moves, and is stamped here.
+      - name: Package and push Helm chart
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "${{ secrets.GITHUB_TOKEN }}" | devbox run -- helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
+          devbox run -- helm package charts/github-roster --version "$VERSION" --app-version "$VERSION" --destination dist/
+          devbox run -- helm push dist/github-roster-${VERSION}.tgz oci://ghcr.io/truvity/charts

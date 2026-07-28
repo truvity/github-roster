@@ -1,0 +1,23 @@
+# Binaries
+bin/
+dist/
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+
+# Devbox
+.devbox/
+
+# Coverage
+coverage.out
+
+# Go
+vendor/
+
+# Local configuration — may name real orgs, groups and issuers.
+config.yaml
+config.local.yaml

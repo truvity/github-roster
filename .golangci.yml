@@ -1,0 +1,50 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - gocritic
+    - misspell
+    - unconvert
+    - unparam
+    - nolintlint
+    - gosec
+    - gocyclo
+
+  settings:
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - style
+        - performance
+    misspell:
+      locale: US
+    gocyclo:
+      # Same bar as the sibling services: Go Report Card uses 15, we allow 25
+      # for wiring/setup functions. Anything above 25 should be refactored.
+      min-complexity: 25
+
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - unparam
+          - gocyclo
+          - gosec
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/truvity/github-roster

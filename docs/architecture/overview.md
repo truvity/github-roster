@@ -95,6 +95,26 @@ problem that are actually hard — invitation lifecycle, membership versus
 team membership, pagination, rate limits, exempting bots — are production-
 hardened there at a scale we will never reach.
 
+## Where authentication happens
+
+Not here. A gateway in front of the console runs the OIDC authorization code
+flow, owns the session cookie, refreshes the token, validates it against the
+issuer's key set, and — separately, and just as importantly — denies anyone
+whose groups are not on the console's list. Being authenticated is never
+sufficient; any account in the organization would otherwise reach an
+operator console.
+
+The service therefore holds no client secret, mints no sessions, and has no
+sign-in routes. What it keeps is the part a gateway cannot do for it:
+deciding whether this caller is a viewer or an operator, because that answer
+changes what renders and what the handlers accept.
+
+It still verifies the forwarded token against the issuer's key set rather
+than trusting the header. Not because the gateway is untrustworthy, but
+because "only reachable through the gateway" is a property of a network
+policy — one file away from being wrong — and a service that can remove
+people's access should not rest its authorization on that.
+
 ## Failure semantics
 
 - **A failed source fetch skips that source's removals.** Missing data must

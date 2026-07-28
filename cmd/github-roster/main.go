@@ -2,9 +2,16 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
 	"os"
+	"os/signal"
+	"syscall"
 
+	"github.com/urfave/cli/v3"
+
+	"github.com/truvity/github-roster/pkg/app"
 	"github.com/truvity/github-roster/pkg/version"
 )
 
@@ -15,14 +22,50 @@ var (
 )
 
 func main() {
+	// os.Exit skips deferred calls, so the whole body lives in run() and
+	// main does nothing but translate an error into an exit code.
+	os.Exit(run())
+}
+
+func run() int {
 	info := version.Info{Version: Version, Commit: Commit}
 
-	if len(os.Args) > 1 && (os.Args[1] == "version" || os.Args[1] == "--version") {
-		fmt.Println(info.String())
+	// SIGTERM is what Kubernetes sends; SIGINT is what a laptop sends.
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+	defer stop()
 
-		return
+	cmd := &cli.Command{
+		Name:    "github-roster",
+		Usage:   "GitHub membership console for organizations without Enterprise",
+		Version: info.String(),
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:    "config",
+				Usage:   "path to the configuration document",
+				Sources: cli.EnvVars(app.EnvConfigFile),
+			},
+		},
+		Action: func(ctx context.Context, cmd *cli.Command) error {
+			return app.Run(ctx, info, cmd.String("config"))
+		},
+		Commands: []*cli.Command{
+			{
+				Name:  "version",
+				Usage: "print the build stamp and exit",
+				Action: func(context.Context, *cli.Command) error {
+					fmt.Println(info.String())
+
+					return nil
+				},
+			},
+		},
 	}
 
-	fmt.Fprintf(os.Stderr, "github-roster %s: no server yet — see the phase plan in docs/\n", info.String())
-	os.Exit(1)
+	if err := cmd.Run(ctx, os.Args); err != nil {
+		slog.Error("fatal", slog.Any("error", err))
+
+		return 1
+	}
+
+	return 0
 }

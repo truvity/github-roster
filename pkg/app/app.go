@@ -1,0 +1,113 @@
+// Package app is the wiring: one function that builds every component from
+// the configuration and runs the service. No DI container by design — hand
+// wiring is cheap to write, and it is the one place a reader can see the
+// whole shape of the process.
+package app
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"os"
+
+	"github.com/truvity/github-roster/pkg/auth"
+	"github.com/truvity/github-roster/pkg/config"
+	"github.com/truvity/github-roster/pkg/server"
+	"github.com/truvity/github-roster/pkg/ui"
+	"github.com/truvity/github-roster/pkg/version"
+)
+
+// Environment contract.
+//
+// It is short, and that is the point: the gateway in front of this service
+// owns the sign-in, so there is no client secret to hold and no session key
+// to manage, share between replicas or rotate.
+const (
+	// EnvConfigFile names the configuration document.
+	EnvConfigFile = "CONFIG_FILE"
+	// EnvLogLevel and EnvLogFormat override the document, so a debug session
+	// does not need a config change.
+	EnvLogLevel  = "LOG_LEVEL"
+	EnvLogFormat = "LOG_FORMAT"
+)
+
+// Run loads configuration, builds everything and serves until ctx is done.
+func Run(ctx context.Context, info version.Info, configPath string) error {
+	if configPath == "" {
+		return fmt.Errorf("no configuration document: pass --config or set %s", EnvConfigFile)
+	}
+
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		return err
+	}
+
+	logger := newLogger(cfg)
+	logger.InfoContext(ctx, "starting github-roster",
+		slog.String("version", info.String()),
+		slog.String("config", configPath),
+		slog.Int("orgs", len(cfg.Orgs)),
+		slog.Int("sources", len(cfg.Sources)))
+
+	authenticator, err := buildAuth(ctx, logger, cfg)
+	if err != nil {
+		return err
+	}
+
+	renderer, err := ui.NewRenderer(info.String())
+	if err != nil {
+		return err
+	}
+
+	return server.Run(ctx, &server.Deps{
+		Logger:   logger,
+		Config:   cfg,
+		Auth:     authenticator,
+		Renderer: renderer,
+		Version:  info,
+	})
+}
+
+func buildAuth(ctx context.Context, logger *slog.Logger, cfg *config.Config) (auth.Authenticator, error) {
+	if cfg.OIDC.Disabled {
+		return auth.NewDisabled(logger), nil
+	}
+
+	return auth.NewVerifier(ctx, logger, cfg.OIDC)
+}
+
+func newLogger(cfg *config.Config) *slog.Logger {
+	level := cfg.LogLevel
+	if v := os.Getenv(EnvLogLevel); v != "" {
+		level = v
+	}
+
+	format := cfg.LogFormat
+	if v := os.Getenv(EnvLogFormat); v != "" {
+		format = v
+	}
+
+	var lvl slog.Level
+
+	switch level {
+	case "debug":
+		lvl = slog.LevelDebug
+	case "warn":
+		lvl = slog.LevelWarn
+	case "error":
+		lvl = slog.LevelError
+	default:
+		lvl = slog.LevelInfo
+	}
+
+	opts := &slog.HandlerOptions{Level: lvl}
+
+	var handler slog.Handler
+	if format == "text" {
+		handler = slog.NewTextHandler(os.Stdout, opts)
+	} else {
+		handler = slog.NewJSONHandler(os.Stdout, opts)
+	}
+
+	return slog.New(handler)
+}

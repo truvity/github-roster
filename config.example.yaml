@@ -1,0 +1,71 @@
+# github-roster — example configuration.
+#
+# One document, validated at startup, never reloaded. It says *what* this
+# instance manages. Secrets are not in here and never should be: they arrive
+# through the environment (see docs/reference/configuration.md).
+
+listen: :8080
+healthListen: :7070
+
+logLevel: info
+logFormat: json
+
+# How a forwarded token becomes a role. The sign-in itself belongs to the
+# gateway in front of this service — there is no client secret here and no
+# session of its own.
+oidc:
+  # Used to discover the JWKS the forwarded token is verified against.
+  issuer: https://sso.example.com
+  # Optional. Empty accepts any token this issuer minted, which is right
+  # behind a gateway that already checked the audience.
+  audience: ""
+  # The claim carrying the caller's groups.
+  rolesClaim: groups
+  roles:
+    viewer: roster-viewers@example.com
+    operator: roster-operators@example.com
+
+# Directory sources: liveness (who is suspended) and group membership.
+sources:
+  - name: corp
+    # Holds the service-account key and the admin subject to impersonate.
+    ssmPrefix: /secrets/directory/corp
+    # Required. A directory may serve domains this instance has no business
+    # managing; naming them is how you say which ones it does.
+    domains: [example.com]
+
+# GitHub organizations under management.
+orgs:
+  - name: example-org
+    # Read-only credentials, held by the web tier.
+    consoleAppSSM: /secrets/roster/console/example-org
+    # Write credentials — mounted only into reconciler Jobs. Must be a
+    # different App: the split is the security boundary.
+    applierAppSSM: /secrets/roster/applier/example-org
+
+    # Logins the service never touches, in either direction.
+    exceptions:
+      - example-bot
+
+    # Membership sources for teams that already exist. Creating and deleting
+    # teams is not this service's business.
+    teams:
+      engineers:
+        groups: [engineering@example.com]
+      # Pinned: edited only in the operator UI, never touched by a scheduled
+      # run. Where auditors and machine accounts live.
+      robots:
+        pinned: true
+
+mapping:
+  ssmPrefix: /roster/
+
+audit:
+  bucket: example-roster-audit
+  prefixPerOrg: true
+
+schedule:
+  # The service's half of the revocation SLA.
+  removalsInterval: 1h
+  # Refuse a run that would remove more than this share of an organization.
+  maxRemovalFraction: 0.5

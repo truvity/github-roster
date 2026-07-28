@@ -20,10 +20,20 @@ test:
 integration:
     go test -tags=integration -v -count=1 -timeout=600s ./tests/integration/...
 
-# Render every chart values permutation (catches template breakage without a cluster)
+# Render every chart values permutation (catches template breakage without a cluster).
+# The exposure path is rendered too: those templates are only reachable with
+# exposure.enabled, so a default-values render would never touch them.
 chart-lint:
     helm lint charts/github-roster
     helm template github-roster charts/github-roster >/dev/null
+    helm template github-roster charts/github-roster \
+        --set exposure.enabled=true \
+        --set exposure.hostname=roster.example.com \
+        --set exposure.issuer=https://sso.example.com \
+        --set exposure.jwksURI=https://sso.example.com/oauth/v2/keys \
+        --set networkPolicy.enabled=true \
+        --set config.oidc.roles.viewer=roster-viewers \
+        --set config.oidc.roles.operator=roster-operators >/dev/null
 
 # Run linters
 lint:

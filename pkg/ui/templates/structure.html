@@ -1,0 +1,40 @@
+{{define "content"}}
+<h1>Structure</h1>
+<p class="lede">
+  Organizations under management, and the teams whose membership this console
+  reconciles.
+</p>
+
+<table>
+  <thead>
+    <tr><th>Organization</th><th>Team</th><th>Membership from</th></tr>
+  </thead>
+  <tbody>
+  {{range .Data.Orgs}}
+    {{$org := .Name}}
+    {{if .Teams}}
+      {{range .Teams}}
+      <tr>
+        <td>{{$org}}</td>
+        <td>{{.Name}}</td>
+        <td>
+          {{if .Pinned}}
+            pinned — operator-edited, never touched by a scheduled run
+          {{else}}
+            {{range $i, $g := .Groups}}{{if $i}}, {{end}}{{$g}}{{end}}
+          {{end}}
+        </td>
+      </tr>
+      {{end}}
+    {{else}}
+      <tr><td>{{$org}}</td><td colspan="2" class="lede">no teams configured</td></tr>
+    {{end}}
+  {{end}}
+  </tbody>
+</table>
+
+<p class="lede" style="margin-top:24px">
+  Members, liveness and pending invitations arrive in the next phase; this
+  page currently shows configuration only.
+</p>
+{{end}}

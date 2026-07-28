@@ -1,0 +1,15 @@
+# Git hooks (installed by the devbox init_hook: lefthook install).
+#
+# pre-push runs exactly what CI's `check` job runs, minus the integration
+# suite — that one needs credentials and a throwaway organization, and
+# belongs in CI rather than in a push.
+#
+# It goes through `devbox run` rather than calling `just` directly: a git
+# hook fires from whatever shell the push came from, which is often not a
+# direnv-loaded one (`sh: 1: just: not found` is the failure mode). devbox
+# is a prerequisite of the repo anyway, so this is the assumption that
+# actually holds.
+pre-push:
+  jobs:
+    - name: check
+      run: devbox run -- just check

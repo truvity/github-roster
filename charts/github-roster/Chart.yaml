@@ -1,0 +1,8 @@
+apiVersion: v2
+name: github-roster
+description: GitHub membership console for organizations without Enterprise
+type: application
+# Placeholder. The git tag is the sole version authority — the release
+# workflow stamps `--version`/`--app-version` from it at package time.
+version: 0.0.0
+appVersion: "0.0.0"

@@ -1,0 +1,29 @@
+name: Renovate
+
+on:
+  schedule:
+    - cron: "0 0 * * *" # daily midnight UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  renovate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/create-github-app-token@v3
+        id: token
+        with:
+          app-id: ${{ secrets.RENOVATE_APP_ID }}
+          private-key: ${{ secrets.RENOVATE_APP_PRIVATE_KEY }}
+
+      - uses: renovatebot/github-action@v46.1.21
+        with:
+          token: ${{ steps.token.outputs.token }}
+        env:
+          LOG_LEVEL: info
+          RENOVATE_REPOSITORIES: ${{ github.repository }}
+          GITHUB_COM_TOKEN: ${{ secrets.GITHUB_TOKEN }}

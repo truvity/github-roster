@@ -1,0 +1,23 @@
+{
+  "packages": [
+    "go@latest",
+    "golangci-lint@latest",
+    "gopls@latest",
+    "goreleaser@latest",
+    "govulncheck@latest",
+    "just-lsp@latest",
+    "just@latest",
+    "ko@latest",
+    "kubernetes-helm@latest",
+    "lefthook@latest"
+  ],
+  "env": {
+    "GOEXPERIMENT": "jsonv2"
+  },
+  "shell": {
+    "init_hook": [
+      "lefthook install >/dev/null 2>&1 || true"
+    ],
+    "scripts": {}
+  }
+}

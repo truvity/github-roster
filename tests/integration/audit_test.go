@@ -6,6 +6,7 @@ import (
 	"context"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
@@ -32,7 +33,7 @@ func TestS3AuditSink(t *testing.T) {
 		bucket := bucketName(t)
 		createBucket(t, client, bucket)
 
-		sink, err := audit.NewS3(client, bucket, true)
+		sink, err := audit.NewS3(client, bucket, "", true)
 		require.NoError(t, err)
 
 		return sink
@@ -120,3 +121,43 @@ func createBucket(t *testing.T, client *s3.Client, bucket string) {
 		_, _ = client.DeleteBucket(ctx, &s3.DeleteBucketInput{Bucket: aws.String(bucket)})
 	})
 }
+
+// TestS3AuditPrefixIsolation is the shared-tier model's core property: many
+// installs share one bucket, each rooted at "<namespace>/<release>/", and a
+// tenant must be unable to see a neighbour's records even by asking.
+func TestS3AuditPrefixIsolation(t *testing.T) {
+	requireAWS(t)
+
+	ctx := context.Background()
+	client := newS3Client(t)
+	bucket := bucketName(t)
+	createBucket(t, client, bucket)
+
+	mine, err := audit.NewS3(client, bucket, "ci-truvity/roster-r1-1/", true)
+	require.NoError(t, err)
+
+	theirs, err := audit.NewS3(client, bucket, "dev-otsarev/github-roster/", true)
+	require.NoError(t, err)
+
+	require.NoError(t, mine.Write(ctx, audit.Record{
+		ID: audit.NewID(timeNow(), "job-mine"), Org: "example-org", Config: "orgs: {}\n",
+	}))
+	require.NoError(t, theirs.Write(ctx, audit.Record{
+		ID: audit.NewID(timeNow(), "job-theirs"), Org: "example-org", Config: "orgs: {}\n",
+	}))
+
+	ours, err := mine.List(ctx, "", 0)
+	require.NoError(t, err)
+	require.Len(t, ours, 1, "a tenant must see exactly its own records")
+
+	// Filtering by org must stay inside the tenant root too.
+	byOrg, err := mine.List(ctx, "example-org", 0)
+	require.NoError(t, err)
+	require.Len(t, byOrg, 1)
+
+	// A prefix that would interleave tenants is refused at construction.
+	_, err = audit.NewS3(client, bucket, "no-trailing-slash", true)
+	require.ErrorContains(t, err, `must end with "/"`)
+}
+
+func timeNow() time.Time { return time.Now() }

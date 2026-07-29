@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -28,13 +29,18 @@ const maxRecordBytes = 4 << 20
 type S3 struct {
 	client *s3.Client
 	bucket string
+	// prefix roots every key. Empty for a dedicated bucket; the tenant's
+	// "<namespace>/<release>/" in the shared-tier test model, where many
+	// installs write into one bucket and MUST not see each other.
+	prefix string
 	// prefixPerOrg is honored by Key; kept so a deployment that wants a
 	// flat layout can have one without changing this type's callers.
 	prefixPerOrg bool
 }
 
-// NewS3 returns a sink backed by a bucket.
-func NewS3(client *s3.Client, bucket string, prefixPerOrg bool) (*S3, error) {
+// NewS3 returns a sink backed by a bucket, rooted at prefix (which may be
+// empty, and must end with "/" otherwise).
+func NewS3(client *s3.Client, bucket, prefix string, prefixPerOrg bool) (*S3, error) {
 	if client == nil {
 		return nil, fmt.Errorf("an s3 client is required")
 	}
@@ -43,15 +49,19 @@ func NewS3(client *s3.Client, bucket string, prefixPerOrg bool) (*S3, error) {
 		return nil, fmt.Errorf("audit.bucket is required")
 	}
 
-	return &S3{client: client, bucket: bucket, prefixPerOrg: prefixPerOrg}, nil
+	if prefix != "" && !strings.HasSuffix(prefix, "/") {
+		return nil, fmt.Errorf("audit prefix %q must end with %q", prefix, "/")
+	}
+
+	return &S3{client: client, bucket: bucket, prefix: prefix, prefixPerOrg: prefixPerOrg}, nil
 }
 
 func (s *S3) key(record Record) string {
 	if !s.prefixPerOrg {
-		return record.ID + ".json"
+		return s.prefix + record.ID + ".json"
 	}
 
-	return Key(record.Org, record.ID)
+	return s.prefix + Key(record.Org, record.ID)
 }
 
 // Write stores one record.
@@ -85,9 +95,16 @@ func (s *S3) List(ctx context.Context, org string, limit int) ([]Record, error) 
 		limit = DefaultLimit
 	}
 
-	var prefix *string
+	// Listing is always confined to this sink's root: a tenant sharing the
+	// bucket must be unable to read a neighbour's records even by asking.
+	listPrefix := s.prefix
 	if org != "" && s.prefixPerOrg {
-		prefix = aws.String(sanitize(org) + "/")
+		listPrefix += sanitize(org) + "/"
+	}
+
+	var prefix *string
+	if listPrefix != "" {
+		prefix = aws.String(listPrefix)
 	}
 
 	var keys []string

@@ -183,7 +183,8 @@ the access trail, not secrecy.
 | Key | Default | Meaning |
 |---|---|---|
 | `bucket` | — | object storage bucket for run records |
-| `prefixPerOrg` | `true` | file each record under its organization |
+| `prefix` | `""` | roots every record inside the bucket; must end with `/` when set. Empty for a dedicated bucket; the tenant's `<namespace>/<release>/` in the shared-tier test model, where many installs share one bucket and must not see each other |
+| `prefixPerOrg` | `true` | file each record under its organization (below `prefix`) |
 
 ## `schedule`
 

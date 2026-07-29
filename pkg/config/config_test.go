@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/truvity/github-roster/pkg/config"
 )
 
@@ -226,4 +228,21 @@ func TestExceptionsAreCaseInsensitive(t *testing.T) {
 	if org.IsException("someone-else") {
 		t.Error("IsException(\"someone-else\") = true, want false")
 	}
+}
+
+func TestAuditPrefixMustEndWithSlash(t *testing.T) {
+	t.Parallel()
+
+	bad := strings.Replace(minimal,
+		"audit:\n  bucket: example-roster-audit",
+		"audit:\n  bucket: example-roster-audit\n  prefix: ci-truvity/r1", 1)
+	_, err := config.Parse([]byte(bad))
+	require.ErrorContains(t, err, "must end with")
+
+	good := strings.Replace(minimal,
+		"audit:\n  bucket: example-roster-audit",
+		"audit:\n  bucket: example-roster-audit\n  prefix: ci-truvity/r1/", 1)
+	cfg, err := config.Parse([]byte(good))
+	require.NoError(t, err)
+	require.Equal(t, "ci-truvity/r1/", cfg.Audit.Prefix)
 }

@@ -103,6 +103,17 @@ insuranceCronJob:
   schedule: "37 * * * *"
   image: curlimages/curl:8.10.1
 
+# Materialize each org's applier private key from the parameter store into
+# the Secret the reconciler Job mounts, via External Secrets. One
+# ExternalSecret is rendered per entry in config.orgs. The web tier is
+# given only the Secret's NAME.
+applierSecrets:
+  create: false
+  refreshInterval: 1h
+  secretStoreRef:
+    name: ""
+    kind: ClusterSecretStore
+
 # The audit trail. Records go here rather than to the pod's logs, so they
 # outlive the container that wrote them.
 audit:

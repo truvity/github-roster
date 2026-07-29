@@ -77,12 +77,21 @@ jobs:
           # Namespaces every mutation this run makes in the sandbox org, so
           # concurrent CI runs cannot collide and leftovers are attributable.
           ROSTER_TEST_RUN_ID: gh-${{ github.run_id }}-${{ github.run_attempt }}
-          ROSTER_TEST_ORG: ${{ secrets.SANDBOX_ORG }}
-          ROSTER_TEST_CONSOLE_APP_ID: ${{ secrets.SANDBOX_CONSOLE_APP_ID }}
-          ROSTER_TEST_CONSOLE_INSTALLATION_ID: ${{ secrets.SANDBOX_CONSOLE_INSTALLATION_ID }}
+          # Identifiers are VARIABLES, keys are SECRETS.
+          #
+          # Not laziness about secrecy: a secret is masked as *** wherever
+          # it appears, so carrying the org name and App ids as secrets
+          # turned every diagnostic line into `org "***"` — which is
+          # exactly the information you want when an integration test
+          # fails at 3am. None of these three identify anything sensitive:
+          # the org is a free, throwaway account created solely to be
+          # mutated by tests, and App ids are meaningless without the key.
+          ROSTER_TEST_ORG: ${{ vars.SANDBOX_ORG }}
+          ROSTER_TEST_CONSOLE_APP_ID: ${{ vars.SANDBOX_CONSOLE_APP_ID }}
+          ROSTER_TEST_CONSOLE_INSTALLATION_ID: ${{ vars.SANDBOX_CONSOLE_INSTALLATION_ID }}
           ROSTER_TEST_CONSOLE_PRIVATE_KEY: ${{ secrets.SANDBOX_CONSOLE_PRIVATE_KEY }}
-          ROSTER_TEST_APPLIER_APP_ID: ${{ secrets.SANDBOX_APPLIER_APP_ID }}
-          ROSTER_TEST_APPLIER_INSTALLATION_ID: ${{ secrets.SANDBOX_APPLIER_INSTALLATION_ID }}
+          ROSTER_TEST_APPLIER_APP_ID: ${{ vars.SANDBOX_APPLIER_APP_ID }}
+          ROSTER_TEST_APPLIER_INSTALLATION_ID: ${{ vars.SANDBOX_APPLIER_INSTALLATION_ID }}
           ROSTER_TEST_APPLIER_PRIVATE_KEY: ${{ secrets.SANDBOX_APPLIER_PRIVATE_KEY }}
           AWS_ENDPOINT_URL: http://localhost:4566
           AWS_REGION: eu-west-1

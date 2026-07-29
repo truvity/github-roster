@@ -25,6 +25,19 @@ fake would test the wrong system:
 Running the whole file with nothing configured is therefore a no-op rather
 than a failure — a fresh clone can run `just integration` and see skips.
 
+**How CI gets its credentials.** Repository **variables** carry the
+identifiers (organization, App ids, installation ids) and repository
+**secrets** carry only the two private keys. No password manager is
+involved in CI, and nothing reaches out to a cloud account.
+
+The split is not carelessness about the identifiers. A secret is masked
+as `***` wherever it appears, so carrying the org name and App ids as
+secrets turns every diagnostic line into `org "***"` — precisely the
+information you need when an integration test fails. None of them
+identify anything sensitive: the organization is a free, throwaway
+account whose only purpose is being mutated by tests, and an App id is
+meaningless without the key.
+
 **Why a real organization.** GitHub's invitation lifecycle is the single
 most error-prone part of this service's problem domain: an invited-but-not-
 accepted user is a member for some purposes and not others. A mock would

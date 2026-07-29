@@ -80,6 +80,42 @@ test environment exactly as in production. A test suite that used one
 all-powerful credential would exercise a privilege boundary that does not
 exist, and would pass on the day the real boundary broke.
 
+## Against a real cluster — `just up / test-install / down`
+
+The deployment-verification tier: install the chart into a live cluster
+and run its own test hooks against the running release. One code path for
+a person and for CI — the same recipes, differing only in arguments:
+
+```bash
+# a person, in their own namespace
+just up dev-ada github-roster
+just test-install dev-ada github-roster
+just down dev-ada github-roster
+
+# CI, one ephemeral release per run in a shared namespace
+just e2e ci-myorg myrepo-r12345-1
+```
+
+The pair `(NAMESPACE, RELEASE)` is the tenant identity, and every other
+name derives from it: state lives under `/test/<ns>/<release>/` in the
+parameter store and `<ns>/<release>/` in the shared bucket, and the
+applier Secret is `<release>-applier`. Nothing is configured twice, so
+nothing can disagree. Re-running `up` is an upgrade in place; re-running
+tests tolerates leftovers because every entity a test creates carries an
+execution id. `reset` clears a tenant's own prefixes when a human wants a
+clean slate — a convenience, never a prerequisite.
+
+Required environment: `TEST_BUCKET` (the shared test bucket),
+`TEST_SECRET_STORE` (the External Secrets store materializing the applier
+key), and optionally `TEST_ORG` / `TEST_CREDS_SSM` / `IMAGE_TAG`.
+
+`helm test` runs two hooks from the dedicated test image:
+
+| Hook | Mutates | Exists when |
+|---|---|---|
+| `selftest` | no — wiring checks only (IAM, KMS, RBAC, credentials) | always, every environment |
+| `acceptance` | sandbox only, execution-scoped, cleaned up | only when values set `test.mutating=true` — which the `up` recipe does and production values never do |
+
 ## Directory data is fixtures, always
 
 Liveness and group membership come from fixtures in every test. Reading a

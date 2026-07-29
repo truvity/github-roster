@@ -171,6 +171,12 @@ type Mapping struct {
 // Audit locates the durable record of every run.
 type Audit struct {
 	Bucket string `yaml:"bucket"`
+	// Prefix roots every record inside the bucket. Empty for a dedicated
+	// bucket (production); set for the shared-tier test model, where many
+	// installs share one bucket and each claims "<namespace>/<release>/"
+	// — the tenancy convention in gitops docs/architecture/
+	// test-installations.md. Must end with "/" when set.
+	Prefix string `yaml:"prefix"`
 	// PrefixPerOrg files each record under its organization, which is what
 	// lets one bucket policy per organization exist later.
 	PrefixPerOrg bool `yaml:"prefixPerOrg"`
@@ -263,6 +269,13 @@ func (c *Config) Validate() error {
 
 	if !strings.HasPrefix(c.Mapping.SSMPrefix, "/") || !strings.HasSuffix(c.Mapping.SSMPrefix, "/") {
 		return fmt.Errorf("mapping.ssmPrefix %q must start and end with %q", c.Mapping.SSMPrefix, "/")
+	}
+
+	if c.Audit.Prefix != "" && !strings.HasSuffix(c.Audit.Prefix, "/") {
+		// A prefix without the slash silently glues onto the first key
+		// segment and two tenants' records interleave — the exact
+		// collision the prefix exists to prevent.
+		return fmt.Errorf("audit.prefix %q must end with %q", c.Audit.Prefix, "/")
 	}
 
 	if c.Schedule.RemovalsInterval <= 0 {

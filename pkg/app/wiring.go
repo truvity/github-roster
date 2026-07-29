@@ -78,7 +78,7 @@ func buildReadLayers(ctx context.Context, logger *slog.Logger, cfg *config.Confi
 
 	// The audit sink. Required rather than optional: a deployment that
 	// cannot record what it did should not be quietly acting anyway.
-	layers.Audit, err = audit.NewS3(s3.NewFromConfig(awsCfg), cfg.Audit.Bucket, cfg.Audit.PrefixPerOrg)
+	layers.Audit, err = audit.NewS3(s3.NewFromConfig(awsCfg), cfg.Audit.Bucket, cfg.Audit.Prefix, cfg.Audit.PrefixPerOrg)
 	if err != nil {
 		return nil, err
 	}

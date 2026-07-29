@@ -1,0 +1,45 @@
+{{- if .Values.rbac.create }}
+# Exactly the permissions the reconciler runner uses, and no more.
+#
+# Deliberately absent: delete. Finished Jobs are collected by their own
+# ttlSecondsAfterFinished, and the ConfigMap carrying the rendered document
+# is owned by its Job, so Kubernetes removes both. A service that can create
+# Jobs but not delete them cannot quietly undo its own audit trail.
+#
+# pkg/applier's tests assert this list matches what the code calls, so the
+# two cannot drift apart unnoticed.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "github-roster.fullname" . }}
+  labels:
+    {{- include "github-roster.labels" . | nindent 4 }}
+rules:
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["create", "get"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["create"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["list"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "github-roster.fullname" . }}
+  labels:
+    {{- include "github-roster.labels" . | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "github-roster.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: Role
+  name: {{ include "github-roster.fullname" . }}
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}

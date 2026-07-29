@@ -2,6 +2,9 @@ package applier_test
 
 import (
 	"context"
+	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -297,4 +300,197 @@ func TestJobIsLabelledForAudit(t *testing.T) {
 	require.Equal(t, "removals-only", job.Labels["roster.truvity.io/mode"])
 	require.Equal(t, "false", job.Labels["roster.truvity.io/confirmed"])
 	require.Equal(t, "operator@example.com", job.Annotations["roster.truvity.io/actor"])
+}
+
+// dns1123 is the API server's rule for these object names.
+var dns1123 = regexp.MustCompile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`)
+
+// A fake client does not validate names, so an unsanitized run id passes
+// every other test here and is rejected the first time somebody presses
+// Sync — in production, on the one path nobody wants to debug live.
+func TestObjectNamesAreAlwaysValid(t *testing.T) {
+	t.Parallel()
+
+	hostile := []string{
+		"UPPERCASE",
+		"has/slash",
+		"has spaces",
+		"trailing-",
+		"emoji-🙂-here",
+		strings.Repeat("very-long-", 12),
+		"under_score",
+	}
+
+	for _, runID := range hostile {
+		req := request(peribolos.ModeFull, true)
+		req.RunID = runID
+
+		client, out := run(t, req)
+
+		require.Regexp(t, dns1123, out.JobName, "run id %q produced an invalid object name", runID)
+		require.LessOrEqual(t, len(out.JobName), 63, "run id %q produced an overlong name", runID)
+
+		// And the objects really were created under that name.
+		_, err := client.BatchV1().Jobs(namespace).Get(context.Background(), out.JobName, metav1.GetOptions{})
+		require.NoError(t, err)
+	}
+}
+
+// waitingJobs mimics a real Job controller: the Job is created with no
+// conditions and only completes after a few polls, so the runner's polling
+// loop is actually exercised rather than short-circuited on the first read.
+func waitingJobs(client *fake.Clientset, polls int) {
+	var seen int
+
+	client.PrependReactor("get", "jobs", func(action k8stesting.Action) (bool, runtime.Object, error) {
+		seen++
+
+		name := action.(k8stesting.GetAction).GetName()
+
+		job := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace}}
+		if seen >= polls {
+			job.Status.Conditions = []batchv1.JobCondition{{
+				Type:   batchv1.JobComplete,
+				Status: corev1.ConditionTrue,
+			}}
+		}
+
+		return true, job, nil
+	})
+}
+
+func TestRunnerWaitsForCompletion(t *testing.T) {
+	t.Parallel()
+
+	client := fake.NewSimpleClientset()
+	waitingJobs(client, 3)
+
+	opts := options()
+	opts.Timeout = 30 * time.Second
+
+	runner, err := applier.NewRunner(client, opts)
+	require.NoError(t, err)
+
+	out, err := runner.Run(context.Background(), request(peribolos.ModeFull, true))
+
+	require.NoError(t, err)
+	require.True(t, out.Succeeded, "the runner must poll until the Job reports completion")
+	require.Positive(t, out.Duration)
+}
+
+// A Job that never finishes must not hang the console for ever.
+func TestRunnerGivesUpOnTimeout(t *testing.T) {
+	t.Parallel()
+
+	client := fake.NewSimpleClientset()
+	waitingJobs(client, 1_000_000) // never completes
+
+	opts := options()
+	opts.Timeout = 2 * time.Second
+
+	runner, err := applier.NewRunner(client, opts)
+	require.NoError(t, err)
+
+	out, err := runner.Run(context.Background(), request(peribolos.ModeFull, true))
+
+	require.Error(t, err)
+	require.False(t, out.Succeeded)
+	require.Less(t, out.Duration, 30*time.Second)
+}
+
+// TestChartRBACMatchesWhatTheCodeUses keeps the chart's Role and the
+// runner's API calls in step.
+//
+// This is what a cluster-based test would have been bought for, at none of
+// the cost. It catches drift in BOTH directions — a verb the code needs and
+// the chart lacks (a 403 on the first Sync in production), and a verb the
+// chart grants that nothing uses (privilege nobody asked for). A kind test
+// would only have caught the first.
+func TestChartRBACMatchesWhatTheCodeUses(t *testing.T) {
+	t.Parallel()
+
+	// Every API call pkg/applier makes, as (apiGroup, resource, verb).
+	// Adding a call to the runner means adding a line here AND to the
+	// chart, which is the point.
+	used := map[string][]string{
+		"batch/jobs":  {"create", "get"},
+		"/configmaps": {"create"},
+		"/pods":       {"list"},
+		"/pods/log":   {"get"},
+	}
+
+	raw, err := os.ReadFile(filepath.Join("..", "..", "charts", "github-roster", "templates", "rbac.yaml"))
+	require.NoError(t, err)
+
+	granted := parseRules(t, string(raw))
+
+	require.Equal(t, used, granted,
+		"the chart's Role and pkg/applier's API calls have drifted apart")
+}
+
+// parseRules reads the rules out of the Role template. The template's Helm
+// directives are not valid YAML, so the rules block is read directly —
+// enough to compare permissions without rendering the chart.
+func parseRules(t *testing.T, template string) map[string][]string {
+	t.Helper()
+
+	rules := map[string][]string{}
+
+	var group string
+
+	var resources, verbs []string
+
+	flush := func() {
+		for _, resource := range resources {
+			rules[group+"/"+resource] = append([]string(nil), verbs...)
+		}
+
+		resources, verbs = nil, nil
+	}
+
+	for _, line := range strings.Split(template, "\n") {
+		trimmed := strings.TrimSpace(line)
+
+		switch {
+		case strings.HasPrefix(trimmed, "- apiGroups:"):
+			if len(resources) > 0 {
+				flush()
+			}
+
+			group = strings.Trim(listOf(trimmed), `"`)
+		case strings.HasPrefix(trimmed, "resources:"):
+			resources = splitList(listOf(trimmed))
+		case strings.HasPrefix(trimmed, "verbs:"):
+			verbs = splitList(listOf(trimmed))
+		}
+	}
+
+	if len(resources) > 0 {
+		flush()
+	}
+
+	return rules
+}
+
+func listOf(line string) string {
+	open := strings.Index(line, "[")
+	closing := strings.LastIndex(line, "]")
+
+	if open < 0 || closing <= open {
+		return ""
+	}
+
+	return line[open+1 : closing]
+}
+
+func splitList(raw string) []string {
+	var out []string
+
+	for _, item := range strings.Split(raw, ",") {
+		if item = strings.Trim(strings.TrimSpace(item), `"`); item != "" {
+			out = append(out, item)
+		}
+	}
+
+	return out
 }

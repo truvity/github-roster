@@ -16,6 +16,7 @@ package applier
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -196,6 +197,19 @@ func (r *Runner) validate(req Request) error {
 	return nil
 }
 
+// nameUnsafe matches everything a Kubernetes object name may not contain.
+var nameUnsafe = regexp.MustCompile(`[^a-z0-9-]+`)
+
+// maxNameLength is the API server's limit for these object names.
+const maxNameLength = 63
+
+// objectName builds a name the API server will accept.
+//
+// Sanitizing rather than trusting the input matters more than it looks: a
+// fake client does NOT validate names, so an unsanitized run id containing
+// an uppercase letter or a slash passes every test in this package and is
+// rejected the first time somebody presses Sync. The failure would appear
+// in production, on the one code path nobody wants to debug live.
 func objectName(req Request) string {
 	mode := "sync"
 	if req.Result.Mode == peribolos.ModeRemovalsOnly {
@@ -206,7 +220,15 @@ func objectName(req Request) string {
 		mode += "-dryrun"
 	}
 
-	return fmt.Sprintf("roster-%s-%s", mode, req.RunID)
+	name := fmt.Sprintf("roster-%s-%s", mode, strings.ToLower(req.RunID))
+	name = nameUnsafe.ReplaceAllString(name, "-")
+	name = strings.Trim(name, "-")
+
+	if len(name) > maxNameLength {
+		name = strings.Trim(name[:maxNameLength], "-")
+	}
+
+	return name
 }
 
 // args builds the reconciler's command line.

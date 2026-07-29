@@ -18,6 +18,7 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/recover"
 	slogfiber "github.com/samber/slog-fiber"
 
+	"github.com/truvity/github-roster/pkg/applier"
 	"github.com/truvity/github-roster/pkg/auth"
 	"github.com/truvity/github-roster/pkg/config"
 	"github.com/truvity/github-roster/pkg/directory"
@@ -41,6 +42,24 @@ type Deps struct {
 	Directories *directory.Set
 	// Orgs is one read-only GitHub reader per managed organization.
 	Orgs map[string]*orgstate.Reader
+	// Applier spawns reconciler Jobs. Nil where no cluster is reachable,
+	// in which case the sync surface reports itself unavailable rather
+	// than pretending.
+	Applier *applier.Runner
+	// ApplierApps carries each organization's applier App IDENTIFIERS.
+	//
+	// Identifiers only, never the key: the web tier reads app id and
+	// installation id so it can pass them as Job arguments, and the
+	// private key is mounted straight into the Job from a Secret this
+	// process never opens. That asymmetry is the whole privilege boundary,
+	// so it is visible in the type.
+	ApplierApps map[string]ApplierApp
+}
+
+// ApplierApp is the non-secret half of an applier App's credentials.
+type ApplierApp struct {
+	AppID          string
+	InstallationID string
 }
 
 // Timeouts. The console serves small pages to humans; a request slower than
@@ -104,6 +123,10 @@ func NewApp(deps *Deps) *fiber.App {
 	app.Get("/mapping/import", requireOperator, protect, deps.handleImportForm)
 	app.Post("/mapping/import", requireOperator, protect, deps.handleImportPreview)
 	app.Post("/mapping/import/apply", requireOperator, protect, deps.handleImportApply)
+
+	app.Get("/sync", requireOperator, protect, deps.handleSync)
+	app.Post("/sync/preview", requireOperator, protect, deps.handleSyncPreview)
+	app.Post("/sync/apply", requireOperator, protect, deps.handleSyncApply)
 
 	app.Get("/audit", requireOperator, deps.handleAudit)
 

@@ -52,7 +52,14 @@ func TestServiceStartsAndServesTheRoster(t *testing.T) {
 	consolePrefix := prefix + "/secrets/console"
 	mappingPrefix := prefix + "/roster/"
 
+	applierPrefix := prefix + "/secrets/applier"
+
 	seedCredentials(t, client, consolePrefix, env.ConsoleAppID, env.ConsoleInstallationID, env.ConsolePrivateKey)
+
+	// The applier credentials too: startup reads that App's IDENTIFIERS so
+	// it can pass them as Job arguments. It never reads the key — the Job
+	// mounts that from a Secret — but the identifiers must be there.
+	seedCredentials(t, client, applierPrefix, env.ApplierAppID, env.ApplierInstallationID, env.ApplierPrivateKey)
 
 	// A mapping entry for somebody who is genuinely in the sandbox org, so
 	// the join has a real member to match rather than only warnings.
@@ -78,7 +85,7 @@ orgs:
     applierAppSSM: %q
     teams:
       robots: {pinned: true}
-`, mappingPrefix, env.Org, consolePrefix, consolePrefix+"-applier"))
+`, mappingPrefix, env.Org, consolePrefix, applierPrefix))
 	require.NoError(t, err)
 
 	// The real wiring, as the binary builds it.

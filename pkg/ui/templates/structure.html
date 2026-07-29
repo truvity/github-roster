@@ -62,7 +62,64 @@
 <p class="lede">No directory sources configured.</p>
 {{end}}
 
-<p class="lede" style="margin-top:24px">
-  The join of liveness, mapping and GitHub state arrives in the next phase.
+<h2 style="font-size:16px;margin:28px 0 4px">People</h2>
+<p class="lede">
+  Directory liveness joined with the mapping and GitHub state. A person
+  with no mapping entry is not here — they appear below as a warning, and
+  are granted nothing until an operator maps them.
 </p>
+
+{{if .Data.RosterError}}
+  <div class="banner">Could not build the roster: {{.Data.RosterError}}</div>
+{{else if .Data.Roster}}
+<table>
+  <thead>
+    <tr>
+      <th>Name</th><th>GitHub</th><th>Namespace</th><th>Live</th>
+      <th>Member</th><th>Teams</th><th>Desired</th>
+    </tr>
+  </thead>
+  <tbody>
+  {{range .Data.Roster.People}}
+    {{$p := .}}
+    {{range $org, $m := .Orgs}}
+    <tr>
+      <td>{{$p.Name}}{{if eq $p.Class "bot"}} <span class="muted">bot</span>{{end}}</td>
+      <td>{{$p.GitHub}}</td>
+      <td>{{if $p.K8s}}dev-{{$p.K8s}}{{else}}—{{end}}</td>
+      <td>{{if $p.Live}}yes{{else}}<strong>no</strong>{{end}}</td>
+      <td>
+        {{if $m.InvitationPending}}invited
+        {{else if $m.Member}}{{if eq (printf "%s" $m.Role) "admin"}}owner{{else}}yes{{end}}
+        {{else}}no{{end}}
+      </td>
+      <td>{{range $i, $t := $m.Teams}}{{if $i}}, {{end}}{{$t}}{{end}}</td>
+      <td>{{range $i, $t := $m.DesiredTeams}}{{if $i}}, {{end}}{{$t}}{{end}}</td>
+    </tr>
+    {{end}}
+  {{end}}
+  </tbody>
+</table>
+
+{{if .Data.Roster.Warnings}}
+<h2 style="font-size:16px;margin:28px 0 4px">Needs attention</h2>
+<p class="lede">
+  These never block a sync. They are the things a person has to decide.
+</p>
+<table>
+  <thead><tr><th>Kind</th><th>Subject</th><th>Detail</th></tr></thead>
+  <tbody>
+  {{range .Data.Roster.Warnings}}
+    <tr>
+      <td>{{.Kind}}</td>
+      <td>{{.Subject}}{{if .Org}} <span class="muted">({{.Org}})</span>{{end}}</td>
+      <td>{{.Detail}}</td>
+    </tr>
+  {{end}}
+  </tbody>
+</table>
+{{end}}
+{{else}}
+<p class="lede">The read layers are not configured, so there is no join to show.</p>
+{{end}}
 {{end}}

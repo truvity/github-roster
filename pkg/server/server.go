@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -105,6 +106,29 @@ func registerAPI(deps *Deps, app *fiber.App) {
 
 	huma.Get(api, "/api/version", func(_ context.Context, _ *struct{}) (*versionResponse, error) {
 		return &versionResponse{Body: deps.Version}, nil
+	})
+
+	// The roster. Consumed by the gitops puller (INF-443), which commits it
+	// so cfggen stays reproducible from git alone — so its shape is a
+	// contract across repositories, not an implementation detail.
+	huma.Register(api, huma.Operation{
+		OperationID: "get-roster",
+		Method:      http.MethodGet,
+		Path:        "/api/roster",
+		Summary:     "The joined roster",
+		Description: "Directory liveness joined with the mapping and GitHub state. " +
+			"Warnings are advisory and never block the response: a roster that " +
+			"refused to render because one person is unmapped would be useless " +
+			"precisely when it is needed.",
+	}, func(ctx context.Context, _ *struct{}) (*rosterResponse, error) {
+		joined, err := deps.buildRoster(ctx)
+		if err != nil {
+			deps.Logger.ErrorContext(ctx, "building the roster failed", slog.Any("error", err))
+
+			return nil, huma.Error500InternalServerError("could not build the roster")
+		}
+
+		return &rosterResponse{Body: joined}, nil
 	})
 }
 

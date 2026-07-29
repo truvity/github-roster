@@ -34,9 +34,35 @@ type Config struct {
 	Sources []Source `yaml:"sources"`
 	Orgs    []Org    `yaml:"orgs"`
 
-	Mapping  Mapping  `yaml:"mapping"`
-	Audit    Audit    `yaml:"audit"`
-	Schedule Schedule `yaml:"schedule"`
+	Mapping    Mapping    `yaml:"mapping"`
+	Audit      Audit      `yaml:"audit"`
+	Schedule   Schedule   `yaml:"schedule"`
+	Reconciler Reconciler `yaml:"reconciler"`
+}
+
+// Reconciler configures the Jobs that carry out changes.
+//
+// The service never writes to GitHub itself: it renders a document and
+// spawns a Job holding the write credential. Everything here describes that
+// Job.
+type Reconciler struct {
+	// Image is the upstream peribolos image, normally via a pull-through
+	// cache. Pinned by digest or tag in the deployment, never floating.
+	Image string `yaml:"image"`
+	// Namespace is where Jobs are created. Empty means the pod's own,
+	// which is what the chart's RBAC is scoped to.
+	Namespace string `yaml:"namespace"`
+	// ServiceAccount the Jobs run as. Empty means the namespace default —
+	// the Job needs no Kubernetes permissions of its own, only GitHub
+	// ones, which arrive as a mounted Secret.
+	ServiceAccount string `yaml:"serviceAccount"`
+	// MinAdmins is peribolos's own guard: it refuses a configuration with
+	// fewer owners. Configurable because upstream's default of five
+	// assumes a larger organization, and a guard that always trips is one
+	// nobody reads.
+	MinAdmins int `yaml:"minAdmins"`
+	// Timeout bounds one run.
+	Timeout time.Duration `yaml:"timeout"`
 }
 
 // OIDC configures how a forwarded token becomes a role.
@@ -110,6 +136,11 @@ type Org struct {
 	ConsoleAppSSM string `yaml:"consoleAppSSM"`
 	ApplierAppSSM string `yaml:"applierAppSSM"`
 
+	// ApplierSecret names the Kubernetes Secret holding the applier App's
+	// private key. It is mounted into reconciler Jobs and never read by
+	// this process. Empty defaults to "roster-applier-<org>".
+	ApplierSecret string `yaml:"applierSecret"`
+
 	// Exceptions are logins the service never touches in either direction:
 	// Apps, bots, and anything else whose membership is not a person's.
 	Exceptions []string `yaml:"exceptions"`
@@ -171,6 +202,10 @@ func Defaults() Config {
 		Schedule: Schedule{
 			RemovalsInterval:   time.Hour,
 			MaxRemovalFraction: 0.5,
+		},
+		Reconciler: Reconciler{
+			MinAdmins: 1,
+			Timeout:   10 * time.Minute,
 		},
 	}
 }
@@ -238,7 +273,27 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("schedule.maxRemovalFraction must be within [0,1], got %v", c.Schedule.MaxRemovalFraction)
 	}
 
+	if c.Reconciler.Timeout <= 0 {
+		return fmt.Errorf("reconciler.timeout must be positive, got %s", c.Reconciler.Timeout)
+	}
+
+	if c.Reconciler.MinAdmins < 1 {
+		// Zero would let a rendered document remove every owner and
+		// peribolos would not object.
+		return fmt.Errorf("reconciler.minAdmins must be at least 1, got %d", c.Reconciler.MinAdmins)
+	}
+
 	return nil
+}
+
+// ApplierSecretName is the Secret holding this organization's write
+// credential.
+func (o *Org) ApplierSecretName() string {
+	if o.ApplierSecret != "" {
+		return o.ApplierSecret
+	}
+
+	return "roster-applier-" + o.Name
 }
 
 func (o *OIDC) validate() error {

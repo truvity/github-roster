@@ -77,6 +77,10 @@ networkPolicy:
   enabled: false
   extraIngress: []
 
+# The Role letting the service create reconciler Jobs in its own namespace.
+rbac:
+  create: true
+
 podAnnotations: {}
 podSecurityContext:
   runAsNonRoot: true

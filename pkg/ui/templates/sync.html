@@ -1,0 +1,101 @@
+{{define "content"}}
+<h1>Sync</h1>
+<p class="lede">
+  Apply the desired state to an organization. A sync always runs as a dry
+  run first — the reconciler itself reports what it would change, so you are
+  reading its answer rather than this console's guess about it.
+</p>
+
+{{if .Data.Error}}<div class="banner">{{.Data.Error}}</div>{{end}}
+
+{{if not .Data.Result}}
+<form method="post" action="/sync/preview">
+  <input type="hidden" name="_csrf" value="{{.Data.CSRF}}">
+  <p>
+    <label for="org">Organization</label><br>
+    <select id="org" name="org">
+      {{range .Data.Orgs}}<option value="{{.}}">{{.}}</option>{{end}}
+    </select>
+  </p>
+  <p><button type="submit">Dry run</button></p>
+</form>
+{{end}}
+
+{{with .Data.Result}}
+<h2 style="font-size:16px;margin:28px 0 4px">Plan for {{.Org}}</h2>
+
+{{if or .Removing .Adding}}
+<table>
+  <thead><tr><th>Change</th><th>Who</th></tr></thead>
+  <tbody>
+    {{if .Adding}}
+    <tr>
+      <td>add</td>
+      <td>{{range $i, $l := .Adding}}{{if $i}}, {{end}}{{$l}}{{end}}</td>
+    </tr>
+    {{end}}
+    {{if .Removing}}
+    <tr>
+      <td><strong>remove</strong></td>
+      <td>{{range $i, $l := .Removing}}{{if $i}}, {{end}}{{$l}}{{end}}</td>
+    </tr>
+    {{end}}
+  </tbody>
+</table>
+{{else}}
+<p class="lede">No membership changes.</p>
+{{end}}
+
+{{if .SkippedSources}}
+<div class="banner">
+  These directories are unhealthy, so people known only to them were left
+  alone: {{range $i, $s := .SkippedSources}}{{if $i}}, {{end}}{{$s}}{{end}}
+</div>
+{{end}}
+
+{{if .Notes}}
+<p class="lede">Decisions worth knowing:</p>
+<ul class="lede">
+  {{range .Notes}}<li>{{.}}</li>{{end}}
+</ul>
+{{end}}
+
+<details style="margin-top:16px">
+  <summary class="muted">The rendered configuration ({{.Mode}})</summary>
+  <pre style="overflow-x:auto;font-size:12px;border:1px solid var(--line);padding:12px;border-radius:6px">{{.YAML}}</pre>
+</details>
+{{end}}
+
+{{with .Data.Run}}
+<h2 style="font-size:16px;margin:28px 0 4px">
+  Reconciler {{if .Confirmed}}run{{else}}dry run{{end}}
+</h2>
+<p class="lede">
+  Job <code>{{.JobName}}</code> ·
+  {{if .Succeeded}}succeeded{{else}}<strong>failed</strong>{{end}} ·
+  {{.Duration}}
+</p>
+{{if .Output}}
+<pre style="overflow-x:auto;font-size:12px;border:1px solid var(--line);padding:12px;border-radius:6px">{{.Output}}</pre>
+{{else}}
+<p class="lede muted">The Job produced no output that could be read.</p>
+{{end}}
+{{end}}
+
+{{if and .Data.Confirming .Data.Run .Data.Run.Succeeded}}
+<form method="post" action="/sync/apply" style="margin-top:16px"
+      onsubmit="return confirm('Apply these changes to {{.Data.Org}}?')">
+  <input type="hidden" name="_csrf" value="{{.Data.CSRF}}">
+  <input type="hidden" name="org" value="{{.Data.Org}}">
+  <button type="submit">Apply to {{.Data.Org}}</button>
+  <span class="muted">
+    the plan is recomputed before applying — a preview seconds old may
+    already be stale
+  </span>
+</form>
+{{end}}
+
+{{if .Data.Result}}
+<p style="margin-top:16px"><a href="/sync">Start again</a></p>
+{{end}}
+{{end}}

@@ -89,6 +89,11 @@ func BuildDeps(ctx context.Context, logger *slog.Logger, cfg *config.Config, inf
 			slog.Any("error", err))
 	}
 
+	reconciler, err := buildApplier(logger, cfg)
+	if err != nil {
+		return nil, err
+	}
+
 	return &server.Deps{
 		Logger:      logger,
 		Config:      cfg,
@@ -98,6 +103,8 @@ func BuildDeps(ctx context.Context, logger *slog.Logger, cfg *config.Config, inf
 		Mapping:     layers.Mapping,
 		Directories: layers.Directories,
 		Orgs:        layers.Orgs,
+		Applier:     reconciler,
+		ApplierApps: layers.ApplierApps,
 	}, nil
 }
 

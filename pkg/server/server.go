@@ -13,6 +13,8 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humafiber"
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/extractors"
+	"github.com/gofiber/fiber/v3/middleware/csrf"
 	"github.com/gofiber/fiber/v3/middleware/recover"
 	slogfiber "github.com/samber/slog-fiber"
 
@@ -82,7 +84,27 @@ func NewApp(deps *Deps) *fiber.App {
 	// The mapping editor and the audit log are operator surfaces: one
 	// changes access, the other records who changed it. Both are gated
 	// explicitly.
-	app.Get("/mapping", requireOperator, deps.handleMapping)
+	//
+	// The writing routes additionally carry CSRF protection. That is not
+	// belt-and-braces on top of the bearer token: the gateway in front of
+	// this service holds a SESSION COOKIE, so a form posted from another
+	// site would arrive with that cookie, be authenticated by the gateway,
+	// and reach here indistinguishable from a real click.
+	protect := csrf.New(csrf.Config{
+		Extractor:      extractors.FromForm(csrfFormField),
+		CookieName:     "roster_csrf",
+		CookieHTTPOnly: true,
+		CookieSameSite: "Lax",
+	})
+
+	app.Get("/mapping", requireOperator, protect, deps.handleMapping)
+	app.Get("/mapping/edit", requireOperator, protect, deps.handleMappingForm)
+	app.Post("/mapping/save", requireOperator, protect, deps.handleMappingSave)
+	app.Post("/mapping/delete", requireOperator, protect, deps.handleMappingDelete)
+	app.Get("/mapping/import", requireOperator, protect, deps.handleImportForm)
+	app.Post("/mapping/import", requireOperator, protect, deps.handleImportPreview)
+	app.Post("/mapping/import/apply", requireOperator, protect, deps.handleImportApply)
+
 	app.Get("/audit", requireOperator, deps.handleAudit)
 
 	registerAPI(deps, app)

@@ -13,6 +13,7 @@ import (
 
 	"github.com/truvity/github-roster/pkg/auth"
 	"github.com/truvity/github-roster/pkg/config"
+	"github.com/truvity/github-roster/pkg/mapping"
 	"github.com/truvity/github-roster/pkg/server"
 	"github.com/truvity/github-roster/pkg/ui"
 	"github.com/truvity/github-roster/pkg/version"
@@ -65,6 +66,10 @@ func newDeps(t *testing.T, document string, authenticator auth.Authenticator) *s
 		Auth:     authenticator,
 		Renderer: renderer,
 		Version:  version.Info{Version: "1.2.3"},
+		// The in-memory store enforces the same invariants as the real
+		// one, so the editor's behavior here is the behavior in
+		// production minus the network.
+		Mapping: mapping.NewMemory(),
 	}
 }
 

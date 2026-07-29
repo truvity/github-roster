@@ -1,0 +1,340 @@
+package server_test
+
+import (
+	"context"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"strings"
+	"testing"
+
+	"github.com/gofiber/fiber/v3"
+	"github.com/stretchr/testify/require"
+
+	"github.com/truvity/github-roster/pkg/auth"
+	"github.com/truvity/github-roster/pkg/mapping"
+	"github.com/truvity/github-roster/pkg/server"
+)
+
+// editor drives the mapping editor the way a browser does: it keeps the
+// CSRF cookie and token between requests.
+type editor struct {
+	t     *testing.T
+	app   *fiber.App
+	store mapping.Store
+	token string
+	jar   []*http.Cookie
+}
+
+func newEditor(t *testing.T, role auth.Role) *editor {
+	t.Helper()
+
+	deps := newDeps(t, doc, &fixedAuth{role: role})
+
+	store, ok := deps.Mapping.(mapping.Store)
+	require.True(t, ok)
+
+	e := &editor{t: t, app: server.NewApp(deps), store: store}
+
+	// A viewer cannot reach the form, so there is no token to fetch.
+	if role.CanOperate() {
+		e.refreshToken()
+	}
+
+	return e
+}
+
+// save posts a confirmed entry the way the UI does, refreshing the token
+// first because a browser loads the form before every submission.
+func (e *editor) save(name, github, k8s string) *http.Response {
+	e.t.Helper()
+	e.refreshToken()
+
+	form := entryForm(name, github, k8s, "employee")
+	form.Set("confirm", "yes")
+
+	return e.post("/mapping/save", form, true)
+}
+
+// refreshToken loads a form page to obtain a CSRF token and its cookie,
+// exactly as a browser would before submitting.
+func (e *editor) refreshToken() {
+	e.t.Helper()
+
+	req := httptest.NewRequest(http.MethodGet, "/mapping/edit", http.NoBody)
+	req.Header.Set(fiber.HeaderAccept, fiber.MIMETextHTML)
+
+	resp, err := e.app.Test(req)
+	require.NoError(e.t, err)
+
+	defer func() { _ = resp.Body.Close() }()
+
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(e.t, err)
+
+	e.jar = resp.Cookies()
+	e.token = tokenFrom(e.t, string(body))
+}
+
+func tokenFrom(t *testing.T, body string) string {
+	t.Helper()
+
+	const marker = `name="_csrf" value="`
+
+	i := strings.Index(body, marker)
+	require.GreaterOrEqual(t, i, 0, "the form must carry a CSRF token")
+
+	rest := body[i+len(marker):]
+
+	end := strings.Index(rest, `"`)
+	require.Positive(t, end, "the token must be terminated")
+
+	return rest[:end]
+}
+
+// post submits a form. withToken=false simulates a cross-site submission.
+func (e *editor) post(path string, form url.Values, withToken bool) *http.Response {
+	e.t.Helper()
+
+	if withToken {
+		form.Set("_csrf", e.token)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(form.Encode()))
+	req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationForm)
+	req.Header.Set(fiber.HeaderAccept, fiber.MIMETextHTML)
+
+	for _, cookie := range e.jar {
+		req.AddCookie(cookie)
+	}
+
+	resp, err := e.app.Test(req)
+	require.NoError(e.t, err)
+
+	return resp
+}
+
+func body(t *testing.T, resp *http.Response) string {
+	t.Helper()
+
+	defer func() { _ = resp.Body.Close() }()
+
+	data, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	return string(data)
+}
+
+func entryForm(name, github, k8s, class string) url.Values {
+	return url.Values{
+		"name": {name}, "github": {github}, "k8s": {k8s}, "class": {class}, "pinned": {""},
+	}
+}
+
+// The gateway in front of this service holds a session cookie, so a form
+// posted from another site would arrive authenticated. CSRF is the only
+// thing standing between that and a write.
+func TestWritesRequireACSRFToken(t *testing.T) {
+	t.Parallel()
+
+	e := newEditor(t, auth.RoleOperator)
+
+	form := entryForm("Ada Lovelace", "ada", "ada", "employee")
+	form.Set("confirm", "yes")
+
+	resp := e.post("/mapping/save", form, false)
+	require.Equal(t, fiber.StatusForbidden, resp.StatusCode)
+	_ = resp.Body.Close()
+
+	_, err := e.store.Get(context.Background(), "Ada Lovelace")
+	require.ErrorIs(t, err, mapping.ErrNotFound, "nothing may be written without a token")
+}
+
+// A first submission shows what would happen and writes nothing.
+func TestSaveConfirmsBeforeWriting(t *testing.T) {
+	t.Parallel()
+
+	e := newEditor(t, auth.RoleOperator)
+
+	resp := e.post("/mapping/save", entryForm("Ada Lovelace", "ada", "ada", "employee"), true)
+	require.Equal(t, fiber.StatusOK, resp.StatusCode)
+
+	page := body(t, resp)
+	require.Contains(t, page, "Confirm")
+	require.Contains(t, page, "Create Ada Lovelace")
+
+	_, err := e.store.Get(context.Background(), "Ada Lovelace")
+	require.ErrorIs(t, err, mapping.ErrNotFound, "the preview must not write")
+}
+
+func TestSaveWritesOnConfirmation(t *testing.T) {
+	t.Parallel()
+
+	e := newEditor(t, auth.RoleOperator)
+
+	resp := e.save("Ada Lovelace", "ada", "ada")
+	require.Equal(t, fiber.StatusSeeOther, resp.StatusCode)
+	_ = resp.Body.Close()
+
+	entry, err := e.store.Get(context.Background(), "Ada Lovelace")
+	require.NoError(t, err)
+	require.Equal(t, "ada", entry.GitHub)
+	require.Equal(t, mapping.ClassEmployee, entry.Class)
+}
+
+// The store's invariants must reach the operator as a message, not a 500.
+func TestSaveSurfacesInvariantFailures(t *testing.T) {
+	t.Parallel()
+
+	e := newEditor(t, auth.RoleOperator)
+
+	resp := e.save("Ada Lovelace", "ada", "ada")
+	require.Equal(t, fiber.StatusSeeOther, resp.StatusCode)
+	_ = resp.Body.Close()
+
+	// Same abbreviation, different person.
+	e.refreshToken()
+	clash := entryForm("Alan Turing", "alan", "ada", "employee")
+
+	resp = e.post("/mapping/save", clash, true)
+	require.Equal(t, fiber.StatusUnprocessableEntity, resp.StatusCode)
+	require.Contains(t, body(t, resp), "already taken")
+}
+
+// Never asked to confirm something that cannot be applied.
+func TestInvalidInputIsRejectedBeforeConfirmation(t *testing.T) {
+	t.Parallel()
+
+	e := newEditor(t, auth.RoleOperator)
+
+	resp := e.post("/mapping/save", entryForm("Ada Lovelace", "ada", "NOT_DNS", "employee"), true)
+
+	require.Equal(t, fiber.StatusUnprocessableEntity, resp.StatusCode)
+
+	page := body(t, resp)
+	require.Contains(t, page, "DNS-1123")
+	require.NotContains(t, page, "Confirm")
+}
+
+func TestViewersCannotReachTheEditor(t *testing.T) {
+	t.Parallel()
+
+	e := newEditor(t, auth.RoleViewer)
+
+	for _, path := range []string{"/mapping", "/mapping/edit", "/mapping/import"} {
+		req := httptest.NewRequest(http.MethodGet, path, http.NoBody)
+		req.Header.Set(fiber.HeaderAccept, fiber.MIMETextHTML)
+
+		resp, err := e.app.Test(req)
+		require.NoError(t, err)
+		require.Equal(t, fiber.StatusForbidden, resp.StatusCode, "GET %s as viewer", path)
+		_ = resp.Body.Close()
+	}
+}
+
+// The plan is shown, and nothing is written until it is confirmed.
+func TestImportPreviewWritesNothing(t *testing.T) {
+	t.Parallel()
+
+	e := newEditor(t, auth.RoleOperator)
+
+	csv := "name,github,k8s,class,pinned\nAda Lovelace,ada,ada,employee,\nAlan Turing,alan,alan,employee,\n"
+
+	resp := e.post("/mapping/import", url.Values{"csv": {csv}}, true)
+	require.Equal(t, fiber.StatusOK, resp.StatusCode)
+
+	page := body(t, resp)
+	require.Contains(t, page, "2 to create")
+
+	entries, err := e.store.List(context.Background())
+	require.NoError(t, err)
+	require.Empty(t, entries, "planning must not write")
+}
+
+func TestImportApplyWrites(t *testing.T) {
+	t.Parallel()
+
+	e := newEditor(t, auth.RoleOperator)
+
+	csv := "name,github,k8s,class,pinned\nAda Lovelace,ada,ada,employee,\nAlan Turing,alan,alan,employee,\n"
+
+	resp := e.post("/mapping/import/apply", url.Values{"csv": {csv}}, true)
+	require.Equal(t, fiber.StatusSeeOther, resp.StatusCode)
+	_ = resp.Body.Close()
+
+	entries, err := e.store.List(context.Background())
+	require.NoError(t, err)
+	require.Len(t, entries, 2)
+}
+
+// One bad line must not cost the operator the other sixty-nine.
+func TestImportAppliesGoodRowsAndSkipsRejects(t *testing.T) {
+	t.Parallel()
+
+	e := newEditor(t, auth.RoleOperator)
+
+	csv := "name,github,k8s,class,pinned\n" +
+		"Ada Lovelace,ada,ada,employee,\n" +
+		"Broken Person,bad,NOT_DNS,employee,\n" +
+		"Alan Turing,alan,alan,employee,\n"
+
+	resp := e.post("/mapping/import/apply", url.Values{"csv": {csv}}, true)
+	require.Equal(t, fiber.StatusSeeOther, resp.StatusCode)
+	_ = resp.Body.Close()
+
+	entries, err := e.store.List(context.Background())
+	require.NoError(t, err)
+	require.Len(t, entries, 2)
+
+	_, err = e.store.Get(context.Background(), "Broken Person")
+	require.ErrorIs(t, err, mapping.ErrNotFound)
+}
+
+func TestDeleteRemovesTheEntry(t *testing.T) {
+	t.Parallel()
+
+	e := newEditor(t, auth.RoleOperator)
+
+	_ = e.save("Ada Lovelace", "ada", "ada").Body.Close()
+
+	e.refreshToken()
+
+	resp := e.post("/mapping/delete", url.Values{"name": {"Ada Lovelace"}}, true)
+	require.Equal(t, fiber.StatusSeeOther, resp.StatusCode)
+	_ = resp.Body.Close()
+
+	_, err := e.store.Get(context.Background(), "Ada Lovelace")
+	require.ErrorIs(t, err, mapping.ErrNotFound)
+}
+
+// TestStoredValuesSurviveLaterRequests is a regression test for fiber's
+// zero-allocation model.
+//
+// c.FormValue returns a string pointing into the fasthttp request buffer,
+// which is recycled when the handler returns. Without copying, an entry
+// saved as k8s="ada" read back as k8s="Ala" — the first bytes of the NEXT
+// request's "Alan Turing". Silent, data-dependent corruption of the field
+// that names somebody's namespace, and invisible until a second request
+// with a longer value happens to reuse the buffer.
+func TestStoredValuesSurviveLaterRequests(t *testing.T) {
+	t.Parallel()
+
+	e := newEditor(t, auth.RoleOperator)
+
+	_ = e.save("Ada Lovelace", "ada", "ada").Body.Close()
+
+	// Several further requests, with longer values, to reuse the buffers.
+	for _, name := range []string{"Alan Turing", "Grace Hopper", "Barbara Liskov"} {
+		e.refreshToken()
+		_ = e.post("/mapping/save", entryForm(name, "someone-else", "", "employee"), true).Body.Close()
+	}
+
+	entry, err := e.store.Get(context.Background(), "Ada Lovelace")
+	require.NoError(t, err)
+
+	require.Equal(t, "Ada Lovelace", entry.Name)
+	require.Equal(t, "ada", entry.GitHub)
+	require.Equal(t, "ada", entry.K8s, "a stored value must not be a window onto a recycled request buffer")
+	require.Equal(t, mapping.ClassEmployee, entry.Class)
+}

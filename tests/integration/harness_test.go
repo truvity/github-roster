@@ -11,6 +11,7 @@ package integration
 
 import (
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -107,3 +108,7 @@ func runID(t *testing.T) string {
 
 	return id
 }
+
+// stringReader is strings.NewReader, kept here so the request helpers read
+// the same in every test file.
+func stringReader(s string) *strings.Reader { return strings.NewReader(s) }

@@ -9,6 +9,7 @@ import (
 	"github.com/truvity/github-roster/pkg/auth"
 	"github.com/truvity/github-roster/pkg/config"
 	"github.com/truvity/github-roster/pkg/directory"
+	"github.com/truvity/github-roster/pkg/roster"
 	"github.com/truvity/github-roster/pkg/ui"
 )
 
@@ -21,6 +22,12 @@ type structureData struct {
 	// an operator reading a stale directory needs to know, because the
 	// alternative is confidently acting on it.
 	Sources []directory.Status
+	// Roster is the join, when the read layers are wired. Nil in tests
+	// that only exercise routing.
+	Roster *roster.Roster
+	// RosterError explains why the join is missing, rather than rendering
+	// an empty table that reads as "nobody works here".
+	RosterError string
 }
 
 type structureOrg struct {
@@ -55,6 +62,18 @@ func (d *Deps) handleStructure(c fiber.Ctx) error {
 
 	if d.Directories != nil {
 		data.Sources = d.Directories.Statuses()
+	}
+
+	if d.Mapping != nil {
+		joined, err := d.buildRoster(c.Context())
+		if err != nil {
+			// Render the page with the failure named. A blank people table
+			// looks like an answer; this looks like the problem it is.
+			d.Logger.ErrorContext(c.Context(), "structure page: join failed", "error", err)
+			data.RosterError = err.Error()
+		} else {
+			data.Roster = joined
+		}
 	}
 
 	return d.Renderer.Render(c, fiber.StatusOK, "structure", ui.Page{

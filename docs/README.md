@@ -4,6 +4,7 @@
 |---|---|
 | [architecture/overview.md](architecture/overview.md) | What the service is, the three sources it joins, and why the write path is a separate Job |
 | [reference/configuration.md](reference/configuration.md) | Every configuration key, and what belongs in the environment instead |
+| [reference/roster-api.md](reference/roster-api.md) | `GET /api/roster` — the cross-repository contract, and how to read it safely |
 | [development/testing.md](development/testing.md) | Unit, integration and end-to-end test layers, and what each needs |
 
 Arriving with the phase that makes it true: `operations/runbook.md`

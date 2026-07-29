@@ -49,19 +49,34 @@ func Run(ctx context.Context, info version.Info, configPath string) error {
 		slog.Int("orgs", len(cfg.Orgs)),
 		slog.Int("sources", len(cfg.Sources)))
 
-	authenticator, err := buildAuth(ctx, logger, cfg)
+	deps, err := BuildDeps(ctx, logger, cfg, info)
 	if err != nil {
 		return err
+	}
+
+	return server.Run(ctx, deps)
+}
+
+// BuildDeps constructs everything the server needs from a parsed config.
+//
+// Exported so the integration suite can exercise the REAL startup path —
+// credentials read from Parameter Store, App authentication, the directory
+// refresh — rather than assembling components by hand and testing a wiring
+// that the binary does not use.
+func BuildDeps(ctx context.Context, logger *slog.Logger, cfg *config.Config, info version.Info) (*server.Deps, error) {
+	authenticator, err := buildAuth(ctx, logger, cfg)
+	if err != nil {
+		return nil, err
 	}
 
 	renderer, err := ui.NewRenderer(info.String())
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	layers, err := buildReadLayers(ctx, logger, cfg)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// One refresh before serving, so a directory that cannot be reached is
@@ -74,7 +89,7 @@ func Run(ctx context.Context, info version.Info, configPath string) error {
 			slog.Any("error", err))
 	}
 
-	return server.Run(ctx, &server.Deps{
+	return &server.Deps{
 		Logger:      logger,
 		Config:      cfg,
 		Auth:        authenticator,
@@ -83,7 +98,7 @@ func Run(ctx context.Context, info version.Info, configPath string) error {
 		Mapping:     layers.Mapping,
 		Directories: layers.Directories,
 		Orgs:        layers.Orgs,
-	})
+	}, nil
 }
 
 func buildAuth(ctx context.Context, logger *slog.Logger, cfg *config.Config) (auth.Authenticator, error) {

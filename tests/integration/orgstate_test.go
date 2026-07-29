@@ -14,6 +14,18 @@ import (
 	"github.com/truvity/github-roster/pkg/orgstate"
 )
 
+// newConsoleReader builds a reader using the console (read-only) App.
+func newConsoleReader(t *testing.T, env githubEnv) *orgstate.Reader {
+	t.Helper()
+
+	reader, err := orgstate.NewReader(
+		tokenSource(t, env.ConsoleAppID, env.ConsoleInstallationID, env.ConsolePrivateKey),
+		env.Org, "")
+	require.NoError(t, err)
+
+	return reader
+}
+
 func tokenSource(t *testing.T, appID, installationID, privateKey string) *githubapp.TokenSource {
 	t.Helper()
 

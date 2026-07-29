@@ -19,6 +19,7 @@ import (
 	slogfiber "github.com/samber/slog-fiber"
 
 	"github.com/truvity/github-roster/pkg/applier"
+	"github.com/truvity/github-roster/pkg/audit"
 	"github.com/truvity/github-roster/pkg/auth"
 	"github.com/truvity/github-roster/pkg/config"
 	"github.com/truvity/github-roster/pkg/directory"
@@ -46,6 +47,8 @@ type Deps struct {
 	// in which case the sync surface reports itself unavailable rather
 	// than pretending.
 	Applier *applier.Runner
+	// Audit records every run, durably.
+	Audit audit.Sink
 	// ApplierApps carries each organization's applier App IDENTIFIERS.
 	//
 	// Identifiers only, never the key: the web tier reads app id and

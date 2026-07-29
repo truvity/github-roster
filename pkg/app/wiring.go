@@ -9,12 +9,14 @@ import (
 	"strings"
 
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
 
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
 	"github.com/truvity/github-roster/pkg/applier"
+	"github.com/truvity/github-roster/pkg/audit"
 	"github.com/truvity/github-roster/pkg/config"
 	"github.com/truvity/github-roster/pkg/directory"
 	"github.com/truvity/github-roster/pkg/githubapp"
@@ -43,6 +45,8 @@ type readLayers struct {
 	Orgs map[string]*orgstate.Reader
 	// ApplierApps holds each organization's applier App IDENTIFIERS.
 	ApplierApps map[string]server.ApplierApp
+	// Audit records every run.
+	Audit audit.Sink
 }
 
 // buildReadLayers constructs the read side from configuration.
@@ -71,6 +75,13 @@ func buildReadLayers(ctx context.Context, logger *slog.Logger, cfg *config.Confi
 	}
 
 	layers.Directories = directory.NewSet(logger, sources...)
+
+	// The audit sink. Required rather than optional: a deployment that
+	// cannot record what it did should not be quietly acting anyway.
+	layers.Audit, err = audit.NewS3(s3.NewFromConfig(awsCfg), cfg.Audit.Bucket, cfg.Audit.PrefixPerOrg)
+	if err != nil {
+		return nil, err
+	}
 
 	for i := range cfg.Orgs {
 		org := &cfg.Orgs[i]

@@ -1,0 +1,58 @@
+{{- if .Values.insuranceCronJob.enabled }}
+# The insurance CronJob: revocation must survive a wedged ticker.
+#
+# The scheduled removals run inside the service process. If that goroutine
+# wedges while the HTTP listeners stay healthy, nothing restarts the pod —
+# and the leaver SLA quietly stops being met. This CronJob is the
+# independent heartbeat: it POSTs /sync on the internal listener, which
+# triggers the same removals-only sweep through a different entry path.
+#
+# Safe to fire at any time: the sweep is removals-only by construction,
+# serialized (a concurrent run answers 409, which curl -f treats as
+# failure — visible, and harmless), and a no-op when nobody is gone.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "github-roster.fullname" . }}-insurance
+  labels:
+    {{- include "github-roster.labels" . | nindent 4 }}
+spec:
+  schedule: {{ .Values.insuranceCronJob.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 300
+      template:
+        metadata:
+          labels:
+            {{- include "github-roster.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: insurance
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: sync
+              image: {{ .Values.insuranceCronJob.image | quote }}
+              args:
+                - -fsS
+                - -X
+                - POST
+                - --max-time
+                - "240"
+                - http://{{ include "github-roster.fullname" . }}:{{ .Values.healthPort }}/sync
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 16Mi
+                limits:
+                  memory: 32Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                runAsNonRoot: true
+                runAsUser: 65532
+                capabilities:
+                  drop: [ALL]
+{{- end }}

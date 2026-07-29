@@ -81,6 +81,14 @@ networkPolicy:
 rbac:
   create: true
 
+# The insurance CronJob: POSTs /sync on the internal listener so leaver
+# revocation survives a wedged in-process ticker. Offset from the hour so
+# it does not race the service's own schedule.
+insuranceCronJob:
+  enabled: true
+  schedule: "37 * * * *"
+  image: curlimages/curl:8.10.1
+
 # The audit trail. Records go here rather than to the pod's logs, so they
 # outlive the container that wrote them.
 audit:

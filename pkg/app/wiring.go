@@ -42,7 +42,7 @@ type readLayers struct {
 	Mapping     mapping.Store
 	Directories *directory.Set
 	// Orgs holds one reader per managed organization, keyed by org name.
-	Orgs map[string]*orgstate.Reader
+	Orgs map[string]server.OrgReader
 	// ApplierApps holds each organization's applier App IDENTIFIERS.
 	ApplierApps map[string]server.ApplierApp
 	// Audit records every run.
@@ -65,7 +65,7 @@ func buildReadLayers(ctx context.Context, logger *slog.Logger, cfg *config.Confi
 
 	layers := &readLayers{
 		Mapping:     mapping.NewSSM(ssmClient, cfg.Mapping.SSMPrefix),
-		Orgs:        make(map[string]*orgstate.Reader, len(cfg.Orgs)),
+		Orgs:        make(map[string]server.OrgReader, len(cfg.Orgs)),
 		ApplierApps: make(map[string]server.ApplierApp, len(cfg.Orgs)),
 	}
 

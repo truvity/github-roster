@@ -59,12 +59,30 @@ func Run(ctx context.Context, info version.Info, configPath string) error {
 		return err
 	}
 
+	layers, err := buildReadLayers(ctx, logger, cfg)
+	if err != nil {
+		return err
+	}
+
+	// One refresh before serving, so a directory that cannot be reached is
+	// visible in the logs at rollout rather than discovered by an operator
+	// staring at an empty page. It is deliberately not fatal: the console
+	// must still come up to SHOW that a source is unhealthy.
+	for name, err := range layers.Directories.Refresh(ctx) {
+		logger.WarnContext(ctx, "directory source unhealthy at startup",
+			slog.String("source", name),
+			slog.Any("error", err))
+	}
+
 	return server.Run(ctx, &server.Deps{
-		Logger:   logger,
-		Config:   cfg,
-		Auth:     authenticator,
-		Renderer: renderer,
-		Version:  info,
+		Logger:      logger,
+		Config:      cfg,
+		Auth:        authenticator,
+		Renderer:    renderer,
+		Version:     info,
+		Mapping:     layers.Mapping,
+		Directories: layers.Directories,
+		Orgs:        layers.Orgs,
 	})
 }
 

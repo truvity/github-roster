@@ -33,8 +33,36 @@
   </tbody>
 </table>
 
+<h2 style="font-size:16px;margin:28px 0 4px">Directory sources</h2>
+<p class="lede">
+  Where liveness comes from. A source that cannot be read keeps its last
+  known good answer and has its removals skipped — missing data must never
+  read as everyone having left.
+</p>
+
+{{if .Data.Sources}}
+<table>
+  <thead><tr><th>Source</th><th>State</th><th>Last read</th></tr></thead>
+  <tbody>
+  {{range .Data.Sources}}
+    <tr>
+      <td>{{.Source}}</td>
+      <td>
+        {{if .Healthy}}healthy
+        {{else if .Ready}}<strong>stale</strong> — {{.Error}}
+        {{else}}<strong>never read</strong>{{if .Error}} — {{.Error}}{{end}}
+        {{end}}
+      </td>
+      <td>{{if .FetchedAt.IsZero}}—{{else}}{{.Age}} ago{{end}}</td>
+    </tr>
+  {{end}}
+  </tbody>
+</table>
+{{else}}
+<p class="lede">No directory sources configured.</p>
+{{end}}
+
 <p class="lede" style="margin-top:24px">
-  Members, liveness and pending invitations arrive in the next phase; this
-  page currently shows configuration only.
+  The join of liveness, mapping and GitHub state arrives in the next phase.
 </p>
 {{end}}

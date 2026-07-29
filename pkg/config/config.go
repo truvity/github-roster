@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -340,6 +341,37 @@ func validateTeams(o *Org) error {
 	}
 
 	return nil
+}
+
+// MappedGroups returns every directory group any team draws membership
+// from, deduplicated.
+//
+// This is what a directory source is asked to resolve. Fetching only the
+// groups some team actually maps keeps the read proportional to what the
+// service uses, rather than to how many groups the directory happens to
+// hold.
+func (c *Config) MappedGroups() []string {
+	seen := map[string]bool{}
+	groups := []string{}
+
+	for i := range c.Orgs {
+		for _, team := range c.Orgs[i].Teams {
+			for _, group := range team.Groups {
+				key := strings.ToLower(group)
+				if seen[key] {
+					continue
+				}
+
+				seen[key] = true
+
+				groups = append(groups, group)
+			}
+		}
+	}
+
+	sort.Strings(groups)
+
+	return groups
 }
 
 // Org returns the configuration for the named organization.

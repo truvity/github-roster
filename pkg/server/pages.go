@@ -8,6 +8,7 @@ import (
 
 	"github.com/truvity/github-roster/pkg/auth"
 	"github.com/truvity/github-roster/pkg/config"
+	"github.com/truvity/github-roster/pkg/directory"
 	"github.com/truvity/github-roster/pkg/ui"
 )
 
@@ -16,6 +17,10 @@ import (
 // cannot promise, and ranging a map would reshuffle the page on every load.
 type structureData struct {
 	Orgs []structureOrg
+	// Sources carries each directory's health. Shown rather than hidden:
+	// an operator reading a stale directory needs to know, because the
+	// alternative is confidently acting on it.
+	Sources []directory.Status
 }
 
 type structureOrg struct {
@@ -46,6 +51,10 @@ func (d *Deps) handleStructure(c fiber.Ctx) error {
 		}
 
 		data.Orgs = append(data.Orgs, view)
+	}
+
+	if d.Directories != nil {
+		data.Sources = d.Directories.Statuses()
 	}
 
 	return d.Renderer.Render(c, fiber.StatusOK, "structure", ui.Page{

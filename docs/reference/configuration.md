@@ -156,6 +156,28 @@ belong in a reviewed infrastructure commit.
 |---|---|---|
 | `ssmPrefix` | `/roster/` | root of the parameter tree; must start and end with `/` |
 
+Person records live under `<ssmPrefix>people/<slug>/`, one parameter per
+field:
+
+```
+/roster/people/ada-lovelace/name     "Ada Lovelace"
+/roster/people/ada-lovelace/github   "ada"
+/roster/people/ada-lovelace/k8s      "ada"
+/roster/people/ada-lovelace/class    "employee"
+/roster/people/ada-lovelace/pinned   "example-org/robots"
+```
+
+The `people/` segment is not decoration. A prefix should be either a
+container or a record, never both — otherwise a person whose name slugged
+to `teams` would sit exactly where a future `/roster/teams/` belongs, and
+a recursive read could no longer be trusted to return one kind of thing.
+
+Values are written as **SecureString**. The mapping is personal data —
+names, work handles, and who is still employed — so it is encrypted at
+rest and reading it requires a grant on the KMS key as well as on the
+parameter. Nothing stored here is a credential; the reason is privacy and
+the access trail, not secrecy.
+
 ## `audit`
 
 | Key | Default | Meaning |

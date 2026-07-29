@@ -31,21 +31,38 @@ const (
 	pinnedSeparator = ","
 )
 
+// peopleSegment separates person records from anything else that will ever
+// live under the mapping root.
+//
+// Without it a person whose name slugged to "teams" would sit exactly where
+// a future /roster/teams/ container belongs. The rule this follows —
+// **a prefix is either a container or a record, never both** — is the same
+// one whose violation elsewhere (/secrets/google-workspace holding fields
+// AND a tp/ child) forced credentials to be read by exact name. Cheap to
+// obey here, expensive to retrofit once there is data.
+const peopleSegment = "people/"
+
 // SSM stores the mapping in AWS SSM Parameter Store.
 //
 // Layout, under the configured prefix:
 //
-//	/roster/<slug>/name     "First Last"
-//	/roster/<slug>/github   "octocat"
-//	/roster/<slug>/k8s      "flast"
-//	/roster/<slug>/class    "employee"
-//	/roster/<slug>/pinned   "truvity/robots,truvity/auditor"
+//	/roster/people/<slug>/name     "First Last"
+//	/roster/people/<slug>/github   "octocat"
+//	/roster/people/<slug>/k8s      "flast"
+//	/roster/people/<slug>/class    "employee"
+//	/roster/people/<slug>/pinned   "truvity/robots,truvity/auditor"
 //
 // The path segment is a slug because a parameter name cannot contain a
 // space; the display name is stored as its own parameter so nothing has to
 // reverse the slug. Two people whose names slug identically collide — the
 // same collision the "First Last" key already accepts, surfaced in one more
 // place rather than a new one.
+//
+// Every value is written as a SecureString. The mapping is personal data —
+// names, work handles, and who is still employed — so it is encrypted at
+// rest with KMS, and reading it requires a grant on the key as well as on
+// the parameter. Nothing here is a credential; the reason is privacy and
+// the audit trail KMS gives, not secrecy.
 type SSM struct {
 	client *ssm.Client
 	prefix string
@@ -54,7 +71,7 @@ type SSM struct {
 // NewSSM returns a store rooted at prefix, which must start and end with a
 // slash (the config layer enforces that).
 func NewSSM(client *ssm.Client, prefix string) *SSM {
-	return &SSM{client: client, prefix: prefix}
+	return &SSM{client: client, prefix: prefix + peopleSegment}
 }
 
 // slugPattern is what survives as a path segment.
@@ -76,6 +93,9 @@ func (s *SSM) List(ctx context.Context) ([]Entry, error) {
 	paginator := ssm.NewGetParametersByPathPaginator(s.client, &ssm.GetParametersByPathInput{
 		Path:      aws.String(s.prefix),
 		Recursive: aws.Bool(true),
+		// Values are SecureString; without this every field reads back as
+		// ciphertext and the join silently matches nobody.
+		WithDecryption: aws.Bool(true),
 	})
 
 	for paginator.HasMorePages() {
@@ -115,8 +135,9 @@ func (s *SSM) Get(ctx context.Context, name string) (Entry, error) {
 	path := s.personPath(name)
 
 	out, err := s.client.GetParametersByPath(ctx, &ssm.GetParametersByPathInput{
-		Path:      aws.String(path),
-		Recursive: aws.Bool(true),
+		Path:           aws.String(path),
+		Recursive:      aws.Bool(true),
+		WithDecryption: aws.Bool(true),
 	})
 	if err != nil {
 		return Entry{}, fmt.Errorf("read mapping %q: %w", path, err)
@@ -180,7 +201,7 @@ func (s *SSM) Put(ctx context.Context, entry Entry) error {
 		_, err := s.client.PutParameter(ctx, &ssm.PutParameterInput{
 			Name:      aws.String(path + field),
 			Value:     aws.String(value),
-			Type:      types.ParameterTypeString,
+			Type:      types.ParameterTypeSecureString,
 			Overwrite: aws.Bool(true),
 		})
 		if err != nil {

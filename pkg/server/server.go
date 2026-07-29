@@ -17,6 +17,9 @@ import (
 
 	"github.com/truvity/github-roster/pkg/auth"
 	"github.com/truvity/github-roster/pkg/config"
+	"github.com/truvity/github-roster/pkg/directory"
+	"github.com/truvity/github-roster/pkg/mapping"
+	"github.com/truvity/github-roster/pkg/orgstate"
 	"github.com/truvity/github-roster/pkg/ui"
 	"github.com/truvity/github-roster/pkg/version"
 )
@@ -28,6 +31,13 @@ type Deps struct {
 	Auth     auth.Authenticator
 	Renderer *ui.Renderer
 	Version  version.Info
+
+	// The read layers. Optional in tests, which drive the pages that do
+	// not need them.
+	Mapping     mapping.Reader
+	Directories *directory.Set
+	// Orgs is one read-only GitHub reader per managed organization.
+	Orgs map[string]*orgstate.Reader
 }
 
 // Timeouts. The console serves small pages to humans; a request slower than

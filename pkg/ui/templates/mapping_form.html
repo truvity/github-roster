@@ -1,0 +1,97 @@
+{{define "content"}}
+{{if .Data.Confirming}}
+  <h1>Confirm</h1>
+  <p class="lede">Nothing has been written yet. This is what saving would do.</p>
+
+  <div class="banner">{{.Data.Change}}</div>
+
+  <table>
+    <tbody>
+      <tr><th>Name</th><td>{{.Data.Entry.Name}}</td></tr>
+      <tr><th>GitHub</th><td>{{.Data.Entry.GitHub}}</td></tr>
+      <tr><th>Namespace</th><td>{{if .Data.Entry.K8s}}dev-{{.Data.Entry.K8s}}{{else}}—{{end}}</td></tr>
+      <tr><th>Class</th><td>{{.Data.Entry.Class}}</td></tr>
+      <tr><th>Pinned teams</th><td>{{if .Data.Pinned}}{{.Data.Pinned}}{{else}}—{{end}}</td></tr>
+    </tbody>
+  </table>
+
+  {{if and .Data.Before (not .Data.Before.K8s) .Data.Entry.K8s}}
+  <p class="lede">
+    The abbreviation is assigned here for the first time. It cannot be
+    changed afterwards — a namespace will be named after it.
+  </p>
+  {{end}}
+
+  <form method="post" action="/mapping/save" style="margin-top:16px">
+    <input type="hidden" name="_csrf" value="{{.Data.CSRF}}">
+    <input type="hidden" name="name" value="{{.Data.Entry.Name}}">
+    <input type="hidden" name="github" value="{{.Data.Entry.GitHub}}">
+    <input type="hidden" name="k8s" value="{{.Data.Entry.K8s}}">
+    <input type="hidden" name="class" value="{{.Data.Entry.Class}}">
+    <input type="hidden" name="pinned" value="{{.Data.Pinned}}">
+    <input type="hidden" name="confirm" value="yes">
+    <button type="submit">Save</button>
+    <a href="/mapping" style="margin-left:12px">Cancel</a>
+  </form>
+{{else}}
+  <h1>{{if .Data.Before}}Edit {{.Data.Entry.Name}}{{else}}Add a person{{end}}</h1>
+
+  {{if .Data.Error}}<div class="banner">{{.Data.Error}}</div>{{end}}
+
+  <form method="post" action="/mapping/save">
+    <input type="hidden" name="_csrf" value="{{.Data.CSRF}}">
+
+    <p>
+      <label for="name">Name — exactly as the directory spells it, "First Last"</label><br>
+      <input id="name" name="name" value="{{.Data.Entry.Name}}"
+             {{if .Data.Before}}readonly{{end}} required style="width:340px">
+      {{if .Data.Before}}<span class="muted">the key; create a new entry to change it</span>{{end}}
+    </p>
+
+    <p>
+      <label for="github">GitHub login</label><br>
+      <input id="github" name="github" value="{{.Data.Entry.GitHub}}" required style="width:340px">
+    </p>
+
+    <p>
+      <label for="k8s">Namespace abbreviation — becomes <code>dev-&lt;abbr&gt;</code></label><br>
+      <input id="k8s" name="k8s" value="{{.Data.Entry.K8s}}" style="width:340px">
+      <br><span class="muted">
+        lowercase, dashes, up to 20 characters. Optional, and
+        <strong>immutable once set</strong>.
+      </span>
+    </p>
+
+    <p>
+      <label for="class">Class</label><br>
+      <select id="class" name="class">
+        <option value="employee" {{if eq (printf "%s" .Data.Entry.Class) "employee"}}selected{{end}}>employee — governed by directory liveness</option>
+        <option value="bot" {{if eq (printf "%s" .Data.Entry.Class) "bot"}}selected{{end}}>bot — no liveness, removed only by an operator</option>
+      </select>
+    </p>
+
+    <p>
+      <label for="pinned">Pinned teams — comma separated <code>&lt;org&gt;/&lt;team&gt;</code></label><br>
+      <input id="pinned" name="pinned" value="{{.Data.Pinned}}" style="width:340px">
+      <br><span class="muted">only for teams a scheduled run must never touch</span>
+    </p>
+
+    <p>
+      <button type="submit">Review change</button>
+      <a href="/mapping" style="margin-left:12px">Cancel</a>
+    </p>
+  </form>
+
+  {{if .Data.Before}}
+  <form method="post" action="/mapping/delete" style="margin-top:24px"
+        onsubmit="return confirm('Delete {{.Data.Entry.Name}} from the mapping?')">
+    <input type="hidden" name="_csrf" value="{{.Data.CSRF}}">
+    <input type="hidden" name="name" value="{{.Data.Entry.Name}}">
+    <button type="submit" style="background:var(--danger)">Delete entry</button>
+    <span class="muted">
+      removes the mapping only; it does not remove anyone from GitHub
+    </span>
+  </form>
+  {{end}}
+{{end}}
+{{end}}

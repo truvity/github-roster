@@ -2,11 +2,37 @@
 <h1>Mapping</h1>
 <p class="lede">
   Who is who: a person's directory name, their GitHub handle, and the
-  abbreviation their Kubernetes namespace is named after.
+  abbreviation their namespace is named after. Editing here is the only way
+  a person becomes known to this service.
 </p>
 
-<p class="lede">
-  The editor arrives in a later phase. It is operator-only, enforces its
-  invariants server-side, and every change is confirmed against a diff.
+{{if .Data.Flash}}<div class="banner">{{.Data.Flash}}</div>{{end}}
+
+<p>
+  <a href="/mapping/edit">Add a person</a> ·
+  <a href="/mapping/import">Bulk import</a>
 </p>
+
+{{if .Data.Entries}}
+<table>
+  <thead>
+    <tr><th>Name</th><th>GitHub</th><th>Namespace</th><th>Class</th><th>Pinned teams</th><th>Rev</th><th></th></tr>
+  </thead>
+  <tbody>
+  {{range .Data.Entries}}
+    <tr>
+      <td>{{.Name}}</td>
+      <td>{{.GitHub}}</td>
+      <td>{{if .K8s}}dev-{{.K8s}}{{else}}—{{end}}</td>
+      <td>{{.Class}}</td>
+      <td>{{if .Pinned}}{{range $i, $p := .Pinned}}{{if $i}}, {{end}}{{$p}}{{end}}{{else}}—{{end}}</td>
+      <td class="muted">{{if .Revision}}{{.Revision}}{{else}}—{{end}}</td>
+      <td><a href="/mapping/edit?name={{.Name}}">edit</a></td>
+    </tr>
+  {{end}}
+  </tbody>
+</table>
+{{else}}
+<p class="lede">No entries yet.</p>
+{{end}}
 {{end}}

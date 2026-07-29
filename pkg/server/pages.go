@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/csrf"
 
 	"github.com/truvity/github-roster/pkg/auth"
 	"github.com/truvity/github-roster/pkg/config"
@@ -84,14 +85,6 @@ func (d *Deps) handleStructure(c fiber.Ctx) error {
 	})
 }
 
-func (d *Deps) handleMapping(c fiber.Ctx) error {
-	return d.Renderer.Render(c, fiber.StatusOK, "mapping", ui.Page{
-		Title:  "Mapping",
-		Nav:    "mapping",
-		AuthOn: d.Auth.Enabled(),
-	})
-}
-
 func (d *Deps) handleAudit(c fiber.Ctx) error {
 	return d.Renderer.Render(c, fiber.StatusOK, "audit", ui.Page{
 		Title:  "Audit",
@@ -99,6 +92,12 @@ func (d *Deps) handleAudit(c fiber.Ctx) error {
 		AuthOn: d.Auth.Enabled(),
 	})
 }
+
+// csrfFormField is the hidden field every writing form carries.
+const csrfFormField = "_csrf"
+
+// csrfToken returns the token to embed in a form.
+func csrfToken(c fiber.Ctx) string { return csrf.TokenFromContext(c) }
 
 // requireOperator refuses a viewer reaching a page that changes something.
 // Applied per route, because "which pages write" is exactly the thing that

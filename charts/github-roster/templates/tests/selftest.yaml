@@ -1,0 +1,40 @@
+# The read-only wiring verification, run by `helm test` and (via the same
+# annotation set) usable as an ArgoCD hook. Safe everywhere, production
+# included: every check reads, none writes.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "github-roster.fullname" . }}-selftest
+  labels:
+    {{- include "github-roster.labels" . | nindent 4 }}
+    app.kubernetes.io/component: selftest
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  restartPolicy: Never
+  serviceAccountName: {{ include "github-roster.serviceAccountName" . }}
+  containers:
+    - name: selftest
+      image: "{{ .Values.testImage.repository }}:{{ .Values.testImage.tag | default .Chart.AppVersion }}"
+      args: ["selftest", "--config", "/etc/github-roster/config.yaml"]
+      volumeMounts:
+        - name: config
+          mountPath: /etc/github-roster
+          readOnly: true
+      resources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          memory: 128Mi
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+        capabilities:
+          drop: [ALL]
+  volumes:
+    - name: config
+      configMap:
+        name: {{ include "github-roster.fullname" . }}-config

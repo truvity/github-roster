@@ -10,6 +10,7 @@ fmt:
 # Build the binary
 build: fmt
     go build -o bin/github-roster ./cmd/github-roster/
+    go build -o bin/roster-acceptance ./cmd/roster-acceptance/
 
 # Run unit tests
 test:

@@ -17,6 +17,19 @@ builds:
     ldflags:
       - -s -w -X main.Version={{.Version}} -X main.Commit={{.FullCommit}}
 
+  - id: roster-acceptance
+    main: ./cmd/roster-acceptance
+    binary: roster-acceptance
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.Version={{.Version}} -X main.Commit={{.FullCommit}}
+
 archives:
   - id: binary
     ids:
@@ -40,6 +53,29 @@ kos:
     sbom: none
     labels:
       org.opencontainers.image.title: github-roster
+      org.opencontainers.image.version: "{{ .Version }}"
+      org.opencontainers.image.source: https://github.com/truvity/github-roster
+
+  # The test image: same release, same tag, different artifact — so the
+  # chart's hooks always run the tests that match the deployed version,
+  # while the service image carries no test code at all.
+  - id: roster-acceptance
+    build: roster-acceptance
+    tags:
+      - "{{ .Version }}"
+      - "{{ if not .IsSnapshot }}latest{{ end }}"
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    bare: true
+    preserve_import_paths: false
+    base_import_paths: true
+    base_image: gcr.io/distroless/static:nonroot
+    sbom: none
+    repositories:
+      - github-roster-acceptance
+    labels:
+      org.opencontainers.image.title: github-roster-acceptance
       org.opencontainers.image.version: "{{ .Version }}"
       org.opencontainers.image.source: https://github.com/truvity/github-roster
 

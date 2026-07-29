@@ -11,5 +11,12 @@ spec:
       port: {{ .Values.service.port }}
       targetPort: http
       protocol: TCP
+    # The internal listener: /healthz for probes, POST /sync for the
+    # insurance CronJob. Cluster-internal only — the HTTPRoute never
+    # references it, so the gateway cannot route to it.
+    - name: health
+      port: {{ .Values.healthPort }}
+      targetPort: health
+      protocol: TCP
   selector:
     {{- include "github-roster.selectorLabels" . | nindent 4 }}

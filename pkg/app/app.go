@@ -94,6 +94,14 @@ func BuildDeps(ctx context.Context, logger *slog.Logger, cfg *config.Config, inf
 		return nil, err
 	}
 
+	// Assigned via a variable so a nil *applier.Runner never becomes a
+	// non-nil interface — the typed-nil trap would make every "is the
+	// reconciler configured" check silently pass.
+	var jobRunner server.JobRunner
+	if reconciler != nil {
+		jobRunner = reconciler
+	}
+
 	return &server.Deps{
 		Logger:      logger,
 		Config:      cfg,
@@ -103,7 +111,7 @@ func BuildDeps(ctx context.Context, logger *slog.Logger, cfg *config.Config, inf
 		Mapping:     layers.Mapping,
 		Directories: layers.Directories,
 		Orgs:        layers.Orgs,
-		Applier:     reconciler,
+		Applier:     jobRunner,
 		Audit:       layers.Audit,
 		ApplierApps: layers.ApplierApps,
 	}, nil

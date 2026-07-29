@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -42,13 +43,18 @@ type Deps struct {
 	Mapping     mapping.Reader
 	Directories *directory.Set
 	// Orgs is one read-only GitHub reader per managed organization.
-	Orgs map[string]*orgstate.Reader
+	Orgs map[string]OrgReader
 	// Applier spawns reconciler Jobs. Nil where no cluster is reachable,
 	// in which case the sync surface reports itself unavailable rather
 	// than pretending.
-	Applier *applier.Runner
+	Applier JobRunner
 	// Audit records every run, durably.
 	Audit audit.Sink
+	// removalsMu serializes removals sweeps: ticker, insurance CronJob and
+	// any future caller all contend on it, and losers are told rather than
+	// queued.
+	removalsMu sync.Mutex
+
 	// ApplierApps carries each organization's applier App IDENTIFIERS.
 	//
 	// Identifiers only, never the key: the web tier reads app id and
@@ -63,6 +69,17 @@ type Deps struct {
 type ApplierApp struct {
 	AppID          string
 	InstallationID string
+}
+
+// OrgReader reads one organization's current GitHub state.
+// *orgstate.Reader satisfies it; tests inject fakes.
+type OrgReader interface {
+	Read(ctx context.Context) (*orgstate.State, error)
+}
+
+// JobRunner runs one reconciler Job. *applier.Runner satisfies it.
+type JobRunner interface {
+	Run(ctx context.Context, req applier.Request) (*applier.Run, error)
 }
 
 // Timeouts. The console serves small pages to humans; a request slower than
@@ -178,6 +195,36 @@ func registerAPI(deps *Deps, app *fiber.App) {
 
 		return &rosterResponse{Body: joined}, nil
 	})
+
+	// The audit log as JSON — same records the page shows, for tooling.
+	huma.Register(api, huma.Operation{
+		OperationID: "list-audit",
+		Method:      http.MethodGet,
+		Path:        "/api/audit",
+		Summary:     "Audit records, newest first",
+	}, func(ctx context.Context, in *auditRequest) (*auditResponse, error) {
+		if deps.Audit == nil {
+			return nil, huma.Error503ServiceUnavailable("no audit sink is configured")
+		}
+
+		records, err := deps.Audit.List(ctx, in.Org, in.Limit)
+		if err != nil {
+			deps.Logger.ErrorContext(ctx, "listing audit records failed", slog.Any("error", err))
+
+			return nil, huma.Error500InternalServerError("could not list audit records")
+		}
+
+		return &auditResponse{Body: records}, nil
+	})
+}
+
+type auditRequest struct {
+	Org   string `query:"org" doc:"restrict to one organization"`
+	Limit int    `query:"limit" doc:"maximum records, newest first" default:"50"`
+}
+
+type auditResponse struct {
+	Body []audit.Record
 }
 
 type versionResponse struct {
@@ -196,6 +243,32 @@ func NewHealthApp(deps *Deps) *fiber.App {
 
 	app.Get("/healthz", func(c fiber.Ctx) error {
 		return c.JSON(fiber.Map{"status": "ok", "version": deps.Version.String()})
+	})
+
+	// POST /sync triggers one removals-only sweep NOW. It lives on the
+	// internal listener, unauthenticated, and that is a considered
+	// decision rather than an omission:
+	//
+	//   - the insurance CronJob that calls it runs in-cluster and cannot
+	//     obtain a gateway token; this port is not routed by the gateway
+	//     and the NetworkPolicy scopes it to the namespace;
+	//   - the operation is safe by construction: a removals-only render
+	//     can only remove people a healthy directory positively reports
+	//     gone. Triggering leaver revocation EARLY is not a privilege —
+	//     it is the service doing its one unattended job sooner;
+	//   - it is serialized (409 when a run is underway), so it cannot be
+	//     used to stampede the reconciler.
+	app.Post("/sync", func(c fiber.Ctx) error {
+		summary, err := deps.RunRemovals(c.Context())
+
+		switch {
+		case errors.Is(err, ErrRunInProgress):
+			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": err.Error()})
+		case err != nil:
+			return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{"error": err.Error()})
+		default:
+			return c.JSON(summary)
+		}
 	})
 
 	return app
@@ -237,6 +310,17 @@ func errorHandler(deps *Deps) fiber.ErrorHandler {
 func Run(ctx context.Context, deps *Deps) error {
 	console := NewApp(deps)
 	health := NewHealthApp(deps)
+
+	// The unattended half. Only when a reconciler exists: a console with
+	// no cluster has nothing to sweep with, and says so once.
+	switch {
+	case deps.Applier == nil:
+		deps.Logger.Info("scheduled removals disabled: no reconciler configured")
+	case deps.Config.Schedule.RemovalsInterval <= 0:
+		deps.Logger.Info("scheduled removals disabled: no interval configured")
+	default:
+		go deps.scheduleLoop(ctx)
+	}
 
 	errs := make(chan error, 2)
 

@@ -24,6 +24,14 @@ spec:
       ports:
         - port: http
           protocol: TCP
+    # The internal listener is reachable from this namespace only: the
+    # insurance CronJob lives here, and kubelet probes are exempt from
+    # NetworkPolicy anyway.
+    - from:
+        - podSelector: {}
+      ports:
+        - port: health
+          protocol: TCP
     {{- with .Values.networkPolicy.extraIngress }}
     {{- toYaml . | nindent 4 }}
     {{- end }}

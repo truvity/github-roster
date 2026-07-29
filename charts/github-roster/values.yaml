@@ -5,6 +5,20 @@ image:
   tag: ""  # defaults to appVersion
   pullPolicy: IfNotPresent
 
+# The test image: built by the same release as the service image, so the
+# default tag — the chart's appVersion — always runs the tests matching the
+# deployed version. A drifting tag here would quietly test the wrong thing.
+testImage:
+  repository: ghcr.io/truvity/github-roster-acceptance
+  tag: ""  # defaults to appVersion
+
+# helm test behavior. `selftest` always renders (read-only, safe on prod);
+# the mutating acceptance suite exists only when these values say so, which
+# production values never do.
+test:
+  mutating: false
+  executionID: ""
+
 serviceAccount:
   create: true
   name: ""

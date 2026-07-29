@@ -1,0 +1,47 @@
+{{- if .Values.test.mutating }}
+# The mutating end-to-end suite. Rendered ONLY when test values ask for it,
+# so it cannot exist in a production manifest — the gate is the rendered
+# YAML, the same principle as the removals-only asymmetry.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "github-roster.fullname" . }}-acceptance
+  labels:
+    {{- include "github-roster.labels" . | nindent 4 }}
+    app.kubernetes.io/component: acceptance
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  restartPolicy: Never
+  serviceAccountName: {{ include "github-roster.serviceAccountName" . }}
+  containers:
+    - name: acceptance
+      image: "{{ .Values.testImage.repository }}:{{ .Values.testImage.tag | default .Chart.AppVersion }}"
+      args:
+        - acceptance
+        - --config=/etc/github-roster/config.yaml
+        - --service-url=http://{{ include "github-roster.fullname" . }}:{{ .Values.service.port }}
+        - --internal-url=http://{{ include "github-roster.fullname" . }}:{{ .Values.healthPort }}
+        - --execution-id={{ .Values.test.executionID | default .Release.Revision }}
+      volumeMounts:
+        - name: config
+          mountPath: /etc/github-roster
+          readOnly: true
+      resources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          memory: 128Mi
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+        capabilities:
+          drop: [ALL]
+  volumes:
+    - name: config
+      configMap:
+        name: {{ include "github-roster.fullname" . }}-config
+{{- end }}

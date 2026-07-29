@@ -2,11 +2,47 @@
 <h1>Audit</h1>
 <p class="lede">
   One record per run: what triggered it, who confirmed it, the diff it
-  computed, and what the reconciler did about it.
+  computed, and what the reconciler did about it. Records live in object
+  storage rather than this process's logs, so they outlive the pod that
+  wrote them.
 </p>
 
-<p class="lede">
-  Records land in object storage rather than in this process's logs, so they
-  outlive the pod that wrote them. The list arrives with the audit phase.
+{{if .Data.Error}}<div class="banner">{{.Data.Error}}</div>{{end}}
+
+<p>
+  <a href="/audit">all organizations</a>
+  {{range .Data.Orgs}} · <a href="/audit?org={{.}}">{{.}}</a>{{end}}
 </p>
+
+{{if .Data.Records}}
+<table>
+  <thead>
+    <tr><th>When</th><th>Org</th><th>Trigger</th><th>Actor</th><th>Outcome</th><th>Job</th></tr>
+  </thead>
+  <tbody>
+  {{range .Data.Records}}
+    <tr>
+      <td>{{.At.Format "2006-01-02 15:04:05Z"}}</td>
+      <td>{{.Org}}</td>
+      <td>{{.Trigger}}{{if not .Confirmed}} <span class="muted">dry run</span>{{end}}</td>
+      <td>{{if .Actor}}{{.Actor}}{{else}}<span class="muted">—</span>{{end}}</td>
+      <td>{{if .Error}}<strong>{{.Summary}}</strong>{{else}}{{.Summary}}{{end}}</td>
+      <td class="muted">{{with .Job}}{{.JobName}}{{else}}—{{end}}</td>
+    </tr>
+    {{if or .Removing .Adding .Error}}
+    <tr>
+      <td></td>
+      <td colspan="5" class="muted">
+        {{if .Adding}}added: {{range $i, $l := .Adding}}{{if $i}}, {{end}}{{$l}}{{end}}. {{end}}
+        {{if .Removing}}removed: {{range $i, $l := .Removing}}{{if $i}}, {{end}}{{$l}}{{end}}. {{end}}
+        {{if .Error}}{{.Error}}{{end}}
+      </td>
+    </tr>
+    {{end}}
+  {{end}}
+  </tbody>
+</table>
+{{else if not .Data.Error}}
+<p class="lede">No runs recorded yet.</p>
+{{end}}
 {{end}}

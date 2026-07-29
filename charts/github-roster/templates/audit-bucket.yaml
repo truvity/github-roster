@@ -1,0 +1,46 @@
+{{- if .Values.audit.createBucket }}
+# The audit bucket, declared through ACK so it belongs to this chart rather
+# than to a separate stack nobody remembers to update.
+#
+# Versioning is on and there is no lifecycle rule that deletes: an audit
+# trail that can be silently overwritten or aged out is not one. Expiry is
+# expressed as a retention policy the operator sets deliberately, not as a
+# default that quietly discards evidence.
+apiVersion: s3.services.k8s.aws/v1alpha1
+kind: Bucket
+metadata:
+  name: {{ .Values.audit.bucket }}
+  labels:
+    {{- include "github-roster.labels" . | nindent 4 }}
+spec:
+  name: {{ .Values.audit.bucket }}
+  versioning:
+    status: Enabled
+  publicAccessBlock:
+    blockPublicACLs: true
+    blockPublicPolicy: true
+    ignorePublicACLs: true
+    restrictPublicBuckets: true
+  encryption:
+    rules:
+      - applyServerSideEncryptionByDefault:
+          sSEAlgorithm: {{ .Values.audit.encryption.algorithm | quote }}
+          {{- with .Values.audit.encryption.kmsKeyID }}
+          kMSMasterKeyID: {{ . | quote }}
+          {{- end }}
+  {{- with .Values.audit.retentionDays }}
+  lifecycle:
+    rules:
+      # Records are kept for a stated period and then expire. The number is
+      # a decision about how long evidence must survive, so it lives in
+      # values rather than defaulting silently.
+      - id: roster-audit-retention
+        status: Enabled
+        filter:
+          prefix: ""
+        expiration:
+          days: {{ . }}
+        noncurrentVersionExpiration:
+          noncurrentDays: {{ . }}
+  {{- end }}
+{{- end }}

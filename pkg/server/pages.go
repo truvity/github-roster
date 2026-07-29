@@ -7,6 +7,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/csrf"
 
+	"github.com/truvity/github-roster/pkg/audit"
 	"github.com/truvity/github-roster/pkg/auth"
 	"github.com/truvity/github-roster/pkg/config"
 	"github.com/truvity/github-roster/pkg/directory"
@@ -85,11 +86,33 @@ func (d *Deps) handleStructure(c fiber.Ctx) error {
 	})
 }
 
+// auditData is the audit log page.
+type auditData struct {
+	Records []audit.Record
+	Org     string
+	Orgs    []string
+	Error   string
+}
+
 func (d *Deps) handleAudit(c fiber.Ctx) error {
+	data := auditData{Orgs: d.orgNames(), Org: c.Query("org")}
+
+	if d.Audit == nil {
+		data.Error = "no audit sink is configured in this deployment"
+	} else if records, err := d.Audit.List(c.Context(), data.Org, audit.DefaultLimit); err != nil {
+		// Say so rather than render an empty table: "no records" and
+		// "could not read the records" look identical and mean opposite
+		// things.
+		data.Error = err.Error()
+	} else {
+		data.Records = records
+	}
+
 	return d.Renderer.Render(c, fiber.StatusOK, "audit", ui.Page{
 		Title:  "Audit",
 		Nav:    "audit",
 		AuthOn: d.Auth.Enabled(),
+		Data:   data,
 	})
 }
 

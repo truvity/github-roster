@@ -34,6 +34,10 @@ chart-lint:
         --set networkPolicy.enabled=true \
         --set config.oidc.roles.viewer=roster-viewers \
         --set config.oidc.roles.operator=roster-operators >/dev/null
+    helm template github-roster charts/github-roster \
+        --set audit.createBucket=true \
+        --set audit.bucket=example-roster-audit \
+        --set audit.retentionDays=400 >/dev/null
 
 # Run linters
 lint:

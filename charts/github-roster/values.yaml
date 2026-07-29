@@ -81,6 +81,21 @@ networkPolicy:
 rbac:
   create: true
 
+# The audit trail. Records go here rather than to the pod's logs, so they
+# outlive the container that wrote them.
+audit:
+  bucket: ""
+  # Declare the bucket through ACK as part of this chart. Turn off where
+  # the bucket is provisioned elsewhere.
+  createBucket: false
+  encryption:
+    algorithm: AES256
+    kmsKeyID: ""
+  # How long records are kept, in days. Empty means keep them for ever —
+  # deliberately the default, because silently ageing out an audit trail is
+  # worse than storing a few megabytes too long.
+  retentionDays: ""
+
 podAnnotations: {}
 podSecurityContext:
   runAsNonRoot: true

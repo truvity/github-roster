@@ -8,8 +8,10 @@ import (
 	"github.com/gofiber/fiber/v3"
 
 	"github.com/truvity/github-roster/pkg/applier"
+	"github.com/truvity/github-roster/pkg/audit"
 	"github.com/truvity/github-roster/pkg/auth"
 	"github.com/truvity/github-roster/pkg/config"
+	"github.com/truvity/github-roster/pkg/directory"
 	"github.com/truvity/github-roster/pkg/peribolos"
 	"github.com/truvity/github-roster/pkg/ui"
 )
@@ -24,6 +26,11 @@ type syncData struct {
 	// apply.
 	Run   *applier.Run
 	Error string
+	// AuditError is set when the run happened but could not be recorded.
+	// Shown separately from Error because the two mean opposite things: a
+	// confirmed run that failed to record has ALREADY changed GitHub, and
+	// telling the operator the sync failed would be a lie.
+	AuditError string
 	// Confirming means the operator is looking at a dry run and may apply
 	// it.
 	Confirming bool
@@ -107,6 +114,11 @@ func (d *Deps) runSync(c fiber.Ctx, confirm bool) error {
 	data.Run = run
 	data.Confirming = !confirm
 
+	// Record BEFORE reporting, and record failures too — the attempt is
+	// the thing being audited, and a run that failed half-way is exactly
+	// the one somebody will ask about later.
+	data.AuditError = d.record(c, audit.TriggerOperator, identity.Subject, result, run, err)
+
 	if err != nil {
 		data.Error = err.Error()
 
@@ -119,6 +131,37 @@ func (d *Deps) runSync(c fiber.Ctx, confirm bool) error {
 		"adding", len(result.Adding), "actor", identity.Subject)
 
 	return render(fiber.StatusOK)
+}
+
+// record writes the audit record for a run.
+//
+// A write failure never turns a successful run into a failed one: by the
+// time this is called the organization has already been changed, and
+// reporting otherwise would be worse than the missing record. It is logged
+// at error level and surfaced separately in the UI.
+func (d *Deps) record(c fiber.Ctx, trigger audit.Trigger, actor string,
+	result *peribolos.Result, run *applier.Run, runErr error,
+) string {
+	if d.Audit == nil {
+		return "no audit sink is configured; this run was not recorded"
+	}
+
+	var sources []directory.Status
+	if d.Directories != nil {
+		sources = d.Directories.Statuses()
+	}
+
+	record := audit.FromRun(trigger, actor, result, run, sources, runErr)
+
+	if err := d.Audit.Write(c.Context(), record); err != nil {
+		d.Logger.ErrorContext(c.Context(), "AUDIT RECORD LOST: the run happened but could not be recorded",
+			"org", record.Org, "job", record.ID, "confirmed", record.Confirmed,
+			"error", err)
+
+		return "this run was NOT recorded: " + err.Error()
+	}
+
+	return ""
 }
 
 // renderFor builds the desired state for one organization.

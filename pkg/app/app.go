@@ -104,6 +104,7 @@ func BuildDeps(ctx context.Context, logger *slog.Logger, cfg *config.Config, inf
 		Directories: layers.Directories,
 		Orgs:        layers.Orgs,
 		Applier:     reconciler,
+		Audit:       layers.Audit,
 		ApplierApps: layers.ApplierApps,
 	}, nil
 }

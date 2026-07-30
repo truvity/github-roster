@@ -101,7 +101,7 @@ rbac:
 insuranceCronJob:
   enabled: true
   schedule: "37 * * * *"
-  image: curlimages/curl:8.10.1
+  image: curlimages/curl:8.21.0
 
 # Materialize each org's applier private key from the parameter store into
 # the Secret the reconciler Job mounts, via External Secrets. One

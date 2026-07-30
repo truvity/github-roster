@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
 	"time"
 
 	"github.com/truvity/github-roster/pkg/applier"
@@ -13,6 +14,7 @@ import (
 	"github.com/truvity/github-roster/pkg/orgstate"
 	"github.com/truvity/github-roster/pkg/peribolos"
 	"github.com/truvity/github-roster/pkg/roster"
+	"github.com/truvity/github-roster/pkg/runlock"
 )
 
 // ErrRunInProgress is returned when a removals run is asked for while one
@@ -50,12 +52,19 @@ type OrgOutcome struct {
 // else in the service needs a human; this needs none, because this is the
 // half that carries the leaver-revocation SLA.
 func (d *Deps) RunRemovals(ctx context.Context) (*RemovalsSummary, error) {
-	// TryLock, not Lock: a caller finding a run in progress should be told
+	// Try, never wait: a caller finding a run in progress should be told
 	// so, not queued behind it to run a second sweep nobody asked for.
-	if !d.removalsMu.TryLock() {
-		return nil, ErrRunInProgress
+	// The lock spans replicas (a Kubernetes Lease on cluster installs),
+	// so two pods cannot sweep the same organizations concurrently.
+	release, err := d.runLock().TryAcquire(ctx, d.lockHolder())
+	if err != nil {
+		if errors.Is(err, runlock.ErrHeld) {
+			return nil, ErrRunInProgress
+		}
+
+		return nil, fmt.Errorf("acquire run lock: %w", err)
 	}
-	defer d.removalsMu.Unlock()
+	defer release()
 
 	if d.Applier == nil {
 		return nil, fmt.Errorf("no reconciler is configured; removals cannot run")
@@ -273,4 +282,23 @@ func (d *Deps) scheduleLoop(ctx context.Context) {
 			}
 		}
 	}
+}
+
+// runLock returns the configured lock, or the in-process fallback.
+func (d *Deps) runLock() runlock.Lock {
+	if d.RunLock != nil {
+		return d.RunLock
+	}
+
+	return &d.fallbackLock
+}
+
+// lockHolder identifies this replica in the lease (and in the audit
+// trail): the pod name when running in Kubernetes, the process otherwise.
+func (d *Deps) lockHolder() string {
+	if host, err := os.Hostname(); err == nil && host != "" {
+		return host
+	}
+
+	return "github-roster"
 }

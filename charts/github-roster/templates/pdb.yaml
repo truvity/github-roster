@@ -1,0 +1,17 @@
+{{- if and .Values.podDisruptionBudget.enabled (ge (int .Values.replicaCount) 2) }}
+# Rendered only at >= 2 replicas: a PDB guarding a single replica wedges
+# node drains instead of protecting anything. Multi-replica is safe since
+# the run lock became a Kubernetes Lease (removals sweeps stay serialized
+# across pods).
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "github-roster.fullname" . }}
+  labels:
+    {{- include "github-roster.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "github-roster.selectorLabels" . | nindent 6 }}
+{{- end }}

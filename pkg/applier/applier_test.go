@@ -409,14 +409,15 @@ func TestRunnerGivesUpOnTimeout(t *testing.T) {
 func TestChartRBACMatchesWhatTheCodeUses(t *testing.T) {
 	t.Parallel()
 
-	// Every API call pkg/applier makes, as (apiGroup, resource, verb).
-	// Adding a call to the runner means adding a line here AND to the
-	// chart, which is the point.
+	// Every API call the SERVICE makes against the cluster — pkg/applier's
+	// Job machinery plus pkg/runlock's Lease. Adding a call to either
+	// means adding a line here AND to the chart, which is the point.
 	used := map[string][]string{
-		"batch/jobs":  {"create", "get"},
-		"/configmaps": {"create"},
-		"/pods":       {"list"},
-		"/pods/log":   {"get"},
+		"batch/jobs":                 {"create", "get"},
+		"/configmaps":                {"create"},
+		"/pods":                      {"list"},
+		"/pods/log":                  {"get"},
+		"coordination.k8s.io/leases": {"create", "get", "update"},
 	}
 
 	raw, err := os.ReadFile(filepath.Join("..", "..", "charts", "github-roster", "templates", "rbac.yaml"))

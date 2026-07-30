@@ -238,6 +238,9 @@ func checkRBAC(ctx context.Context, report *Report) {
 		{"", "configmaps", "", "create"},
 		{"", "pods", "", "list"},
 		{"", "pods", "log", "get"},
+		{"coordination.k8s.io", "leases", "", "create"},
+		{"coordination.k8s.io", "leases", "", "get"},
+		{"coordination.k8s.io", "leases", "", "update"},
 	}
 
 	for _, c := range checks {

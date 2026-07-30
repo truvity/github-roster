@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -26,6 +25,7 @@ import (
 	"github.com/truvity/github-roster/pkg/directory"
 	"github.com/truvity/github-roster/pkg/mapping"
 	"github.com/truvity/github-roster/pkg/orgstate"
+	"github.com/truvity/github-roster/pkg/runlock"
 	"github.com/truvity/github-roster/pkg/ui"
 	"github.com/truvity/github-roster/pkg/version"
 )
@@ -50,10 +50,15 @@ type Deps struct {
 	Applier JobRunner
 	// Audit records every run, durably.
 	Audit audit.Sink
-	// removalsMu serializes removals sweeps: ticker, insurance CronJob and
-	// any future caller all contend on it, and losers are told rather than
-	// queued.
-	removalsMu sync.Mutex
+	// RunLock serializes removals sweeps: ticker, insurance CronJob and
+	// any future caller all contend on it, and losers are told rather
+	// than queued. Nil is valid and falls back to an in-process lock —
+	// correct for exactly one replica; multi-replica installs must wire
+	// the Lease implementation (BuildDeps does, when in a cluster).
+	RunLock runlock.Lock
+
+	// fallbackLock backs the nil-RunLock case.
+	fallbackLock runlock.Memory
 
 	// ApplierApps carries each organization's applier App IDENTIFIERS.
 	//

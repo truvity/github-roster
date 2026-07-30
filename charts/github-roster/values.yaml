@@ -1,4 +1,11 @@
+# Safe at >= 2 since the removals run lock became a Kubernetes Lease —
+# sweeps stay serialized across replicas. The PDB below renders
+# automatically at >= 2.
 replicaCount: 1
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
 
 image:
   repository: ghcr.io/truvity/github-roster

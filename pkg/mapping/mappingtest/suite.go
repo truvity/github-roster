@@ -77,8 +77,8 @@ func StoreSuite(t *testing.T, newStore func(t *testing.T) mapping.Store) {
 		require.Len(t, entries, 2)
 
 		names := map[string]bool{}
-		for _, e := range entries {
-			names[e.Name] = true
+		for i := range entries {
+			names[entries[i].Name] = true
 		}
 
 		require.True(t, names["A Person"] && names["B Person"], "got %v", names)

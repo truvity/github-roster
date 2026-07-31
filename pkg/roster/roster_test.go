@@ -98,9 +98,9 @@ func join(t *testing.T) *roster.Roster {
 func person(t *testing.T, r *roster.Roster, name string) roster.Person {
 	t.Helper()
 
-	for _, p := range r.People {
-		if p.Name == name {
-			return p
+	for i := range r.People {
+		if r.People[i].Name == name {
+			return r.People[i]
 		}
 	}
 
@@ -347,5 +347,44 @@ func TestPeopleAreSortedForStableOutput(t *testing.T) {
 
 	for i := 1; i < len(r.People); i++ {
 		require.LessOrEqual(t, r.People[i-1].Name, r.People[i].Name)
+	}
+}
+
+// The email is the authoritative IdP anchor: an entry whose emails point at
+// a directory record wins that record's liveness even when the directory
+// spells the name differently — and the person is not double-reported as
+// unmapped under the directory's spelling.
+func TestJoinMatchesByEmailFirst(t *testing.T) {
+	snap := &directory.Snapshot{
+		Source: "corp",
+		Users: []directory.User{
+			{Name: "Lela D", Email: "jelena@example.com", Live: true},
+		},
+		Groups: map[string][]string{
+			"team-engineers@example.com": {"jelena@example.com"},
+		},
+		FetchedAt: time.Now(),
+	}
+
+	r := roster.Join(roster.Inputs{
+		Config:         cfg(t),
+		Snapshots:      []*directory.Snapshot{snap},
+		SourceStatuses: []directory.Status{{Source: "corp", Healthy: true, Ready: true}},
+		Entries: []mapping.Entry{{
+			Name:   "Jelena Dorotka",
+			GitHub: "lela-do",
+			Emails: []string{"jelena@example.com"},
+			Class:  mapping.ClassEmployee,
+		}},
+		Orgs: map[string]*orgstate.State{},
+	})
+
+	require.Len(t, r.People, 1)
+	require.True(t, r.People[0].Live, "email match must carry liveness despite the name mismatch")
+	require.Equal(t, "jelena@example.com", r.People[0].Directories["corp"].Email)
+
+	for _, w := range r.Warnings {
+		require.NotEqual(t, roster.WarnUnmapped, w.Kind,
+			"the directory spelling is claimed via the email; no unmapped warning for %q", w.Subject)
 	}
 }

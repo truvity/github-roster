@@ -129,8 +129,8 @@ func checkRosterAPI(ctx context.Context, report *Report, client *http.Client, cf
 		return
 	}
 
-	for _, person := range joined.People {
-		if person.Name == name {
+	for i := range joined.People {
+		if person := &joined.People[i]; person.Name == name {
 			report.add(check, nil, "seeded entry served back joined by the deployed release")
 
 			return

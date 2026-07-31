@@ -54,6 +54,13 @@ type Entry struct {
 	// self-service, never guessed from an email address.
 	GitHub string `json:"github"`
 
+	// Emails are the addresses the directories know this person under —
+	// the explicit IdP connection, one address per identity (a person
+	// spanning companies has several). The join matches on these FIRST
+	// and falls back to the name, so a directory spelling a name
+	// differently cannot silently detach a person from their liveness.
+	Emails []string `json:"emails,omitempty"`
+
 	// K8s is the abbreviation their `dev-<abbr>` namespace is named after.
 	// DNS-1123, unique, and immutable once assigned — renaming it would
 	// orphan a live namespace.
@@ -154,6 +161,17 @@ func ValidateEntry(e Entry) error {
 		return fmt.Errorf("github login %q is not a valid GitHub username", e.GitHub)
 	}
 
+	for _, email := range e.Emails {
+		if email != strings.ToLower(strings.TrimSpace(email)) {
+			return fmt.Errorf("email %q must be lowercase with no surrounding whitespace", email)
+		}
+
+		at := strings.Index(email, "@")
+		if at <= 0 || at == len(email)-1 || strings.ContainsAny(email, " \t") {
+			return fmt.Errorf("email %q is not a plausible address", email)
+		}
+	}
+
 	// The abbreviation is optional: a bot has no namespace, and a person
 	// can be mapped for GitHub before anyone decides on their namespace.
 	if e.K8s != "" {
@@ -191,7 +209,9 @@ func CheckInvariants(next, existing Entry, all []Entry) error {
 		return fmt.Errorf("%w: k8s abbreviation is %q, cannot become %q", ErrImmutable, existing.K8s, next.K8s)
 	}
 
-	for _, other := range all {
+	for i := range all {
+		other := &all[i]
+
 		if other.Name == next.Name {
 			continue
 		}

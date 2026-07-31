@@ -135,4 +135,28 @@ spec:
                   {{- with .Values.config.oidc.roles.operator }}
                   - {{ . | quote }}
                   {{- end }}
+---
+# Session affinity: with more than one replica, the CSRF token minted by
+# one pod must come back to the same pod (the middleware's token store is
+# per-process), and the per-pod GitHub cache stays warm for its own
+# operators. Hashing on the gateway's session cookie gives both.
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "github-roster.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: {{ $name }}
+  loadBalancer:
+    type: ConsistentHash
+    consistentHash:
+      type: Cookie
+      cookie:
+        name: BearerToken
 {{- end }}

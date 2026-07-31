@@ -9,6 +9,7 @@
     <tbody>
       <tr><th>Name</th><td>{{.Data.Entry.Name}}</td></tr>
       <tr><th>GitHub</th><td>{{.Data.Entry.GitHub}}</td></tr>
+      <tr><th>Emails</th><td>{{if .Data.Emails}}{{.Data.Emails}}{{if .Data.EmailsFetched}} <span class="badge ok">fetched from IdP</span>{{end}}{{else}}—{{end}}</td></tr>
       <tr><th>Namespace</th><td>{{if .Data.Entry.K8s}}dev-{{.Data.Entry.K8s}}{{else}}—{{end}}</td></tr>
       <tr><th>Class</th><td>{{.Data.Entry.Class}}</td></tr>
       <tr><th>Pinned teams</th><td>{{if .Data.Pinned}}{{.Data.Pinned}}{{else}}—{{end}}</td></tr>
@@ -26,6 +27,7 @@
     <input type="hidden" name="_csrf" value="{{.Data.CSRF}}">
     <input type="hidden" name="name" value="{{.Data.Entry.Name}}">
     <input type="hidden" name="github" value="{{.Data.Entry.GitHub}}">
+    <input type="hidden" name="emails" value="{{.Data.Emails}}">
     <input type="hidden" name="k8s" value="{{.Data.Entry.K8s}}">
     <input type="hidden" name="class" value="{{.Data.Entry.Class}}">
     <input type="hidden" name="pinned" value="{{.Data.Pinned}}">
@@ -42,15 +44,30 @@
     <input type="hidden" name="_csrf" value="{{.Data.CSRF}}">
 
     <p>
-      <label for="name">Name — exactly as the directory spells it, "First Last"</label><br>
-      <input id="name" name="name" value="{{.Data.Entry.Name}}"
+      <label for="name">Name — the unique key, "First Last"</label><br>
+      <input id="name" name="name" value="{{.Data.Entry.Name}}" list="directory-people"
              {{if .Data.Before}}readonly{{end}} required style="width:340px">
       {{if .Data.Before}}<span class="muted">the key; create a new entry to change it</span>{{end}}
+      {{if .Data.Suggestions}}
+      <datalist id="directory-people">
+        {{range .Data.Suggestions}}<option value="{{.Name}}">{{.Emails}}</option>{{end}}
+      </datalist>
+      {{end}}
     </p>
 
     <p>
       <label for="github">GitHub login</label><br>
       <input id="github" name="github" value="{{.Data.Entry.GitHub}}" required style="width:340px">
+    </p>
+
+    <p>
+      <label for="emails">Emails — the IdP connection, comma separated</label><br>
+      <input id="emails" name="emails" value="{{.Data.Emails}}" style="width:340px">
+      <br><span class="muted">
+        the addresses the directories know this person under; the join
+        matches on these first. Leave empty to fetch from the IdP(s) by name
+        at the review step.
+      </span>
     </p>
 
     <p>

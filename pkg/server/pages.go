@@ -36,6 +36,11 @@ type structureData struct {
 	// GitHub says how old each organization's GitHub answer is — the
 	// cache must never pass a stale read off as live.
 	GitHub []githubAge
+	// SourceNames and OrgNames are the table's column groups, in stable
+	// order: one identity column per directory (IdP), one standing
+	// column per organization.
+	SourceNames []string
+	OrgNames    []string
 }
 
 type githubAge struct {
@@ -75,7 +80,19 @@ func (d *Deps) handleStructure(c fiber.Ctx) error {
 
 	if d.Directories != nil {
 		data.Sources = d.Directories.Statuses()
+
+		for _, s := range data.Sources {
+			data.SourceNames = append(data.SourceNames, s.Source)
+		}
+
+		sort.Strings(data.SourceNames)
 	}
+
+	for i := range d.Config.Orgs {
+		data.OrgNames = append(data.OrgNames, d.Config.Orgs[i].Name)
+	}
+
+	sort.Strings(data.OrgNames)
 
 	if d.Mapping != nil {
 		joined, err := d.buildRoster(c.Context())

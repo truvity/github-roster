@@ -79,12 +79,17 @@ func TestServiceStartsAndServesTheRoster(t *testing.T) {
 oidc: {disabled: true}
 mapping: {ssmPrefix: %q}
 audit: {bucket: roster-integration}
-orgs:
-  - name: %q
-    consoleAppSSM: %q
-    applierAppSSM: %q
-    teams:
-      robots: {pinned: true}
+companies:
+  sandbox:
+    directory:
+      ssmPrefix: /secrets/integration/directory
+      domains: [sandbox.invalid]
+    github:
+      org: %q
+      consoleAppSSM: %q
+      applierAppSSM: %q
+      teams:
+        robots: {pinned: true}
 `, mappingPrefix, env.Org, consolePrefix, applierPrefix))
 	require.NoError(t, err)
 
@@ -146,10 +151,15 @@ func TestServiceRefusesToStartWithoutCredentials(t *testing.T) {
 oidc: {disabled: true}
 mapping: {ssmPrefix: %q}
 audit: {bucket: roster-integration}
-orgs:
-  - name: example-org
-    consoleAppSSM: /%s/definitely/not/here
-    applierAppSSM: /%s/definitely/not/here-applier
+companies:
+  absent:
+    directory:
+      ssmPrefix: /secrets/integration/directory
+      domains: [absent.invalid]
+    github:
+      org: example-org
+      consoleAppSSM: /%s/definitely/not/here
+      applierAppSSM: /%s/definitely/not/here-applier
 `, "/"+runID(t)+"/absent/", runID(t), runID(t)))
 	require.NoError(t, err)
 

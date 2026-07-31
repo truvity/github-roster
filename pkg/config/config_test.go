@@ -19,15 +19,20 @@ oidc:
   roles:
     viewer: viewers@example.com
     operator: operators@example.com
-orgs:
-  - name: example
-    consoleAppSSM: /secrets/roster/console/example
-    applierAppSSM: /secrets/roster/applier/example
-    teams:
-      engineers:
-        groups: [engineers@example.com]
-      robots:
-        pinned: true
+companies:
+  example:
+    directory:
+      ssmPrefix: /secrets/google-workspace/example
+      domains: [example.com]
+    github:
+      org: example
+      consoleAppSSM: /secrets/roster/console/example
+      applierAppSSM: /secrets/roster/applier/example
+      teams:
+        team-engineers:
+          groups: [team-engineers@example.com]
+        robots:
+          pinned: true
 audit:
   bucket: example-roster-audit
 `
@@ -79,12 +84,12 @@ func TestParseRejects(t *testing.T) {
 			contains: "nosuchkey",
 		},
 		{
-			name: "no orgs",
+			name: "no companies",
 			doc: `
 oidc: {disabled: true}
-orgs: []
+companies: {}
 `,
-			contains: "at least one organization",
+			contains: "at least one company",
 		},
 		{
 			// The read/write split is the service's central security claim.
@@ -98,22 +103,58 @@ orgs: []
 		{
 			name: "team both pinned and directory-mapped",
 			doc: strings.Replace(minimal,
-				"      robots:\n        pinned: true",
-				"      robots:\n        pinned: true\n        groups: [bots@example.com]", 1),
+				"        robots:\n          pinned: true",
+				"        robots:\n          pinned: true\n          groups: [bots@example.com]", 1),
 			contains: "either pinned or directory-mapped",
 		},
 		{
 			name: "team neither pinned nor directory-mapped",
 			doc: strings.Replace(minimal,
-				"      robots:\n        pinned: true",
-				"      robots: {}", 1),
+				"        robots:\n          pinned: true",
+				"        robots: {}", 1),
 			contains: "needs groups, or pinned",
 		},
 		{
 			name: "team name is not DNS-1123",
 			doc: strings.Replace(minimal,
-				"      engineers:", "      Engineers_Team:", 1),
+				"        team-engineers:", "        Engineers_Team:", 1),
 			contains: "lowercase alphanumeric",
+		},
+		{
+			// The naming invariant: the name alone says whose directory
+			// governs the team; a mismatched group cannot slip through.
+			name: "directory-mapped team outside the naming families",
+			doc: strings.Replace(minimal,
+				"        team-engineers:", "        engineers:", 1),
+			contains: "team-<x> or partner-<code>-team-<x>",
+		},
+		{
+			name: "team group local part disagrees with the team name",
+			doc: strings.Replace(minimal,
+				"groups: [team-engineers@example.com]",
+				"groups: [devs@example.com]", 1),
+			contains: "local part and the team name are the same thing",
+		},
+		{
+			name: "team group outside the owning company's domains",
+			doc: strings.Replace(minimal,
+				"groups: [team-engineers@example.com]",
+				"groups: [team-engineers@elsewhere.example]", 1),
+			contains: "outside the owning company's domains",
+		},
+		{
+			name: "partner team names an unconfigured company",
+			doc: strings.Replace(minimal,
+				"        robots:\n          pinned: true",
+				"        partner-nosuch-team-x:\n          groups: [team-x@nosuch.example]", 1),
+			contains: "is not configured",
+		},
+		{
+			name: "pinned team squatting on the directory-mapped family",
+			doc: strings.Replace(minimal,
+				"        robots:\n          pinned: true",
+				"        team-bots:\n          pinned: true", 1),
+			contains: "pinned teams need a name outside them",
 		},
 		{
 			// An empty issuer must not be read as "no authentication
@@ -130,26 +171,15 @@ orgs: []
 			contains: "grant every viewer write access",
 		},
 		{
-			name: "source without domains",
-			doc: minimal + `
-sources:
-  - name: corp
-    ssmPrefix: /secrets/directory/corp
-`,
+			name: "company directory without domains",
+			doc: strings.Replace(minimal,
+				"      domains: [example.com]\n", "", 1),
 			contains: "domains is required",
 		},
 		{
-			name: "duplicate source names",
-			doc: minimal + `
-sources:
-  - name: corp
-    ssmPrefix: /secrets/directory/corp
-    domains: [example.com]
-  - name: corp
-    ssmPrefix: /secrets/directory/other
-    domains: [other.example]
-`,
-			contains: "duplicate source name",
+			name:     "company code outside the pattern",
+			doc:      strings.Replace(minimal, "  example:", "  Example:", 1),
+			contains: "company code must be lowercase",
 		},
 		{
 			name:     "mapping prefix without a trailing slash",
@@ -189,10 +219,15 @@ func TestDisabledOIDCNeedsNothingElse(t *testing.T) {
 
 	doc := `
 oidc: {disabled: true}
-orgs:
-  - name: example
-    consoleAppSSM: /secrets/roster/console/example
-    applierAppSSM: /secrets/roster/applier/example
+companies:
+  example:
+    directory:
+      ssmPrefix: /secrets/google-workspace/example
+      domains: [example.com]
+    github:
+      org: example
+      consoleAppSSM: /secrets/roster/console/example
+      applierAppSSM: /secrets/roster/applier/example
 `
 
 	if _, err := config.Parse([]byte(doc)); err != nil {
@@ -206,8 +241,8 @@ func TestExceptionsAreCaseInsensitive(t *testing.T) {
 	// GitHub logins are case-insensitive, and an exception list that missed
 	// a bot because of capitalization would remove the bot.
 	doc := strings.Replace(minimal,
-		"    consoleAppSSM:",
-		"    exceptions: [Example-Bot]\n    consoleAppSSM:", 1)
+		"      consoleAppSSM:",
+		"      exceptions: [Example-Bot]\n      consoleAppSSM:", 1)
 
 	cfg, err := config.Parse([]byte(doc))
 	if err != nil {

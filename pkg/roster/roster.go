@@ -194,12 +194,19 @@ type liveness struct {
 func livenessByName(snapshots []*directory.Snapshot) map[string]*liveness {
 	byName := map[string]*liveness{}
 
+	// Group membership is merged ACROSS snapshots before users are
+	// folded: a group may contain members from another company's domain
+	// (identity-model.md cross-company rule — e.g. a truvity person in
+	// team-steerco@trustform.io). The member's own directory never lists
+	// that group, so per-snapshot inversion would silently drop the
+	// membership; liveness still comes only from the person's home
+	// directory, which is the rule.
+	memberOf := groupsByMember(snapshots...)
+
 	for _, snap := range snapshots {
 		if snap == nil {
 			continue
 		}
-
-		memberOf := groupsByMember(snap)
 
 		for _, user := range snap.Users {
 			if user.Name == "" {
@@ -231,18 +238,26 @@ func livenessByName(snapshots []*directory.Snapshot) map[string]*liveness {
 	return byName
 }
 
-// groupsByMember inverts the snapshot's group listing.
-func groupsByMember(snap *directory.Snapshot) map[string]map[string]bool {
+// groupsByMember inverts every snapshot's group listing into one
+// member → groups view, so membership survives crossing company
+// boundaries.
+func groupsByMember(snapshots ...*directory.Snapshot) map[string]map[string]bool {
 	byMember := map[string]map[string]bool{}
 
-	for group, members := range snap.Groups {
-		for _, email := range members {
-			email = strings.ToLower(email)
-			if byMember[email] == nil {
-				byMember[email] = map[string]bool{}
-			}
+	for _, snap := range snapshots {
+		if snap == nil {
+			continue
+		}
 
-			byMember[email][strings.ToLower(group)] = true
+		for group, members := range snap.Groups {
+			for _, email := range members {
+				email = strings.ToLower(email)
+				if byMember[email] == nil {
+					byMember[email] = map[string]bool{}
+				}
+
+				byMember[email][strings.ToLower(group)] = true
+			}
 		}
 	}
 

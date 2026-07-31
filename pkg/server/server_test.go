@@ -1,10 +1,10 @@
 package server_test
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"github.com/gofiber/fiber/v3"
@@ -21,15 +21,20 @@ import (
 
 const doc = `
 oidc: {disabled: true}
-orgs:
-  - name: example
-    consoleAppSSM: /secrets/roster/console/example
-    applierAppSSM: /secrets/roster/applier/example
-    teams:
-      engineers:
-        groups: [engineers@example.com, sre@example.com]
-      robots:
-        pinned: true
+companies:
+  example:
+    directory:
+      ssmPrefix: /secrets/directory/example
+      domains: [example.com, alt.example.com]
+    github:
+      org: example
+      consoleAppSSM: /secrets/roster/console/example
+      applierAppSSM: /secrets/roster/applier/example
+      teams:
+        team-engineers:
+          groups: [team-engineers@example.com, team-engineers@alt.example.com]
+        robots:
+          pinned: true
 `
 
 // fixedAuth authenticates every request as the given role, so routing and
@@ -98,26 +103,35 @@ func TestStructurePageRendersConfiguredTeams(t *testing.T) {
 	status, body := get(t, app, "/")
 	require.Equal(t, fiber.StatusOK, status)
 
-	for _, want := range []string{"example", "engineers", "engineers@example.com", "sre@example.com", "robots", "pinned"} {
+	for _, want := range []string{"example", "team-engineers", "team-engineers@example.com", "team-engineers@alt.example.com", "robots", "pinned"} {
 		require.Contains(t, body, want)
 	}
 }
 
 // The console renders directory group addresses and people's names. A
-// template interpolating them unescaped would be a stored-XSS sink fed by
-// whoever can edit a directory group.
+// template interpolating them unescaped would be a stored-XSS sink. Group
+// addresses are no longer a viable vector (the naming invariant rejects
+// anything that is not team-<x>@<company domain> at parse), so the hostile
+// payload rides the one free-form field the page renders: a pinned team's
+// name is DNS-constrained too, but a MAPPING name is arbitrary text edited
+// through the operator UI.
 func TestTemplatesEscapeTheirData(t *testing.T) {
 	t.Parallel()
 
-	hostile := strings.Replace(doc,
-		"groups: [engineers@example.com, sre@example.com]",
-		`groups: ["<script>alert(1)</script>"]`, 1)
+	deps := newDeps(t, doc, &fixedAuth{role: auth.RoleViewer})
 
-	app := server.NewApp(newDeps(t, hostile, &fixedAuth{role: auth.RoleViewer}))
+	store := deps.Mapping.(*mapping.Memory)
+	require.NoError(t, store.Put(context.Background(), mapping.Entry{
+		Name:   "<script>alert(1)</script>",
+		GitHub: "hostile",
+		Class:  mapping.ClassEmployee,
+	}))
+
+	app := server.NewApp(deps)
 
 	_, body := get(t, app, "/")
 
-	require.NotContains(t, body, "<script>alert(1)</script>", "group name was interpolated unescaped")
+	require.NotContains(t, body, "<script>alert(1)</script>", "mapping name was interpolated unescaped")
 	require.Contains(t, body, "&lt;script&gt;", "the test is not checking what it thinks")
 }
 

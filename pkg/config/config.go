@@ -30,9 +30,19 @@ type Config struct {
 	LogLevel  string `yaml:"logLevel"`
 	LogFormat string `yaml:"logFormat"`
 
-	OIDC    OIDC     `yaml:"oidc"`
-	Sources []Source `yaml:"sources"`
-	Orgs    []Org    `yaml:"orgs"`
+	OIDC OIDC `yaml:"oidc"`
+
+	// Companies is the configuration's spine (identity-model.md): each
+	// company owns one directory and at most one GitHub organization.
+	// Cross-company access is expressed as partner-<code>-team-<x> teams
+	// whose groups live in company <code>'s directory.
+	Companies map[string]Company `yaml:"companies"`
+
+	// Sources and Orgs are DERIVED from Companies at load time (sorted
+	// by company code) so the rest of the service keeps its shape; they
+	// are not part of the document.
+	Sources []Source `yaml:"-"`
+	Orgs    []Org    `yaml:"-"`
 
 	Mapping    Mapping    `yaml:"mapping"`
 	Audit      Audit      `yaml:"audit"`
@@ -123,6 +133,44 @@ type Source struct {
 	// some of them, and reading the rest would import people the service
 	// has no business managing.
 	Domains []string `yaml:"domains"`
+}
+
+// Company is one company: a directory, and optionally the GitHub
+// organization it owns.
+type Company struct {
+	// Directory is the company's corporate directory.
+	Directory Directory `yaml:"directory"`
+
+	// GitHub is the company's organization, absent for companies that are
+	// referenced only as partners (their people appear in another org's
+	// partner-* teams; their own org comes later).
+	GitHub *CompanyGitHub `yaml:"github"`
+}
+
+// Directory is a company's corporate directory: who exists, who is
+// suspended, and who is in which group.
+type Directory struct {
+	// SSMPrefix holds the directory credentials — a service-account key
+	// and the admin subject to impersonate.
+	SSMPrefix string `yaml:"ssmPrefix"`
+	// Domains restricts the source to these email domains. A directory
+	// may serve several domains while this instance is only responsible
+	// for some of them.
+	Domains []string `yaml:"domains"`
+}
+
+// CompanyGitHub is the organization a company owns, plus the credentials
+// split that keeps the web tier read-only.
+type CompanyGitHub struct {
+	// Org is the organization login on github.com.
+	Org string `yaml:"org"`
+
+	ConsoleAppSSM string `yaml:"consoleAppSSM"`
+	ApplierAppSSM string `yaml:"applierAppSSM"`
+	ApplierSecret string `yaml:"applierSecret"`
+
+	Exceptions []string        `yaml:"exceptions"`
+	Teams      map[string]Team `yaml:"teams"`
 }
 
 // Org is one GitHub organization under management.
@@ -237,11 +285,48 @@ func Parse(data []byte) (*Config, error) {
 		return nil, fmt.Errorf("parse config: %w", err)
 	}
 
+	cfg.derive()
+
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
 
 	return &cfg, nil
+}
+
+// derive builds the runtime Sources and Orgs views from Companies —
+// sorted by company code, so everything downstream is deterministic.
+func (c *Config) derive() {
+	codes := make([]string, 0, len(c.Companies))
+	for code := range c.Companies {
+		codes = append(codes, code)
+	}
+
+	sort.Strings(codes)
+
+	c.Sources = c.Sources[:0]
+	c.Orgs = c.Orgs[:0]
+
+	for _, code := range codes {
+		company := c.Companies[code]
+
+		c.Sources = append(c.Sources, Source{
+			Name:      code,
+			SSMPrefix: company.Directory.SSMPrefix,
+			Domains:   company.Directory.Domains,
+		})
+
+		if gh := company.GitHub; gh != nil {
+			c.Orgs = append(c.Orgs, Org{
+				Name:          gh.Org,
+				ConsoleAppSSM: gh.ConsoleAppSSM,
+				ApplierAppSSM: gh.ApplierAppSSM,
+				ApplierSecret: gh.ApplierSecret,
+				Exceptions:    gh.Exceptions,
+				Teams:         gh.Teams,
+			})
+		}
+	}
 }
 
 // dns1123 is the shape a team name and a Kubernetes abbreviation must have.
@@ -256,6 +341,10 @@ func (c *Config) Validate() error {
 	}
 
 	if err := c.OIDC.validate(); err != nil {
+		return err
+	}
+
+	if err := c.validateCompanies(); err != nil {
 		return err
 	}
 
@@ -329,6 +418,129 @@ func (o *OIDC) validate() error {
 
 	if o.Roles.Viewer == o.Roles.Operator {
 		return fmt.Errorf("oidc.roles.viewer and oidc.roles.operator are both %q, which would grant every viewer write access", o.Roles.Viewer)
+	}
+
+	return nil
+}
+
+// codePattern constrains company codes: they become source names and
+// team-name prefixes (partner-<code>-...), so they share the DNS-ish
+// discipline.
+var codePattern = regexp.MustCompile(`^[a-z][a-z0-9]*$`)
+
+// teamPattern and partnerPattern are the identity-model naming
+// invariant: a directory-mapped team is either the owning company's
+// (team-<x> ← team-<x>@<own domain>) or a partner company's
+// (partner-<code>-team-<x> ← team-<x>@<code's domain>). The name alone
+// tells you whose offboarding governs the team.
+var (
+	teamPattern    = regexp.MustCompile(`^team-[a-z0-9-]+$`)
+	partnerPattern = regexp.MustCompile(`^partner-([a-z][a-z0-9]*)-(team-[a-z0-9-]+)$`)
+)
+
+func (c *Config) validateCompanies() error {
+	if len(c.Companies) == 0 {
+		return fmt.Errorf("companies is required: at least one company must be configured")
+	}
+
+	for code, company := range c.Companies {
+		if !codePattern.MatchString(code) {
+			return fmt.Errorf("companies[%q]: company code must be lowercase alphanumeric starting with a letter", code)
+		}
+
+		if company.Directory.SSMPrefix == "" {
+			return fmt.Errorf("companies[%q].directory.ssmPrefix is required", code)
+		}
+
+		if len(company.Directory.Domains) == 0 {
+			return fmt.Errorf("companies[%q].directory.domains is required: name the domains this company's directory is responsible for", code)
+		}
+
+		if gh := company.GitHub; gh != nil {
+			if gh.Org == "" {
+				return fmt.Errorf("companies[%q].github.org is required", code)
+			}
+
+			if err := c.validateTeamInvariant(code, gh); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// validateTeamInvariant enforces the naming contract per team.
+func (c *Config) validateTeamInvariant(code string, gh *CompanyGitHub) error {
+	own := c.Companies[code]
+
+	for name, team := range gh.Teams {
+		// Structural rules first, so a malformed team gets the message
+		// about its actual problem rather than a family mismatch.
+		switch {
+		case !dns1123.MatchString(name):
+			return fmt.Errorf("companies[%q].github.teams[%q]: team name must be lowercase alphanumeric with dashes", code, name)
+		case team.Pinned && len(team.Groups) > 0:
+			return fmt.Errorf("companies[%q].github.teams[%q]: a team is either pinned or directory-mapped, not both", code, name)
+		case !team.Pinned && len(team.Groups) == 0:
+			return fmt.Errorf("companies[%q].github.teams[%q]: needs groups, or pinned: true", code, name)
+		}
+
+		if team.Pinned {
+			// Pinned teams are for non-humans (robots) and interim pins;
+			// they must not masquerade as directory-mapped families.
+			if teamPattern.MatchString(name) || partnerPattern.MatchString(name) {
+				return fmt.Errorf("companies[%q].github.teams[%q]: the team-*/partner-* families are directory-mapped by contract; pinned teams need a name outside them", code, name)
+			}
+
+			continue
+		}
+
+		switch m := partnerPattern.FindStringSubmatch(name); {
+		case m != nil:
+			partner, ok := c.Companies[m[1]]
+			if !ok {
+				return fmt.Errorf("companies[%q].github.teams[%q]: partner company %q is not configured", code, name, m[1])
+			}
+
+			if err := groupsMatch(team.Groups, m[2], partner.Directory.Domains); err != nil {
+				return fmt.Errorf("companies[%q].github.teams[%q]: %w", code, name, err)
+			}
+
+		case teamPattern.MatchString(name):
+			if err := groupsMatch(team.Groups, name, own.Directory.Domains); err != nil {
+				return fmt.Errorf("companies[%q].github.teams[%q]: %w", code, name, err)
+			}
+
+		default:
+			return fmt.Errorf("companies[%q].github.teams[%q]: directory-mapped team names must be team-<x> or partner-<code>-team-<x> (identity-model.md)", code, name)
+		}
+	}
+
+	return nil
+}
+
+// groupsMatch requires every group to be <local>@<domain> with the local
+// part equal to the team name and the domain owned by the right company.
+func groupsMatch(groups []string, local string, domains []string) error {
+	allowed := make(map[string]bool, len(domains))
+	for _, d := range domains {
+		allowed[strings.ToLower(d)] = true
+	}
+
+	for _, group := range groups {
+		gotLocal, domain, ok := strings.Cut(strings.ToLower(group), "@")
+		if !ok {
+			return fmt.Errorf("group %q is not an email address", group)
+		}
+
+		if gotLocal != local {
+			return fmt.Errorf("group %q must be named %s@<company domain> — the group's local part and the team name are the same thing by contract", group, local)
+		}
+
+		if !allowed[domain] {
+			return fmt.Errorf("group %q is outside the owning company's domains %v", group, domains)
+		}
 	}
 
 	return nil

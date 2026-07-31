@@ -13,9 +13,11 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/go-github/v76/github"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/truvity/github-roster/pkg/githubapp"
 )
@@ -130,6 +132,9 @@ func NewReader(source *githubapp.TokenSource, org, baseURL string) (*Reader, err
 
 const requestTimeout = 30 * time.Second
 
+// teamReadConcurrency bounds the per-team member listings running at once.
+const teamReadConcurrency = 5
+
 // tokenTransport attaches a fresh installation token to every request.
 //
 // Per request rather than per client because installation tokens expire
@@ -166,27 +171,61 @@ func (t *tokenTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 func (r *Reader) Read(ctx context.Context) (*State, error) {
 	state := &State{Org: r.org, TeamMembers: map[string][]string{}}
 
-	var err error
+	// The console reads live on every page load, so this latency IS the
+	// page latency. The listings are independent and the team rosters fan
+	// out from the team list; run serially this is one round-trip per team
+	// plus three — ten seconds on a real organization.
+	group, groupCtx := errgroup.WithContext(ctx)
 
-	if state.Members, err = r.Members(ctx); err != nil {
+	group.Go(func() error {
+		var err error
+		state.Members, err = r.Members(groupCtx)
+
+		return err
+	})
+
+	group.Go(func() error {
+		var err error
+		state.Invitations, err = r.PendingInvitations(groupCtx)
+
+		return err
+	})
+
+	group.Go(func() error {
+		var err error
+		state.Teams, err = r.Teams(groupCtx)
+
+		return err
+	})
+
+	if err := group.Wait(); err != nil {
 		return nil, err
 	}
 
-	if state.Invitations, err = r.PendingInvitations(ctx); err != nil {
-		return nil, err
-	}
+	// Bounded, because GitHub's secondary rate limits punish request
+	// bursts long before the primary quota is anywhere in sight.
+	fanout, fanoutCtx := errgroup.WithContext(ctx)
+	fanout.SetLimit(teamReadConcurrency)
 
-	if state.Teams, err = r.Teams(ctx); err != nil {
-		return nil, err
-	}
+	var mu sync.Mutex
 
 	for _, team := range state.Teams {
-		members, err := r.TeamMembers(ctx, team.Slug)
-		if err != nil {
-			return nil, err
-		}
+		fanout.Go(func() error {
+			members, err := r.TeamMembers(fanoutCtx, team.Slug)
+			if err != nil {
+				return err
+			}
 
-		state.TeamMembers[team.Slug] = members
+			mu.Lock()
+			state.TeamMembers[team.Slug] = members
+			mu.Unlock()
+
+			return nil
+		})
+	}
+
+	if err := fanout.Wait(); err != nil {
+		return nil, err
 	}
 
 	state.ReadAt = time.Now()

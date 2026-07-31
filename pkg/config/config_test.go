@@ -281,3 +281,44 @@ func TestAuditPrefixMustEndWithSlash(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "ci-truvity/r1/", cfg.Audit.Prefix)
 }
+
+func TestMappedGroupsForDomainsFiltersBySource(t *testing.T) {
+	t.Parallel()
+
+	doc := `
+oidc: {disabled: true}
+companies:
+  corp:
+    directory:
+      ssmPrefix: /secrets/directory/corp
+      domains: [example.com]
+    github:
+      org: example
+      consoleAppSSM: /secrets/roster/console/example
+      applierAppSSM: /secrets/roster/applier/example
+      teams:
+        team-devs:
+          groups: [team-devs@example.com]
+        partner-pt-team-ext:
+          groups: [team-ext@partner.example]
+  pt:
+    directory:
+      ssmPrefix: /secrets/directory/pt
+      domains: [partner.example]
+`
+
+	cfg, err := config.Parse([]byte(doc))
+	if err != nil {
+		t.Fatalf("Parse() = %v", err)
+	}
+
+	// Each source is asked only about the groups its directory owns — a
+	// foreign group would 403 and poison the whole fetch.
+	if got := cfg.MappedGroupsForDomains([]string{"example.com"}); len(got) != 1 || got[0] != "team-devs@example.com" {
+		t.Errorf("corp groups = %v, want only team-devs@example.com", got)
+	}
+
+	if got := cfg.MappedGroupsForDomains([]string{"partner.example"}); len(got) != 1 || got[0] != "team-ext@partner.example" {
+		t.Errorf("pt groups = %v, want only team-ext@partner.example", got)
+	}
+}

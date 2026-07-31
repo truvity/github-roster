@@ -254,6 +254,95 @@ func TestVerifierAcceptsAScalarRolesClaim(t *testing.T) {
 	require.Equal(t, RoleViewer, role)
 }
 
+// probeIdentity runs one request through the middleware with an optional
+// ID-token cookie and reports the full identity the handler saw.
+func probeIdentity(t *testing.T, authenticator Authenticator, header, cookie string) (int, Identity) {
+	t.Helper()
+
+	var seen Identity
+
+	app := fiber.New()
+	app.Use(authenticator.Middleware())
+	app.Get("/", func(c fiber.Ctx) error {
+		seen, _ = From(c)
+
+		return c.SendStatus(fiber.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
+	req.Header.Set(fiber.HeaderAuthorization, header)
+
+	if cookie != "" {
+		req.AddCookie(&http.Cookie{Name: idTokenCookie, Value: cookie})
+	}
+
+	resp, err := app.Test(req)
+	require.NoError(t, err)
+
+	defer func() { _ = resp.Body.Close() }()
+
+	return resp.StatusCode, seen
+}
+
+// The gateway's access token carries roles but no profile claims — those are
+// asserted into the ID token, which the gateway stores in a cookie. The
+// display name must come from that cookie, verified, and only for the same
+// subject.
+func TestDisplayClaimsFallBackToTheIDTokenCookie(t *testing.T) {
+	t.Parallel()
+
+	issuer := newFakeIssuer(t)
+	authenticator := newTestVerifier(t, issuer, "")
+
+	access := issuer.token(t, func(b *jwt.Builder) {
+		b.Claim("name", "").Claim("email", "")
+	})
+	idToken := issuer.token(t, nil)
+
+	status, identity := probeIdentity(t, authenticator, "Bearer "+access, idToken)
+	require.Equal(t, fiber.StatusOK, status)
+	require.Equal(t, "A Person", identity.Name)
+	require.Equal(t, "a@example.com", identity.Email)
+	require.Equal(t, RoleOperator, identity.Role)
+}
+
+// A cookie for a different subject is somebody else's session leftovers; its
+// claims must not be displayed as the caller's.
+func TestDisplayClaimsIgnoreAForeignIDToken(t *testing.T) {
+	t.Parallel()
+
+	issuer := newFakeIssuer(t)
+	authenticator := newTestVerifier(t, issuer, "")
+
+	access := issuer.token(t, func(b *jwt.Builder) {
+		b.Claim("name", "").Claim("email", "")
+	})
+	foreign := issuer.token(t, func(b *jwt.Builder) { b.Subject("u-2") })
+
+	status, identity := probeIdentity(t, authenticator, "Bearer "+access, foreign)
+	require.Equal(t, fiber.StatusOK, status)
+	require.Empty(t, identity.Name)
+	require.Empty(t, identity.Email)
+}
+
+// A garbage cookie must neither fill claims nor break the request — the
+// access token alone already authenticated the caller.
+func TestDisplayClaimsSurviveAGarbageCookie(t *testing.T) {
+	t.Parallel()
+
+	issuer := newFakeIssuer(t)
+	authenticator := newTestVerifier(t, issuer, "")
+
+	access := issuer.token(t, func(b *jwt.Builder) {
+		b.Claim("name", "").Claim("email", "")
+	})
+
+	status, identity := probeIdentity(t, authenticator, "Bearer "+access, "not-a-jwt")
+	require.Equal(t, fiber.StatusOK, status)
+	require.Empty(t, identity.Name)
+	require.Equal(t, RoleOperator, identity.Role)
+}
+
 // Discovery that names a different issuer than the one configured means a
 // redirect landed us at somebody else's provider.
 func TestDiscoveryIssuerMismatchIsFatal(t *testing.T) {

@@ -179,6 +179,10 @@ func (v *verifier) Middleware() fiber.Handler {
 
 		identity := v.identityFrom(token)
 
+		if identity.Name == "" && identity.Email == "" {
+			v.fillDisplayClaims(c, &identity)
+		}
+
 		if !identity.Role.CanView() {
 			// The gateway's authorization rules should have stopped this
 			// already; reaching here means they and this service's config
@@ -194,6 +198,38 @@ func (v *verifier) Middleware() fiber.Handler {
 
 		return c.Next()
 	}
+}
+
+// idTokenCookie is where the gateway's OIDC filter stores the ID token
+// (Envoy Gateway's default cookie naming).
+const idTokenCookie = "IdToken"
+
+// fillDisplayClaims reads name and email from the gateway's ID-token cookie.
+//
+// Zitadel asserts profile claims into the ID token, not into the JWT access
+// token, so a header rendered from the access token alone would show the
+// bare subject ID. The cookie is verified against the same issuer and keys
+// before anything is read from it, and it must belong to the same subject as
+// the access token. The role deliberately never comes from here.
+func (v *verifier) fillDisplayClaims(c fiber.Ctx, identity *Identity) {
+	raw := c.Cookies(idTokenCookie)
+	if raw == "" {
+		return
+	}
+
+	token, err := v.parse(raw)
+	if err != nil {
+		v.logger.DebugContext(c.Context(), "id token cookie rejected", slog.Any("error", err))
+
+		return
+	}
+
+	if subject, _ := token.Subject(); subject != identity.Subject {
+		return
+	}
+
+	identity.Name = stringClaim(token, "name")
+	identity.Email = stringClaim(token, "email")
 }
 
 // parse validates the token's signature, issuer, audience and expiry.

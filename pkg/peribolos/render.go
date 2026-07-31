@@ -190,7 +190,7 @@ func removalsOnlyMembers(in Inputs, people map[string]roster.Person, current []s
 			continue
 		}
 
-		if skipped := onlyKnownBy(person, in.UnhealthySources); skipped != "" {
+		if skipped := onlyKnownBy(&person, in.UnhealthySources); skipped != "" {
 			keep = append(keep, login)
 			result.Notes = append(result.Notes,
 				fmt.Sprintf("%s (%s) looks not-live, but %s is unhealthy — left alone",
@@ -226,7 +226,9 @@ func fullMembers(in Inputs, people map[string]roster.Person, current []string, r
 		}
 	}
 
-	for _, person := range in.Roster.People {
+	for i := range in.Roster.People {
+		person := &in.Roster.People[i]
+
 		membership, ok := person.Orgs[in.Org.Name]
 		if !ok {
 			continue
@@ -290,7 +292,9 @@ func renderTeams(in Inputs) map[string]Team {
 
 		var members []string
 
-		for _, person := range in.Roster.People {
+		for i := range in.Roster.People {
+			person := &in.Roster.People[i]
+
 			membership, ok := person.Orgs[in.Org.Name]
 			if !ok {
 				continue
@@ -316,7 +320,7 @@ func renderTeams(in Inputs) map[string]Team {
 }
 
 // onlyKnownBy reports an unhealthy source this person depends on, or "".
-func onlyKnownBy(person roster.Person, unhealthy []string) string {
+func onlyKnownBy(person *roster.Person, unhealthy []string) string {
 	if len(unhealthy) == 0 || len(person.Sources) == 0 {
 		return ""
 	}
@@ -334,8 +338,8 @@ func onlyKnownBy(person roster.Person, unhealthy []string) string {
 
 func peopleByLogin(r *roster.Roster) map[string]roster.Person {
 	byLogin := make(map[string]roster.Person, len(r.People))
-	for _, person := range r.People {
-		byLogin[strings.ToLower(person.GitHub)] = person
+	for i := range r.People {
+		byLogin[strings.ToLower(r.People[i].GitHub)] = r.People[i]
 	}
 
 	return byLogin

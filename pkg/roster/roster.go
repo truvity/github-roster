@@ -57,8 +57,21 @@ type Person struct {
 	// Email is the primary address from the first directory that knew
 	// them, for display only. The join never keys on it.
 	Email string `json:"email,omitempty"`
+	// Directories is the per-source view, keyed by source name: the
+	// address each directory knows this person under and whether that
+	// account is live there. The identity trace an operator follows —
+	// IdP(s) → mapping → org(s) — starts here.
+	Directories map[string]DirectoryIdentity `json:"directories,omitempty"`
 	// Orgs is this person's GitHub standing, keyed by organization.
 	Orgs map[string]Membership `json:"orgs"`
+}
+
+// DirectoryIdentity is one directory's view of a person.
+type DirectoryIdentity struct {
+	// Email is the address this directory knows them under.
+	Email string `json:"email"`
+	// Live is whether that account is active in this directory.
+	Live bool `json:"live"`
 }
 
 // Membership is a person's standing in one organization.
@@ -157,15 +170,24 @@ func Join(in Inputs) *Roster {
 		}
 	}
 
-	live := livenessByName(in.Snapshots)
-	byName := make(map[string]mapping.Entry, len(in.Entries))
+	live, liveByEmail := livenessIndexes(in.Snapshots)
 
-	for _, entry := range in.Entries {
-		byName[entry.Name] = entry
-		r.People = append(r.People, join(in, entry, live))
+	// covered marks directory names some entry accounts for — by its own
+	// name or through an email match — so a directory spelling a name
+	// differently does not double-report the person as unmapped.
+	covered := make(map[string]bool, len(in.Entries))
+
+	for i := range in.Entries {
+		person, claimed := join(in, in.Entries[i], live, liveByEmail)
+		r.People = append(r.People, person)
+		covered[in.Entries[i].Name] = true
+
+		for _, name := range claimed {
+			covered[name] = true
+		}
 	}
 
-	r.Warnings = append(r.Warnings, unmappedWarnings(live, byName)...)
+	r.Warnings = append(r.Warnings, unmappedWarnings(live, covered)...)
 	r.Warnings = append(r.Warnings, membershipWarnings(in, r.People)...)
 
 	sort.Slice(r.People, func(i, j int) bool { return r.People[i].Name < r.People[j].Name })
@@ -176,23 +198,30 @@ func Join(in Inputs) *Roster {
 
 // liveness is what the directories say about one person.
 type liveness struct {
+	// name is the display name the directories know this person under.
+	name    string
 	live    bool
 	email   string
 	sources []string
+	// directories is the per-source view: which address each directory
+	// knows this person under, and whether that account is live there.
+	directories map[string]DirectoryIdentity
 	// groups are the group addresses this person belongs to, lowercased,
 	// across every source that knows them.
 	groups map[string]bool
 }
 
-// livenessByName folds every snapshot into one view per person.
+// livenessIndexes folds every snapshot into one view per person, indexed
+// both by display name and by every address the directories know.
 //
 // A person can exist in more than one directory — the design accepts that
 // explicitly — and they count as live if ANY directory still has them
 // active. Requiring every directory to agree would offboard people the day
 // one of their accounts is closed, which is the opposite of what the
 // suspension signal means.
-func livenessByName(snapshots []*directory.Snapshot) map[string]*liveness {
+func livenessIndexes(snapshots []*directory.Snapshot) (byNameIdx, byEmailIdx map[string]*liveness) {
 	byName := map[string]*liveness{}
+	byEmail := map[string]*liveness{}
 
 	// Group membership is merged ACROSS snapshots before users are
 	// folded: a group may contain members from another company's domain
@@ -218,12 +247,17 @@ func livenessByName(snapshots []*directory.Snapshot) map[string]*liveness {
 
 			l, ok := byName[user.Name]
 			if !ok {
-				l = &liveness{groups: map[string]bool{}}
+				l = &liveness{name: user.Name, groups: map[string]bool{}, directories: map[string]DirectoryIdentity{}}
 				byName[user.Name] = l
+			}
+
+			if user.Email != "" {
+				byEmail[strings.ToLower(user.Email)] = l
 			}
 
 			l.live = l.live || user.Live
 			l.sources = appendUnique(l.sources, snap.Source)
+			l.directories[snap.Source] = DirectoryIdentity{Email: user.Email, Live: user.Live}
 
 			if l.email == "" {
 				l.email = user.Email
@@ -235,7 +269,7 @@ func livenessByName(snapshots []*directory.Snapshot) map[string]*liveness {
 		}
 	}
 
-	return byName
+	return byName, byEmail
 }
 
 // groupsByMember inverts every snapshot's group listing into one
@@ -266,8 +300,8 @@ func groupsByMember(snapshots ...*directory.Snapshot) map[string]map[string]bool
 
 // join builds one person from their mapping entry and what the directories
 // and GitHub say about them.
-func join(in Inputs, entry mapping.Entry, live map[string]*liveness) Person {
-	person := Person{
+func join(in Inputs, entry mapping.Entry, live, liveByEmail map[string]*liveness) (person Person, claimed []string) {
+	person = Person{
 		Name:   entry.Name,
 		GitHub: entry.GitHub,
 		K8s:    entry.K8s,
@@ -275,10 +309,14 @@ func join(in Inputs, entry mapping.Entry, live map[string]*liveness) Person {
 		Orgs:   map[string]Membership{},
 	}
 
-	if l, ok := live[entry.Name]; ok {
-		person.Live = l.live
-		person.Email = l.email
-		person.Sources = l.sources
+	var resolved *liveness
+	resolved, claimed = resolveLiveness(entry, live, liveByEmail)
+
+	if resolved != nil {
+		person.Live = resolved.live
+		person.Email = resolved.email
+		person.Sources = resolved.sources
+		person.Directories = resolved.directories
 	}
 
 	// A bot has no directory account and therefore no liveness signal.
@@ -291,10 +329,73 @@ func join(in Inputs, entry mapping.Entry, live map[string]*liveness) Person {
 	for i := range in.Config.Orgs {
 		org := &in.Config.Orgs[i]
 
-		person.Orgs[org.Name] = membership(in, org, entry, live[entry.Name], person.Live)
+		person.Orgs[org.Name] = membership(in, org, entry, resolved, person.Live)
 	}
 
-	return person
+	return person, claimed
+}
+
+// resolveLiveness connects an entry to the directory records that prove the
+// person exists: every record one of the entry's EMAILS points at, plus the
+// name match as a fallback. Email wins on conflict — the address is the
+// authoritative IdP anchor, the name is the human label — so a directory
+// spelling the name differently cannot detach a person from their liveness.
+// The returned names are the directory spellings the entry accounts for.
+func resolveLiveness(entry mapping.Entry, live, liveByEmail map[string]*liveness) (merged *liveness, claimed []string) {
+	var (
+		records []*liveness
+		seen    = map[*liveness]bool{}
+	)
+
+	add := func(l *liveness) {
+		if l == nil || seen[l] {
+			return
+		}
+
+		seen[l] = true
+		records = append(records, l)
+		claimed = append(claimed, l.name)
+	}
+
+	for _, email := range entry.Emails {
+		add(liveByEmail[strings.ToLower(email)])
+	}
+
+	add(live[entry.Name])
+
+	switch len(records) {
+	case 0:
+		return nil, nil
+	case 1:
+		return records[0], claimed
+	}
+
+	// Several records — a person spanning directories under different
+	// display names. Merge them; liveness stays OR across directories.
+	merged = &liveness{
+		name:        entry.Name,
+		groups:      map[string]bool{},
+		directories: map[string]DirectoryIdentity{},
+	}
+
+	for _, l := range records {
+		merged.live = merged.live || l.live
+		merged.sources = append(merged.sources, l.sources...)
+
+		if merged.email == "" {
+			merged.email = l.email
+		}
+
+		for src, id := range l.directories {
+			merged.directories[src] = id
+		}
+
+		for g := range l.groups {
+			merged.groups[g] = true
+		}
+	}
+
+	return merged, claimed
 }
 
 func membership(in Inputs, org *config.Org, entry mapping.Entry, l *liveness, isLive bool) Membership {
@@ -387,7 +488,7 @@ func hasPinned(entry mapping.Entry, org, team string) bool {
 // is told they exist. Silently inventing a GitHub handle from an email
 // address is the alternative, and it is how people end up with access to
 // the wrong account.
-func unmappedWarnings(live map[string]*liveness, mapped map[string]mapping.Entry) []Warning {
+func unmappedWarnings(live map[string]*liveness, covered map[string]bool) []Warning {
 	var warnings []Warning
 
 	for name, l := range live {
@@ -395,7 +496,7 @@ func unmappedWarnings(live map[string]*liveness, mapped map[string]mapping.Entry
 			continue
 		}
 
-		if _, ok := mapped[name]; ok {
+		if covered[name] {
 			continue
 		}
 
@@ -416,8 +517,9 @@ func membershipWarnings(in Inputs, people []Person) []Warning {
 
 	known := map[string]Person{}
 
-	for _, p := range people {
-		known[strings.ToLower(p.GitHub)] = p
+	for i := range people {
+		p := &people[i]
+		known[strings.ToLower(p.GitHub)] = people[i]
 
 		if p.Class == mapping.ClassBot {
 			continue

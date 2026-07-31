@@ -10,13 +10,22 @@ import (
 
 	"github.com/truvity/github-roster/pkg/auth"
 	"github.com/truvity/github-roster/pkg/mapping"
+	"github.com/truvity/github-roster/pkg/roster"
 	"github.com/truvity/github-roster/pkg/ui"
 )
 
-// mappingListData is the editor's index.
+// mappingListData is the editor's index. It carries the join alongside the
+// raw entries so each row can trace the full identity chain — IdP(s) →
+// mapping → GitHub org(s) and team(s) — without leaving the page.
 type mappingListData struct {
 	Entries []mapping.Entry
 	Flash   string
+	// People indexes the joined roster by name; nil when the read layers
+	// are not wired (tests).
+	People map[string]roster.Person
+	// SourceNames and OrgNames are the trace columns, in stable order.
+	SourceNames []string
+	OrgNames    []string
 }
 
 func (d *Deps) handleMapping(c fiber.Ctx) error {
@@ -31,11 +40,37 @@ func (d *Deps) handleMapping(c fiber.Ctx) error {
 
 	sort.Slice(entries, func(i, j int) bool { return entries[i].Name < entries[j].Name })
 
+	data := mappingListData{Entries: entries, Flash: c.Query("flash")}
+
+	// The trace is best-effort: a broken directory or GitHub read must
+	// not take the EDITOR down — fixing the mapping may be exactly what
+	// the operator is here to do.
+	if joined, err := d.buildRoster(c.Context()); err == nil {
+		data.People = make(map[string]roster.Person, len(joined.People))
+		for i := range joined.People {
+			data.People[joined.People[i].Name] = joined.People[i]
+		}
+	}
+
+	if d.Directories != nil {
+		for _, s := range d.Directories.Statuses() {
+			data.SourceNames = append(data.SourceNames, s.Source)
+		}
+
+		sort.Strings(data.SourceNames)
+	}
+
+	for i := range d.Config.Orgs {
+		data.OrgNames = append(data.OrgNames, d.Config.Orgs[i].Name)
+	}
+
+	sort.Strings(data.OrgNames)
+
 	return d.Renderer.Render(c, fiber.StatusOK, "mapping", ui.Page{
 		Title:  "Mapping",
 		Nav:    "mapping",
 		AuthOn: d.Auth.Enabled(),
-		Data:   mappingListData{Entries: entries, Flash: c.Query("flash")},
+		Data:   data,
 	})
 }
 
@@ -48,6 +83,14 @@ type mappingFormData struct {
 	// Pinned is the raw comma-separated field, preserved across a failed
 	// submission so an operator does not retype it.
 	Pinned string
+	// Emails is the raw comma-separated field, same treatment.
+	Emails string
+	// EmailsFetched notes that the emails shown were fetched from the
+	// IdP(s) by name rather than typed, so the confirmation says so.
+	EmailsFetched bool
+	// Suggestions are the directory people, for the name datalist —
+	// adding a person usually starts from someone the IdP already knows.
+	Suggestions []directorySuggestion
 	// Error is a validation failure to show above the form.
 	Error string
 	// Confirming switches the template from form to confirmation.
@@ -57,8 +100,49 @@ type mappingFormData struct {
 	CSRF   string
 }
 
+// directorySuggestion is one directory person offered by the add form.
+type directorySuggestion struct {
+	Name   string
+	Emails string
+}
+
+// directorySuggestions lists everyone the cached snapshots know, so the
+// form can offer names and the save step can fetch emails by name.
+func (d *Deps) directorySuggestions() []directorySuggestion {
+	if d.Directories == nil {
+		return nil
+	}
+
+	byName := map[string][]string{}
+
+	for _, cache := range d.Directories.Caches() {
+		snapshot, ok := cache.Snapshot()
+		if !ok {
+			continue
+		}
+
+		for _, user := range snapshot.Users {
+			if user.Name == "" || user.Email == "" {
+				continue
+			}
+
+			byName[user.Name] = append(byName[user.Name], strings.ToLower(user.Email))
+		}
+	}
+
+	out := make([]directorySuggestion, 0, len(byName))
+	for name, emails := range byName {
+		sort.Strings(emails)
+		out = append(out, directorySuggestion{Name: name, Emails: strings.Join(emails, ", ")})
+	}
+
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+
+	return out
+}
+
 func (d *Deps) handleMappingForm(c fiber.Ctx) error {
-	data := mappingFormData{CSRF: csrfToken(c)}
+	data := mappingFormData{CSRF: csrfToken(c), Suggestions: d.directorySuggestions()}
 
 	if name := c.Query("name"); name != "" {
 		entry, err := d.Mapping.Get(c.Context(), name)
@@ -73,6 +157,7 @@ func (d *Deps) handleMappingForm(c fiber.Ctx) error {
 		data.Entry = entry
 		data.Before = &entry
 		data.Pinned = strings.Join(entry.Pinned, ", ")
+		data.Emails = strings.Join(entry.Emails, ", ")
 	} else {
 		data.Entry.Class = mapping.ClassEmployee
 	}
@@ -107,7 +192,39 @@ func (d *Deps) handleMappingSave(c fiber.Ctx) error {
 		}
 	}
 
-	data := mappingFormData{Entry: entry, Pinned: pinnedRaw, CSRF: csrfToken(c)}
+	emailsRaw := formValue(c, "emails")
+	for _, email := range strings.Split(emailsRaw, ",") {
+		if email = strings.ToLower(strings.TrimSpace(email)); email != "" {
+			entry.Emails = append(entry.Emails, email)
+		}
+	}
+
+	emailsFetched := false
+
+	// Left empty, the IdP answers: the directories are the authority on
+	// which addresses a person exists under, so fetch by name rather
+	// than make the operator retype what the platform already knows.
+	if len(entry.Emails) == 0 {
+		for _, suggestion := range d.directorySuggestions() {
+			if suggestion.Name == entry.Name {
+				for _, email := range strings.Split(suggestion.Emails, ", ") {
+					if email != "" {
+						entry.Emails = append(entry.Emails, email)
+					}
+				}
+
+				emailsFetched = len(entry.Emails) > 0
+			}
+		}
+	}
+
+	data := mappingFormData{
+		Entry:         entry,
+		Pinned:        pinnedRaw,
+		Emails:        strings.Join(entry.Emails, ", "),
+		EmailsFetched: emailsFetched,
+		CSRF:          csrfToken(c),
+	}
 
 	before, err := d.Mapping.Get(c.Context(), entry.Name)
 	if err != nil && !errors.Is(err, mapping.ErrNotFound) {
@@ -315,6 +432,11 @@ func describe(before *mapping.Entry, after mapping.Entry) string {
 
 	if before.GitHub != after.GitHub {
 		changes = append(changes, "github: "+before.GitHub+" → "+after.GitHub)
+	}
+
+	if strings.Join(before.Emails, ",") != strings.Join(after.Emails, ",") {
+		changes = append(changes, "emails: "+dash(strings.Join(before.Emails, ", "))+
+			" → "+dash(strings.Join(after.Emails, ", ")))
 	}
 
 	if before.K8s != after.K8s {

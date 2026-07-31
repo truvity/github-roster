@@ -25,6 +25,7 @@ var _ Store = (*SSM)(nil)
 const (
 	fieldName       = "name"
 	fieldGitHub     = "github"
+	fieldEmails     = "emails"
 	fieldK8s        = "k8s"
 	fieldClass      = "class"
 	fieldPinned     = "pinned"
@@ -193,6 +194,10 @@ func (s *SSM) Put(ctx context.Context, entry Entry) error {
 		values[fieldK8s] = entry.K8s
 	}
 
+	if len(entry.Emails) > 0 {
+		values[fieldEmails] = strings.Join(entry.Emails, pinnedSeparator)
+	}
+
 	if len(entry.Pinned) > 0 {
 		values[fieldPinned] = strings.Join(entry.Pinned, pinnedSeparator)
 	}
@@ -212,7 +217,7 @@ func (s *SSM) Put(ctx context.Context, entry Entry) error {
 	// Fields that are now empty must be removed, not left behind: a stale
 	// `pinned` parameter would keep granting a team membership the operator
 	// just took away.
-	for _, field := range []string{fieldK8s, fieldPinned} {
+	for _, field := range []string{fieldK8s, fieldEmails, fieldPinned} {
 		if _, keep := values[field]; keep {
 			continue
 		}
@@ -229,7 +234,7 @@ func (s *SSM) Put(ctx context.Context, entry Entry) error {
 func (s *SSM) Delete(ctx context.Context, name string) error {
 	path := s.personPath(name)
 
-	for _, field := range []string{fieldName, fieldGitHub, fieldK8s, fieldClass, fieldPinned} {
+	for _, field := range []string{fieldName, fieldGitHub, fieldEmails, fieldK8s, fieldClass, fieldPinned} {
 		if err := s.deleteParameter(ctx, path+field); err != nil {
 			return err
 		}
@@ -276,6 +281,10 @@ func entryFrom(fields map[string]types.Parameter) Entry {
 		GitHub: value(fields, fieldGitHub),
 		K8s:    value(fields, fieldK8s),
 		Class:  Class(value(fields, fieldClass)),
+	}
+
+	if emails := value(fields, fieldEmails); emails != "" {
+		entry.Emails = strings.Split(emails, pinnedSeparator)
 	}
 
 	if pinned := value(fields, fieldPinned); pinned != "" {

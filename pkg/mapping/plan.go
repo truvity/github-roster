@@ -193,8 +193,8 @@ func parseRow(line int, record []string) PlannedRow {
 // half-applied.
 func BuildPlan(rows []PlannedRow, existing []Entry) *Plan {
 	stored := make(map[string]Entry, len(existing))
-	for _, entry := range existing {
-		stored[entry.Name] = entry
+	for i := range existing {
+		stored[existing[i].Name] = existing[i]
 	}
 
 	// accumulated is what the store would look like as the plan is applied,

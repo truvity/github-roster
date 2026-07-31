@@ -80,35 +80,49 @@
 {{if .Data.RosterError}}
   <div class="banner">Could not build the roster: {{.Data.RosterError}}</div>
 {{else if .Data.Roster}}
+{{$sources := .Data.SourceNames}}
+{{$orgs := .Data.OrgNames}}
 <section class="card">
+<div style="overflow-x:auto">
 <table>
   <thead>
     <tr>
-      <th>Name</th><th>GitHub</th><th>Namespace</th><th>Live</th>
-      <th>Member</th><th>Teams</th><th>Desired</th>
+      <th>Name</th><th>GitHub</th><th>Namespace</th>
+      {{range $sources}}<th>IdP · {{.}}</th>{{end}}
+      {{range $orgs}}<th>Org · {{.}}</th>{{end}}
     </tr>
   </thead>
   <tbody>
   {{range .Data.Roster.People}}
     {{$p := .}}
-    {{range $org, $m := .Orgs}}
     <tr>
       <td>{{$p.Name}}{{if eq $p.Class "bot"}} <span class="muted">bot</span>{{end}}</td>
       <td>{{$p.GitHub}}</td>
       <td>{{if $p.K8s}}dev-{{$p.K8s}}{{else}}—{{end}}</td>
-      <td>{{if $p.Live}}<span class="badge ok">yes</span>{{else}}<span class="badge danger">no</span>{{end}}</td>
+      {{range $src := $sources}}
+      {{$d := index $p.Directories $src}}
+      <td>
+        {{if $d.Email}}
+          {{if $d.Live}}<span class="badge ok">live</span>{{else}}<span class="badge danger">suspended</span>{{end}}
+          <div class="muted">{{$d.Email}}</div>
+        {{else}}—{{end}}
+      </td>
+      {{end}}
+      {{range $org := $orgs}}
+      {{$m := index $p.Orgs $org}}
       <td>
         {{if $m.InvitationPending}}<span class="badge warn">invited</span>
-        {{else if $m.Member}}{{if eq (printf "%s" $m.Role) "admin"}}<span class="badge ok">owner</span>{{else}}<span class="badge ok">yes</span>{{end}}
+        {{else if $m.Member}}{{if eq (printf "%s" $m.Role) "admin"}}<span class="badge ok">owner</span>{{else}}<span class="badge ok">member</span>{{end}}
         {{else}}<span class="badge danger">no</span>{{end}}
+        {{if $m.Teams}}<div class="muted">{{range $i, $t := $m.Teams}}{{if $i}}, {{end}}{{$t}}{{end}}</div>{{end}}
+        {{if $m.DesiredTeams}}<div class="muted">→ {{range $i, $t := $m.DesiredTeams}}{{if $i}}, {{end}}{{$t}}{{end}}</div>{{end}}
       </td>
-      <td>{{range $i, $t := $m.Teams}}{{if $i}}, {{end}}{{$t}}{{end}}</td>
-      <td>{{range $i, $t := $m.DesiredTeams}}{{if $i}}, {{end}}{{$t}}{{end}}</td>
+      {{end}}
     </tr>
-    {{end}}
   {{end}}
   </tbody>
 </table>
+</div>
 </section>
 
 {{if .Data.Roster.Warnings}}

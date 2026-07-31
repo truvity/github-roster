@@ -61,6 +61,14 @@ func TestServiceStartsAndServesTheRoster(t *testing.T) {
 	// mounts that from a Secret — but the identifiers must be there.
 	seedCredentials(t, client, applierPrefix, env.ApplierAppID, env.ApplierInstallationID, env.ApplierPrivateKey)
 
+	// Directory credentials: companies require a directory, and startup
+	// reads its credentials. A syntactically-present fake is enough —
+	// the fetch fails later and surfaces as an UNHEALTHY source, which
+	// is exactly the fail-soft the design promises (and worth seeing
+	// exercised here rather than mocked away).
+	directoryPrefix := "/" + runID(t) + "/directory"
+	seedDirectoryCredentials(t, client, directoryPrefix)
+
 	// A mapping entry for somebody who is genuinely in the sandbox org, so
 	// the join has a real member to match rather than only warnings.
 	store := mapping.NewSSM(client, mappingPrefix)
@@ -82,7 +90,7 @@ audit: {bucket: roster-integration}
 companies:
   sandbox:
     directory:
-      ssmPrefix: /secrets/integration/directory
+      ssmPrefix: %q
       domains: [sandbox.invalid]
     github:
       org: %q
@@ -90,7 +98,7 @@ companies:
       applierAppSSM: %q
       teams:
         robots: {pinned: true}
-`, mappingPrefix, env.Org, consolePrefix, applierPrefix))
+`, mappingPrefix, directoryPrefix, env.Org, consolePrefix, applierPrefix))
 	require.NoError(t, err)
 
 	// The real wiring, as the binary builds it.
@@ -147,6 +155,10 @@ func TestServiceRefusesToStartWithoutCredentials(t *testing.T) {
 	requireAWS(t)
 	requireGitHub(t)
 
+	client := newSSMClient(t)
+	directoryPrefix := "/" + runID(t) + "/refuses-directory"
+	seedDirectoryCredentials(t, client, directoryPrefix)
+
 	cfg, err := config.Parse(fmt.Appendf(nil, `
 oidc: {disabled: true}
 mapping: {ssmPrefix: %q}
@@ -154,13 +166,13 @@ audit: {bucket: roster-integration}
 companies:
   absent:
     directory:
-      ssmPrefix: /secrets/integration/directory
+      ssmPrefix: %q
       domains: [absent.invalid]
     github:
       org: example-org
       consoleAppSSM: /%s/definitely/not/here
       applierAppSSM: /%s/definitely/not/here-applier
-`, "/"+runID(t)+"/absent/", runID(t), runID(t)))
+`, "/"+runID(t)+"/absent/", directoryPrefix, runID(t), runID(t)))
 	require.NoError(t, err)
 
 	_, err = app.BuildDeps(context.Background(), slogt.New(t), cfg, version.Info{Version: "integration"})
@@ -180,6 +192,27 @@ const testTimeout = 60 * time.Second
 // them. In CI the parameter store is a fresh, empty localstack, so the test
 // must put them there itself — the same values the workflow hands it as
 // environment variables.
+// seedDirectoryCredentials satisfies startup's directory read with a
+// syntactically-present (never valid) service-account key.
+func seedDirectoryCredentials(t *testing.T, client *ssm.Client, prefix string) {
+	t.Helper()
+
+	ctx := context.Background()
+
+	for field, value := range map[string]string{
+		"google-service-account-key-json": `{"type":"service_account","client_email":"fake@integration.invalid","private_key":"not-a-real-key"}`,
+		"google-admin-email":              "admin@integration.invalid",
+	} {
+		_, err := client.PutParameter(ctx, &ssm.PutParameterInput{
+			Name:      aws.String(prefix + "/" + field),
+			Value:     aws.String(value),
+			Type:      types.ParameterTypeSecureString,
+			Overwrite: aws.Bool(true),
+		})
+		require.NoError(t, err)
+	}
+}
+
 func seedCredentials(t *testing.T, client *ssm.Client, prefix, appID, installationID, privateKey string) {
 	t.Helper()
 

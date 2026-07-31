@@ -5,7 +5,7 @@ go 1.26.4
 require (
 	github.com/aws/aws-sdk-go-v2 v1.43.2
 	github.com/aws/aws-sdk-go-v2/config v1.32.33
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.106.1
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.106.2
 	github.com/aws/aws-sdk-go-v2/service/ssm v1.73.2
 	github.com/danielgtaylor/huma/v2 v2.39.1
 	github.com/gofiber/fiber/v3 v3.4.0
@@ -21,6 +21,7 @@ require (
 	k8s.io/api v0.36.3
 	k8s.io/apimachinery v0.36.3
 	k8s.io/client-go v0.36.3
+	k8s.io/utils v0.0.0-20260210185600-b8788abfbbc2
 )
 
 require (
@@ -35,9 +36,9 @@ require (
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.33 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.34 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.14 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.9.25 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.9.26 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.33 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.19.33 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.19.34 // indirect
 	github.com/aws/aws-sdk-go-v2/service/signin v1.5.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.33.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.38.2 // indirect
@@ -102,7 +103,6 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/klog/v2 v2.140.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20260317180543-43fb72c5454a // indirect
-	k8s.io/utils v0.0.0-20260210185600-b8788abfbbc2 // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v6 v6.3.3 // indirect

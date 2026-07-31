@@ -119,11 +119,16 @@ up NAMESPACE RELEASE:
       audit: {bucket: $TEST_BUCKET, prefix: $NS/$REL/, prefixPerOrg: true}
       reconciler:
         image: registry.k8s.io/prow/peribolos:latest
-      orgs:
-        - name: $ORG
-          consoleAppSSM: $CREDS/console/$ORG
-          applierAppSSM: $CREDS/applier/$ORG
-          applierSecret: $REL-applier
+      companies:
+        sandbox:
+          directory:
+            ssmPrefix: $CREDS/directory
+            domains: [example.invalid]
+          github:
+            org: $ORG
+            consoleAppSSM: $CREDS/console/$ORG
+            applierAppSSM: $CREDS/applier/$ORG
+            applierSecret: $REL-applier
     VALUES_EOF
     helm upgrade --install "$REL" charts/github-roster \
       --namespace "$NS" --create-namespace \

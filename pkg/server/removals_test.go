@@ -78,14 +78,15 @@ func sweepWorld(t *testing.T, runner server.JobRunner) (*server.Deps, *audit.Mem
 
 	cfg, err := config.Parse([]byte(`
 oidc: {disabled: true}
-sources:
-  - name: corp
-    ssmPrefix: /secrets/directory/corp
-    domains: [example.com]
-orgs:
-  - name: example-org
-    consoleAppSSM: /secrets/roster/console/example-org
-    applierAppSSM: /secrets/roster/applier/example-org
+companies:
+  corp:
+    directory:
+      ssmPrefix: /secrets/directory/corp
+      domains: [example.com]
+    github:
+      org: example-org
+      consoleAppSSM: /secrets/roster/console/example-org
+      applierAppSSM: /secrets/roster/applier/example-org
 audit: {bucket: b}
 `))
 	require.NoError(t, err)

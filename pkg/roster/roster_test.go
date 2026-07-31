@@ -15,20 +15,21 @@ import (
 
 const doc = `
 oidc: {disabled: true}
-sources:
-  - name: corp
-    ssmPrefix: /secrets/directory/corp
-    domains: [example.com]
-orgs:
-  - name: example-org
-    consoleAppSSM: /secrets/roster/console/example-org
-    applierAppSSM: /secrets/roster/applier/example-org
-    exceptions: [example-bot-app]
-    teams:
-      engineers:
-        groups: [engineers@example.com]
-      robots:
-        pinned: true
+companies:
+  corp:
+    directory:
+      ssmPrefix: /secrets/directory/corp
+      domains: [example.com]
+    github:
+      org: example-org
+      consoleAppSSM: /secrets/roster/console/example-org
+      applierAppSSM: /secrets/roster/applier/example-org
+      exceptions: [example-bot-app]
+      teams:
+        team-engineers:
+          groups: [team-engineers@example.com]
+        robots:
+          pinned: true
 `
 
 func cfg(t *testing.T) *config.Config {
@@ -50,7 +51,7 @@ func snapshot() *directory.Snapshot {
 			{Name: "Unmapped Person", Email: "unmapped@example.com", Live: true},
 		},
 		Groups: map[string][]string{
-			"engineers@example.com": {"ada@example.com", "gone@example.com", "unmapped@example.com"},
+			"team-engineers@example.com": {"ada@example.com", "gone@example.com", "unmapped@example.com"},
 		},
 		FetchedAt: time.Now(),
 	}
@@ -76,8 +77,8 @@ func orgState() *orgstate.State {
 			{Login: "example-bot-app", Role: orgstate.RoleMember},
 		},
 		Invitations: []orgstate.Invitation{{Login: "alan", Role: "direct_member"}},
-		Teams:       []orgstate.Team{{Slug: "engineers"}, {Slug: "robots"}},
-		TeamMembers: map[string][]string{"engineers": {"ada"}, "robots": {}},
+		Teams:       []orgstate.Team{{Slug: "team-engineers"}, {Slug: "robots"}},
+		TeamMembers: map[string][]string{"team-engineers": {"ada"}, "robots": {}},
 	}
 }
 
@@ -132,8 +133,8 @@ func TestLiveMappedPerson(t *testing.T) {
 	m := ada.Orgs["example-org"]
 	require.True(t, m.Member)
 	require.False(t, m.InvitationPending)
-	require.Equal(t, []string{"engineers"}, m.Teams)
-	require.Equal(t, []string{"engineers"}, m.DesiredTeams)
+	require.Equal(t, []string{"team-engineers"}, m.Teams)
+	require.Equal(t, []string{"team-engineers"}, m.DesiredTeams)
 }
 
 // An invited person occupies a seat and is absent from the members API.
@@ -304,7 +305,7 @@ func TestGitHubLoginMatchingIsCaseInsensitive(t *testing.T) {
 
 	state := orgState()
 	state.Members = []orgstate.Member{{Login: "ADA", Role: orgstate.RoleMember}}
-	state.TeamMembers = map[string][]string{"engineers": {"AdA"}}
+	state.TeamMembers = map[string][]string{"team-engineers": {"AdA"}}
 	state.Invitations = nil
 
 	r := roster.Join(roster.Inputs{
@@ -317,7 +318,7 @@ func TestGitHubLoginMatchingIsCaseInsensitive(t *testing.T) {
 
 	m := person(t, r, "Ada Lovelace").Orgs["example-org"]
 	require.True(t, m.Member)
-	require.Equal(t, []string{"engineers"}, m.Teams)
+	require.Equal(t, []string{"team-engineers"}, m.Teams)
 }
 
 // Without a GitHub read the desired side is still computed, but nobody may
@@ -335,7 +336,7 @@ func TestMissingOrgStateProposesNothing(t *testing.T) {
 
 	ada := person(t, r, "Ada Lovelace").Orgs["example-org"]
 	require.False(t, ada.Member)
-	require.Equal(t, []string{"engineers"}, ada.DesiredTeams)
+	require.Equal(t, []string{"team-engineers"}, ada.DesiredTeams)
 	require.Empty(t, warnings(r, roster.WarnUnknownMember))
 }
 

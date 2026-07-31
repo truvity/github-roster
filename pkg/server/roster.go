@@ -65,6 +65,24 @@ func (d *Deps) buildRoster(ctx context.Context) (*roster.Roster, error) {
 	return roster.Join(in), nil
 }
 
+// githubReadAt reports when each organization's GitHub state was read, so
+// a page rendered from the cache can say how old its answer is instead of
+// passing it off as live.
+func (d *Deps) githubReadAt(ctx context.Context) map[string]time.Time {
+	out := make(map[string]time.Time, len(d.Orgs))
+
+	for name, reader := range d.Orgs {
+		state, err := reader.Read(ctx)
+		if err != nil {
+			continue
+		}
+
+		out[name] = state.ReadAt
+	}
+
+	return out
+}
+
 // sourceStatuses reports directory health, or nothing when no directories
 // are wired (tests, local runs).
 func (d *Deps) sourceStatuses() []directory.Status {

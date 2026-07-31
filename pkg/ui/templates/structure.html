@@ -72,6 +72,9 @@
   Directory liveness joined with the mapping and GitHub state. A person
   with no mapping entry is not here — they appear below as a warning, and
   are granted nothing until an operator maps them.
+  {{range .Data.GitHub}}
+  <span class="muted">GitHub state for {{.Org}} as of {{.Age}} ago.</span>
+  {{end}}
 </p>
 
 {{if .Data.RosterError}}

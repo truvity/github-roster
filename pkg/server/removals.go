@@ -106,7 +106,9 @@ func (d *Deps) sweepOrg(ctx context.Context, org *config.Org, joined *roster.Ros
 		return outcome
 	}
 
-	state, err := reader.Read(ctx)
+	// Never a cached answer: a removal decided on stale state is exactly
+	// the mistake the fail-safes exist to prevent.
+	state, err := readFresh(ctx, reader)
 	if err != nil {
 		outcome.Error = fmt.Sprintf("read organization: %v", err)
 		d.recordSweep(ctx, nil, nil, err)
@@ -174,6 +176,9 @@ func (d *Deps) sweepOrg(ctx context.Context, org *config.Org, joined *roster.Ros
 		RunID:             runID() + "-" + org.Name,
 		Actor:             "schedule",
 	})
+
+	// The Job wrote to GitHub (or tried to); drop any cached answer.
+	invalidate(reader)
 
 	d.recordSweep(ctx, result, run, err)
 

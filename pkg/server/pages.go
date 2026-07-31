@@ -1,8 +1,11 @@
 package server
 
 import (
+	"maps"
+	"slices"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/csrf"
@@ -30,6 +33,14 @@ type structureData struct {
 	// RosterError explains why the join is missing, rather than rendering
 	// an empty table that reads as "nobody works here".
 	RosterError string
+	// GitHub says how old each organization's GitHub answer is — the
+	// cache must never pass a stale read off as live.
+	GitHub []githubAge
+}
+
+type githubAge struct {
+	Org string
+	Age string
 }
 
 type structureOrg struct {
@@ -75,6 +86,16 @@ func (d *Deps) handleStructure(c fiber.Ctx) error {
 			data.RosterError = err.Error()
 		} else {
 			data.Roster = joined
+		}
+
+		// A second Read against the cache is free; it exists to render
+		// "as of" honestly.
+		readAt := d.githubReadAt(c.Context())
+		for _, name := range slices.Sorted(maps.Keys(readAt)) {
+			data.GitHub = append(data.GitHub, githubAge{
+				Org: name,
+				Age: time.Since(readAt[name]).Round(time.Second).String(),
+			})
 		}
 	}
 

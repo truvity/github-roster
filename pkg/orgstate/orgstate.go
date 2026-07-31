@@ -169,31 +169,27 @@ func (t *tokenTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 // requests, and a page that loads in 400ms instead of 200ms is not worth a
 // concurrency bug in code that decides who keeps access.
 func (r *Reader) Read(ctx context.Context) (*State, error) {
-	state := &State{Org: r.org, TeamMembers: map[string][]string{}}
-
 	// The console reads live on every page load, so this latency IS the
-	// page latency. The listings are independent and the team rosters fan
-	// out from the team list; run serially this is one round-trip per team
-	// plus three — ten seconds on a real organization.
+	// page latency. The two halves are independent; run serially this is
+	// one round-trip per team plus three — ten seconds on a real
+	// organization.
+	var (
+		membership *Membership
+		teams      *TeamState
+	)
+
 	group, groupCtx := errgroup.WithContext(ctx)
 
 	group.Go(func() error {
 		var err error
-		state.Members, err = r.Members(groupCtx)
+		membership, err = r.ReadMembership(groupCtx)
 
 		return err
 	})
 
 	group.Go(func() error {
 		var err error
-		state.Invitations, err = r.PendingInvitations(groupCtx)
-
-		return err
-	})
-
-	group.Go(func() error {
-		var err error
-		state.Teams, err = r.Teams(groupCtx)
+		teams, err = r.ReadTeams(groupCtx)
 
 		return err
 	})
@@ -202,6 +198,64 @@ func (r *Reader) Read(ctx context.Context) (*State, error) {
 		return nil, err
 	}
 
+	return assemble(r.org, membership, teams), nil
+}
+
+// Membership is the fast-changing half of a State: who is in the
+// organization and who has been invited.
+type Membership struct {
+	Members     []Member
+	Invitations []Invitation
+	FetchedAt   time.Time
+}
+
+// TeamState is the slow-changing half of a State: the teams and their
+// rosters, which change essentially only through this service's own syncs
+// and reviewed infrastructure commits.
+type TeamState struct {
+	Teams       []Team
+	TeamMembers map[string][]string
+	FetchedAt   time.Time
+}
+
+// ReadMembership lists members and pending invitations concurrently.
+func (r *Reader) ReadMembership(ctx context.Context) (*Membership, error) {
+	out := &Membership{}
+
+	group, groupCtx := errgroup.WithContext(ctx)
+
+	group.Go(func() error {
+		var err error
+		out.Members, err = r.Members(groupCtx)
+
+		return err
+	})
+
+	group.Go(func() error {
+		var err error
+		out.Invitations, err = r.PendingInvitations(groupCtx)
+
+		return err
+	})
+
+	if err := group.Wait(); err != nil {
+		return nil, err
+	}
+
+	out.FetchedAt = time.Now()
+
+	return out, nil
+}
+
+// ReadTeams lists the teams and fans out over their member rosters.
+func (r *Reader) ReadTeams(ctx context.Context) (*TeamState, error) {
+	teams, err := r.Teams(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	out := &TeamState{Teams: teams, TeamMembers: make(map[string][]string, len(teams))}
+
 	// Bounded, because GitHub's secondary rate limits punish request
 	// bursts long before the primary quota is anywhere in sight.
 	fanout, fanoutCtx := errgroup.WithContext(ctx)
@@ -209,7 +263,7 @@ func (r *Reader) Read(ctx context.Context) (*State, error) {
 
 	var mu sync.Mutex
 
-	for _, team := range state.Teams {
+	for _, team := range teams {
 		fanout.Go(func() error {
 			members, err := r.TeamMembers(fanoutCtx, team.Slug)
 			if err != nil {
@@ -217,7 +271,7 @@ func (r *Reader) Read(ctx context.Context) (*State, error) {
 			}
 
 			mu.Lock()
-			state.TeamMembers[team.Slug] = members
+			out.TeamMembers[team.Slug] = members
 			mu.Unlock()
 
 			return nil
@@ -228,9 +282,27 @@ func (r *Reader) Read(ctx context.Context) (*State, error) {
 		return nil, err
 	}
 
-	state.ReadAt = time.Now()
+	out.FetchedAt = time.Now()
 
-	return state, nil
+	return out, nil
+}
+
+// assemble joins the two halves into a State. ReadAt is the OLDER of the
+// two fetch times: the honest answer to "as of when is this true".
+func assemble(org string, membership *Membership, teams *TeamState) *State {
+	readAt := membership.FetchedAt
+	if teams.FetchedAt.Before(readAt) {
+		readAt = teams.FetchedAt
+	}
+
+	return &State{
+		Org:         org,
+		Members:     membership.Members,
+		Invitations: membership.Invitations,
+		Teams:       teams.Teams,
+		TeamMembers: teams.TeamMembers,
+		ReadAt:      readAt,
+	}
 }
 
 // Members lists organization members with their roles.

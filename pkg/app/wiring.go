@@ -94,7 +94,9 @@ func buildReadLayers(ctx context.Context, logger *slog.Logger, cfg *config.Confi
 			return nil, err
 		}
 
-		layers.Orgs[org.Name] = orgReader
+		// Cached, with the sync/removals paths bypassing via ReadFresh
+		// and every applier run invalidating (pkg/orgstate/cache.go).
+		layers.Orgs[org.Name] = orgstate.NewCache(org.Name, orgReader)
 
 		// The applier App's IDENTIFIERS only. The private key at this same
 		// prefix is deliberately NOT read: it is mounted straight into the

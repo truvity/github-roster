@@ -114,6 +114,12 @@ func (d *Deps) runSync(c fiber.Ctx, confirm bool) error {
 	data.Run = run
 	data.Confirming = !confirm
 
+	if confirm {
+		// The Job just wrote to GitHub; whatever any cache holds is now
+		// wrong by construction.
+		invalidate(d.Orgs[org.Name])
+	}
+
 	// Record BEFORE reporting, and record failures too — the attempt is
 	// the thing being audited, and a run that failed half-way is exactly
 	// the one somebody will ask about later.
@@ -176,7 +182,9 @@ func (d *Deps) renderFor(c fiber.Ctx, org *config.Org) (*peribolos.Result, error
 		return nil, fmt.Errorf("no GitHub reader configured for %q", org.Name)
 	}
 
-	state, err := reader.Read(c.Context())
+	// Never a cached answer: this state is the diff base an operator
+	// confirms.
+	state, err := readFresh(c.Context(), reader)
 	if err != nil {
 		return nil, fmt.Errorf("read %s: %w", org.Name, err)
 	}

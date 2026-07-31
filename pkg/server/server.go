@@ -77,9 +77,40 @@ type ApplierApp struct {
 }
 
 // OrgReader reads one organization's current GitHub state.
-// *orgstate.Reader satisfies it; tests inject fakes.
+// *orgstate.Reader and *orgstate.Cache satisfy it; tests inject fakes.
 type OrgReader interface {
 	Read(ctx context.Context) (*orgstate.State, error)
+}
+
+// freshReader is the optional cache-bypass. The sync and removals paths
+// use it when present: the state an operator confirms, and the state a
+// sweep decides removals on, must be the truth right now.
+type freshReader interface {
+	ReadFresh(ctx context.Context) (*orgstate.State, error)
+}
+
+// invalidator is the optional bust-on-write hook, called after every
+// applier run — once a Job has written to GitHub, a cached answer is
+// wrong by construction.
+type invalidator interface {
+	Invalidate()
+}
+
+// readFresh reads bypassing any cache, falling back to a plain Read for
+// readers that have none.
+func readFresh(ctx context.Context, reader OrgReader) (*orgstate.State, error) {
+	if fresh, ok := reader.(freshReader); ok {
+		return fresh.ReadFresh(ctx)
+	}
+
+	return reader.Read(ctx)
+}
+
+// invalidate drops the reader's cache, when it has one.
+func invalidate(reader OrgReader) {
+	if cache, ok := reader.(invalidator); ok {
+		cache.Invalidate()
+	}
 }
 
 // JobRunner runs one reconciler Job. *applier.Runner satisfies it.

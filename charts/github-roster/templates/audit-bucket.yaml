@@ -24,9 +24,9 @@ spec:
   encryption:
     rules:
       - applyServerSideEncryptionByDefault:
-          sSEAlgorithm: {{ .Values.audit.encryption.algorithm | quote }}
+          sseAlgorithm: {{ .Values.audit.encryption.algorithm | quote }}
           {{- with .Values.audit.encryption.kmsKeyID }}
-          kMSMasterKeyID: {{ . | quote }}
+          kmsMasterKeyID: {{ . | quote }}
           {{- end }}
   {{- with .Values.audit.retentionDays }}
   lifecycle:

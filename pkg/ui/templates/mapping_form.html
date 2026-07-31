@@ -50,7 +50,7 @@
       {{if .Data.Before}}<span class="muted">the key; create a new entry to change it</span>{{end}}
       {{if .Data.Suggestions}}
       <datalist id="directory-people">
-        {{range .Data.Suggestions}}<option value="{{.Name}}">{{.Emails}}</option>{{end}}
+        {{range .Data.Suggestions}}<option value="{{.Name}}" data-emails="{{.Emails}}" data-k8s="{{.K8s}}">{{.Emails}}</option>{{end}}
       </datalist>
       {{end}}
     </p>
@@ -98,6 +98,27 @@
       <a href="/mapping" style="margin-left:12px">Cancel</a>
     </p>
   </form>
+
+  {{if .Data.Suggestions}}
+  <script>
+    // Picking a directory person prefills what the platform already
+    // knows — the IdP addresses and the conventional namespace — but
+    // only into EMPTY fields; typed values are never overwritten.
+    (function () {
+      var name = document.getElementById("name");
+      if (!name) return;
+      name.addEventListener("change", function () {
+        var opt = document.querySelector(
+          '#directory-people option[value="' + CSS.escape(name.value) + '"]');
+        if (!opt) return;
+        var emails = document.getElementById("emails");
+        if (emails && !emails.value) emails.value = opt.dataset.emails || "";
+        var k8s = document.getElementById("k8s");
+        if (k8s && !k8s.value) k8s.value = opt.dataset.k8s || "";
+      });
+    })();
+  </script>
+  {{end}}
 
   {{if .Data.Before}}
   <form method="post" action="/mapping/delete" style="margin-top:24px"

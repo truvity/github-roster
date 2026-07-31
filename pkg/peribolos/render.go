@@ -125,7 +125,7 @@ func Render(in Inputs) (*Result, error) {
 	org := Org{Admins: sortedUnique(admins), Members: sortedUnique(desired)}
 
 	if in.Mode == ModeFull {
-		org.Teams = renderTeams(in)
+		org.Teams = renderTeams(in, result)
 	}
 
 	result.Document = &Document{Orgs: map[string]Org{in.Org.Name: org}}
@@ -277,16 +277,33 @@ func fullMembers(in Inputs, people map[string]roster.Person, current []string, r
 // A configured team that does not exist is skipped, not created: team
 // creation belongs to the structure engine, and this service must never be
 // the thing that invents one.
-func renderTeams(in Inputs) map[string]Team {
+func renderTeams(in Inputs, result *Result) map[string]Team {
 	live := map[string]bool{}
 	for _, team := range in.State.Teams {
 		live[team.Slug] = true
+	}
+
+	absent := map[string]bool{}
+	for _, group := range in.Roster.AbsentGroups {
+		absent[group] = true
 	}
 
 	teams := map[string]Team{}
 
 	for name := range in.Org.Teams {
 		if !live[name] {
+			continue
+		}
+
+		// A team backed by a group its (healthy) directory says does not
+		// exist yet gets a NO-OP: current members restated verbatim. An
+		// empty desired list here would read as "remove everyone" the
+		// moment the team has members — the per-group fail-safe.
+		if group := absentBacking(in.Org.Teams[name], absent); group != "" {
+			teams[name] = Team{Members: sortedUnique(in.State.TeamMembers[name])}
+			result.Notes = append(result.Notes,
+				fmt.Sprintf("team %s: group %s does not exist in its directory yet — membership left untouched", name, group))
+
 			continue
 		}
 
@@ -320,12 +337,19 @@ func renderTeams(in Inputs) map[string]Team {
 }
 
 // onlyKnownBy reports an unhealthy source this person depends on, or "".
+//
+// Both the sources that HAVE answered for the person and the ones their
+// entry's emails say SHOULD answer count: a person whose only declared
+// directory has never produced a snapshot must be protected exactly like
+// one whose directory went stale (the 2026-07-31 near-miss).
 func onlyKnownBy(person *roster.Person, unhealthy []string) string {
-	if len(unhealthy) == 0 || len(person.Sources) == 0 {
+	sources := append(append([]string{}, person.Sources...), person.ExpectedSources...)
+
+	if len(unhealthy) == 0 || len(sources) == 0 {
 		return ""
 	}
 
-	for _, source := range person.Sources {
+	for _, source := range sources {
 		for _, bad := range unhealthy {
 			if source == bad {
 				return source
@@ -428,4 +452,16 @@ func sortedUnique(values []string) []string {
 	sort.Strings(out)
 
 	return out
+}
+
+// absentBacking returns the first of the team's groups that a healthy
+// directory reported absent, or "".
+func absentBacking(team config.Team, absent map[string]bool) string {
+	for _, group := range team.Groups {
+		if absent[strings.ToLower(group)] {
+			return group
+		}
+	}
+
+	return ""
 }

@@ -68,6 +68,15 @@ spec:
             {{- end }}
             - name: tmp
               mountPath: /tmp
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- range . }}
+        - {{- omit . "labelSelector" | toYaml | nindent 10 }}
+          labelSelector:
+            matchLabels:
+              {{- include "github-roster.selectorLabels" $ | nindent 14 }}
+        {{- end }}
+      {{- end }}
       volumes:
         {{- if .Values.config }}
         - name: config

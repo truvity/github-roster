@@ -6,13 +6,19 @@
 <title>{{.Title}} · roster</title>
 <style>
   :root {
-    --fg: #1c1d1f; --muted: #6a6f76; --line: #e2e5e9; --bg: #ffffff;
-    --accent: #2f5bd0; --warn: #8a5a00; --warn-bg: #fff5e0; --danger: #b3261e;
+    --fg: #1c1d1f; --muted: #6a6f76; --line: #e2e5e9; --bg: #f5f6f8;
+    --surface: #ffffff; --inset: #f8f9fa;
+    --accent: #667eea; --accent-strong: #5a6fd6; --on-accent: #ffffff;
+    --warn: #8a5a00; --warn-bg: #fff5e0; --danger: #b3261e; --danger-bg: #fdecea;
+    --ok: #1e7d3c; --ok-bg: #e7f5ec;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --fg: #e8eaed; --muted: #9aa0a6; --line: #33373d; --bg: #16181c;
-      --accent: #8ab0ff; --warn: #e0b566; --warn-bg: #3a2f14; --danger: #f2857d;
+      --fg: #e8eaed; --muted: #9aa0a6; --line: #33373d; --bg: #101216;
+      --surface: #16181c; --inset: #1d2025;
+      --accent: #8ab0ff; --accent-strong: #a4c0ff; --on-accent: #101216;
+      --warn: #e0b566; --warn-bg: #3a2f14; --danger: #f2857d; --danger-bg: #3a1f1c;
+      --ok: #7ed09a; --ok-bg: #17301f;
     }
   }
   * { box-sizing: border-box; }
@@ -23,6 +29,7 @@
   header {
     display: flex; align-items: baseline; gap: 24px;
     padding: 14px 24px; border-bottom: 1px solid var(--line);
+    background: var(--surface);
   }
   header .brand { font-weight: 650; letter-spacing: -0.01em; }
   header nav { display: flex; gap: 18px; flex: 1; }
@@ -31,22 +38,51 @@
   header nav a.current { color: var(--fg); font-weight: 600; }
   .who { color: var(--muted); font-size: 13px; }
   .who .role {
-    border: 1px solid var(--line); border-radius: 10px;
+    background: var(--inset); border: 1px solid var(--line); border-radius: 10px;
     padding: 1px 7px; margin-left: 6px; font-size: 12px;
   }
-  main { padding: 24px; max-width: 1100px; }
-  h1 { font-size: 20px; margin: 0 0 4px; letter-spacing: -0.01em; }
-  .lede { color: var(--muted); margin: 0 0 20px; }
+  main { padding: 28px 24px; max-width: 1000px; margin: 0 auto; }
+  h1 { font-size: 21px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  h2 { font-size: 16px; margin: 0 0 4px; }
+  .lede { color: var(--muted); margin: 0 0 16px; }
+  .card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+    padding: 18px 20px; margin-bottom: 22px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+  .card > :last-child { margin-bottom: 0; }
   table { border-collapse: collapse; width: 100%; }
-  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: var(--inset); }
   th { color: var(--muted); font-weight: 600; font-size: 13px; }
+  .badge {
+    display: inline-block; border-radius: 10px; padding: 1px 8px;
+    font-size: 12px; font-weight: 600; white-space: nowrap;
+  }
+  .badge.ok { color: var(--ok); background: var(--ok-bg); }
+  .badge.warn { color: var(--warn); background: var(--warn-bg); }
+  .badge.danger { color: var(--danger); background: var(--danger-bg); }
+  button {
+    background: var(--accent); color: var(--on-accent); border: none;
+    padding: 8px 18px; border-radius: 6px; font-size: 14px; font-weight: 500;
+    cursor: pointer;
+  }
+  button:hover { background: var(--accent-strong); }
+  input[type="text"], input[type="url"], input[type="email"], textarea, select {
+    padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px;
+    font-size: 14px; background: var(--surface); color: var(--fg);
+  }
+  input:focus, textarea:focus, select:focus {
+    outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent;
+  }
   .banner {
     background: var(--warn-bg); color: var(--warn); border: 1px solid var(--warn);
     border-radius: 6px; padding: 10px 14px; margin-bottom: 20px; font-size: 14px;
   }
   footer {
     color: var(--muted); font-size: 12px; padding: 20px 24px;
-    border-top: 1px solid var(--line); margin-top: 40px;
+    text-align: center; margin-top: 20px;
   }
   a { color: var(--accent); }
   .muted { color: var(--muted); font-size: 12px; }

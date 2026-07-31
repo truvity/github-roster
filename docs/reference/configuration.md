@@ -110,10 +110,20 @@ One corporate directory each.
 | `name` | yes | unique; appears in the UI and in audit records |
 | `ssmPrefix` | yes | holds the directory credentials (service-account key, admin subject) |
 | `domains` | yes | the email domains this source is responsible for |
+| `probeGroup` | no | health canary: a group that always exists (the directory's `all@`, typically) |
 
 `domains` is required rather than defaulted to "all". A directory may serve
 domains this instance has no business managing, and reading them would
 import people it should never act on.
+
+`probeGroup` changes what a missing group means. Without it, any error on
+any mapped group fails the whole fetch — the safe reading when nothing
+proves the directory itself works. With the canary readable, the source
+counts as healthy, liveness flows, and a mapped group answering 404 is
+recorded as a **per-group absence**: the console warns, and every run
+leaves the teams that group backs untouched until it exists. Errors other
+than 404 still fail the fetch — auth and transport problems must never
+read as absences.
 
 ## `orgs[]`
 
@@ -162,10 +172,20 @@ field:
 ```
 /roster/people/ada-lovelace/name     "Ada Lovelace"
 /roster/people/ada-lovelace/github   "ada"
+/roster/people/ada-lovelace/emails   "ada@example.com,ada@partner.example"
 /roster/people/ada-lovelace/k8s      "ada"
 /roster/people/ada-lovelace/class    "employee"
 /roster/people/ada-lovelace/pinned   "example-org/robots"
 ```
+
+`name` is the unique key — the human label every source shares. `emails`
+are the IdP connection: the addresses the directories know the person
+under, one per identity (a person spanning companies has several). The
+join matches on the emails FIRST and falls back to the name, so a
+directory spelling a name differently cannot detach a person from their
+liveness. The emails also derive the person's *expected* sources: someone
+whose only declared directory has never answered is protected from
+unattended removal exactly like someone whose directory went stale.
 
 The `people/` segment is not decoration. A prefix should be either a
 container or a record, never both — otherwise a person whose name slugged
@@ -190,7 +210,7 @@ the access trail, not secrecy.
 
 | Key | Default | Meaning |
 |---|---|---|
-| `removalsInterval` | `1h` | how often unattended, removals-only runs happen |
+| `removalsInterval` | `1h` | how often unattended, removals-only runs happen; `0s` disables the loop (day-0 gating) |
 | `maxRemovalFraction` | `0.5` | refuse a run removing more than this share of an organization; `0` disables the guard |
 
 `removalsInterval` *is* the service's half of the revocation SLA: a leaver

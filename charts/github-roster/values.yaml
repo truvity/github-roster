@@ -150,3 +150,11 @@ securityContext:
 nodeSelector: {}
 tolerations: []
 affinity: {}
+
+# Spread replicas across nodes (preferred, not required): with both
+# replicas on one node, the PodDisruptionBudget protects against nothing
+# and a node event logs out every operator session at once.
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: ScheduleAnyway

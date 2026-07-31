@@ -99,17 +99,23 @@ const (
 	// bodyLimit bounds a request. The largest thing anyone posts here is a
 	// bulk mapping import pasted into a textarea.
 	bodyLimit = 4 << 20
+	// readBufferSize must hold the full request header block. The gateway
+	// forwards the OIDC session cookies plus a JWT access token with role
+	// assertions — together well past fasthttp's 4 KiB default, which
+	// answers 431 before any handler runs.
+	readBufferSize = 64 << 10
 )
 
 // NewApp builds the console. Exported so tests can drive the whole stack —
 // routing, middleware, templates — over a real listener.
 func NewApp(deps *Deps) *fiber.App {
 	app := fiber.New(fiber.Config{
-		ReadTimeout:  readTimeout,
-		WriteTimeout: writeTimeout,
-		IdleTimeout:  idleTimeout,
-		BodyLimit:    bodyLimit,
-		ErrorHandler: errorHandler(deps),
+		ReadTimeout:    readTimeout,
+		WriteTimeout:   writeTimeout,
+		IdleTimeout:    idleTimeout,
+		BodyLimit:      bodyLimit,
+		ReadBufferSize: readBufferSize,
+		ErrorHandler:   errorHandler(deps),
 	})
 
 	// A panic on one page must not take the process down: the scheduled

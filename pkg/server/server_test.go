@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gofiber/fiber/v3"
@@ -168,6 +169,28 @@ func TestUnauthenticatedCallersReachNothing(t *testing.T) {
 		status, _ := get(t, app, path)
 		require.Equal(t, fiber.StatusUnauthorized, status, "GET %s unauthenticated", path)
 	}
+}
+
+// The gateway forwards the OIDC session cookies plus a JWT access token
+// with role assertions — a header block far past fasthttp's 4 KiB default
+// read buffer, which answers 431 before any handler runs. The config must
+// leave room for it.
+func TestGatewaySizedHeadersAreAccepted(t *testing.T) {
+	t.Parallel()
+
+	app := server.NewApp(newDeps(t, doc, &fixedAuth{role: auth.RoleViewer}))
+
+	req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
+	req.Header.Set(fiber.HeaderAccept, fiber.MIMETextHTML)
+	req.Header.Set(fiber.HeaderCookie, "BearerToken="+strings.Repeat("t", 16<<10))
+	req.Header.Set(fiber.HeaderAuthorization, "Bearer "+strings.Repeat("j", 8<<10))
+
+	resp, err := app.Test(req)
+	require.NoError(t, err)
+
+	defer func() { _ = resp.Body.Close() }()
+
+	require.Equal(t, fiber.StatusOK, resp.StatusCode)
 }
 
 func TestAPIVersion(t *testing.T) {

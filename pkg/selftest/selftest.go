@@ -16,7 +16,9 @@ package selftest
 import (
 	"context"
 	"fmt"
+	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	authorizationv1 "k8s.io/api/authorization/v1"
@@ -223,6 +225,17 @@ func checkRBAC(ctx context.Context, report *Report) {
 		return
 	}
 
+	// The service's grants are a namespaced Role: an access review
+	// without a namespace asks the cluster-wide question and correctly
+	// answers "denied" on a least-privilege install (found on kernel,
+	// day one — every rbac check failed against a Role that was right).
+	namespace, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
+	if err != nil {
+		report.add("rbac", fmt.Errorf("read own namespace: %w", err), "")
+
+		return
+	}
+
 	client, err := kubernetes.NewForConfig(restCfg)
 	if err != nil {
 		report.add("rbac", err, "")
@@ -249,6 +262,7 @@ func checkRBAC(ctx context.Context, report *Report) {
 		review := &authorizationv1.SelfSubjectAccessReview{
 			Spec: authorizationv1.SelfSubjectAccessReviewSpec{
 				ResourceAttributes: &authorizationv1.ResourceAttributes{
+					Namespace:   strings.TrimSpace(string(namespace)),
 					Group:       c.group,
 					Resource:    c.resource,
 					Subresource: c.subresource,

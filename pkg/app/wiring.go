@@ -130,10 +130,10 @@ func buildSources(ctx context.Context, reader *secrets.Reader, cfg *config.Confi
 		source, err := directory.NewGoogle(directory.GoogleConfig{
 			Name:    src.Name,
 			Domains: src.Domains,
-			// Only the groups some team actually maps to. Listing every
-			// group in a Workspace would read membership the service has
-			// no use for.
-			Groups:  cfg.MappedGroups(),
+			// Only the groups some team maps to AND this source's
+			// directory owns — a source asked about a foreign company's
+			// group 403s and the whole fetch fails.
+			Groups:  cfg.MappedGroupsForDomains(src.Domains),
 			KeyJSON: []byte(values[fieldServiceAccountKey]),
 			Subject: values[fieldAdminEmail],
 		})

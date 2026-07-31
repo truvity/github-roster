@@ -623,6 +623,31 @@ func validateTeams(o *Org) error {
 	return nil
 }
 
+// MappedGroupsForDomains returns the mapped groups whose domain belongs
+// to the given set — what a SINGLE directory source is asked to resolve.
+// A source must never be asked about another company's groups: its
+// service account has no rights there, and one foreign 403 fails the
+// whole fetch, marking the source unhealthy (observed on kernel, day
+// one). Cross-company membership still works because every group is
+// fetched from its OWN company's source and memberships merge in the
+// join.
+func (c *Config) MappedGroupsForDomains(domains []string) []string {
+	allowed := make(map[string]bool, len(domains))
+	for _, d := range domains {
+		allowed[strings.ToLower(d)] = true
+	}
+
+	var out []string
+
+	for _, group := range c.MappedGroups() {
+		if _, domain, ok := strings.Cut(strings.ToLower(group), "@"); ok && allowed[domain] {
+			out = append(out, group)
+		}
+	}
+
+	return out
+}
+
 // MappedGroups returns every directory group any team draws membership
 // from, deduplicated.
 //

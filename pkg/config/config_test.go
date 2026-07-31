@@ -187,9 +187,9 @@ companies: {}
 			contains: "must start and end with",
 		},
 		{
-			name:     "non-positive removals interval",
-			doc:      minimal + "\nschedule: {removalsInterval: 0s}\n",
-			contains: "removalsInterval must be positive",
+			name:     "negative removals interval",
+			doc:      minimal + "\nschedule: {removalsInterval: -1s}\n",
+			contains: "removalsInterval must be zero (disabled) or positive",
 		},
 		{
 			name:     "removal fraction out of range",

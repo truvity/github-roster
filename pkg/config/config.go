@@ -376,8 +376,11 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("audit.prefix %q must end with %q", c.Audit.Prefix, "/")
 	}
 
-	if c.Schedule.RemovalsInterval <= 0 {
-		return fmt.Errorf("schedule.removalsInterval must be positive, got %s", c.Schedule.RemovalsInterval)
+	// Zero DISABLES the unattended loop — the day-0 gate: nothing
+	// unattended runs until the operator-reviewed first sync has. It must
+	// be stated explicitly (`0s`); negative is still a mistake.
+	if c.Schedule.RemovalsInterval < 0 {
+		return fmt.Errorf("schedule.removalsInterval must be zero (disabled) or positive, got %s", c.Schedule.RemovalsInterval)
 	}
 
 	if c.Schedule.MaxRemovalFraction < 0 || c.Schedule.MaxRemovalFraction > 1 {

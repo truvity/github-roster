@@ -104,7 +104,9 @@ func (c *Cache) Status() Status {
 
 	if c.snapshot != nil {
 		status.FetchedAt = c.snapshot.FetchedAt
-		status.Age = time.Since(c.snapshot.FetchedAt)
+		// Rounded: this renders on the console, and nanosecond precision
+		// reads as noise ("5m6.442486603s ago").
+		status.Age = time.Since(c.snapshot.FetchedAt).Round(time.Second)
 	}
 
 	if c.lastErr != nil {

@@ -27,6 +27,9 @@ type fakeIssuer struct {
 	server *httptest.Server
 	signer jwk.Key
 	public jwk.Key
+	// userinfoCalls counts hits on /userinfo, so tests can prove the
+	// display cache holds.
+	userinfoCalls int
 }
 
 func newFakeIssuer(t *testing.T) *fakeIssuer {
@@ -49,8 +52,25 @@ func newFakeIssuer(t *testing.T) *fakeIssuer {
 	mux.HandleFunc("/.well-known/openid-configuration", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]string{
-			"issuer":   issuer.server.URL,
-			"jwks_uri": issuer.server.URL + "/keys",
+			"issuer":            issuer.server.URL,
+			"jwks_uri":          issuer.server.URL + "/keys",
+			"userinfo_endpoint": issuer.server.URL + "/userinfo",
+		})
+	})
+	mux.HandleFunc("/userinfo", func(w http.ResponseWriter, r *http.Request) {
+		issuer.userinfoCalls++
+
+		if r.Header.Get("Authorization") == "" {
+			w.WriteHeader(http.StatusUnauthorized)
+
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"sub":   "u-1",
+			"name":  "A Person",
+			"email": "a@example.com",
 		})
 	})
 	mux.HandleFunc("/keys", func(w http.ResponseWriter, _ *http.Request) {
@@ -307,7 +327,8 @@ func TestDisplayClaimsFallBackToTheIDTokenCookie(t *testing.T) {
 }
 
 // A cookie for a different subject is somebody else's session leftovers; its
-// claims must not be displayed as the caller's.
+// claims must never be displayed as the caller's — the verifier falls
+// through to userinfo instead.
 func TestDisplayClaimsIgnoreAForeignIDToken(t *testing.T) {
 	t.Parallel()
 
@@ -317,16 +338,20 @@ func TestDisplayClaimsIgnoreAForeignIDToken(t *testing.T) {
 	access := issuer.token(t, func(b *jwt.Builder) {
 		b.Claim("name", "").Claim("email", "")
 	})
-	foreign := issuer.token(t, func(b *jwt.Builder) { b.Subject("u-2") })
+	foreign := issuer.token(t, func(b *jwt.Builder) {
+		b.Subject("u-2").Claim("name", "Someone Else")
+	})
 
 	status, identity := probeIdentity(t, authenticator, "Bearer "+access, foreign)
 	require.Equal(t, fiber.StatusOK, status)
-	require.Empty(t, identity.Name)
-	require.Empty(t, identity.Email)
+	require.NotEqual(t, "Someone Else", identity.Name,
+		"the foreign cookie's claims must not be displayed as the caller's")
+	require.Equal(t, "A Person", identity.Name, "userinfo answers instead")
+	require.Equal(t, 1, issuer.userinfoCalls)
 }
 
-// A garbage cookie must neither fill claims nor break the request — the
-// access token alone already authenticated the caller.
+// A garbage cookie must not break the request — the access token alone
+// already authenticated the caller, and userinfo covers the display.
 func TestDisplayClaimsSurviveAGarbageCookie(t *testing.T) {
 	t.Parallel()
 
@@ -339,8 +364,53 @@ func TestDisplayClaimsSurviveAGarbageCookie(t *testing.T) {
 
 	status, identity := probeIdentity(t, authenticator, "Bearer "+access, "not-a-jwt")
 	require.Equal(t, fiber.StatusOK, status)
-	require.Empty(t, identity.Name)
 	require.Equal(t, RoleOperator, identity.Role)
+	require.Equal(t, "A Person", identity.Name, "userinfo answers despite the bad cookie")
+}
+
+// When neither the access token nor any cookie carries display claims, the
+// verifier asks the issuer's userinfo endpoint with the caller's own access
+// token — and caches the answer per subject.
+func TestDisplayClaimsFallBackToUserinfo(t *testing.T) {
+	t.Parallel()
+
+	issuer := newFakeIssuer(t)
+	authenticator := newTestVerifier(t, issuer, "")
+
+	access := issuer.token(t, func(b *jwt.Builder) {
+		b.Claim("name", "").Claim("email", "")
+	})
+
+	status, identity := probeIdentity(t, authenticator, "Bearer "+access, "")
+	require.Equal(t, fiber.StatusOK, status)
+	require.Equal(t, "A Person", identity.Name)
+	require.Equal(t, "a@example.com", identity.Email)
+	require.Equal(t, RoleOperator, identity.Role)
+	require.Equal(t, 1, issuer.userinfoCalls)
+
+	// The second request is served from the display cache.
+	status, identity = probeIdentity(t, authenticator, "Bearer "+access, "")
+	require.Equal(t, fiber.StatusOK, status)
+	require.Equal(t, "A Person", identity.Name)
+	require.Equal(t, 1, issuer.userinfoCalls)
+}
+
+// A usable ID-token cookie wins without any userinfo round-trip.
+func TestUserinfoIsNotAskedWhenTheCookieAnswers(t *testing.T) {
+	t.Parallel()
+
+	issuer := newFakeIssuer(t)
+	authenticator := newTestVerifier(t, issuer, "")
+
+	access := issuer.token(t, func(b *jwt.Builder) {
+		b.Claim("name", "").Claim("email", "")
+	})
+	idToken := issuer.token(t, nil)
+
+	status, identity := probeIdentity(t, authenticator, "Bearer "+access, idToken)
+	require.Equal(t, fiber.StatusOK, status)
+	require.Equal(t, "A Person", identity.Name)
+	require.Equal(t, 0, issuer.userinfoCalls)
 }
 
 // Discovery that names a different issuer than the one configured means a

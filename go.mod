@@ -10,7 +10,6 @@ require (
 	github.com/danielgtaylor/huma/v2 v2.39.1
 	github.com/gofiber/fiber/v3 v3.4.0
 	github.com/google/go-github/v76 v76.0.0
-	github.com/google/go-github/v89 v89.0.0
 	github.com/lestrrat-go/jwx/v4 v4.2.0
 	github.com/neilotoole/slogt/v2 v2.0.0
 	github.com/samber/slog-fiber v1.22.2
@@ -18,6 +17,7 @@ require (
 	github.com/urfave/cli/v3 v3.10.1
 	go.yaml.in/yaml/v3 v3.0.5
 	golang.org/x/oauth2 v0.36.0
+	golang.org/x/sync v0.22.0
 	google.golang.org/api v0.291.0
 	k8s.io/api v0.36.3
 	k8s.io/apimachinery v0.36.3

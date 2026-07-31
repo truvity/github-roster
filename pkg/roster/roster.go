@@ -36,6 +36,10 @@ type Roster struct {
 	// the join — a roster that refuses to render because one person is
 	// unmapped would be useless precisely when it is needed.
 	Warnings []Warning `json:"warnings,omitempty"`
+	// AbsentGroups are mapped groups a healthy source answered 404 for
+	// (lowercased). Teams backed by one are left untouched by every run
+	// until the group exists — per-group fail-safe.
+	AbsentGroups []string `json:"absentGroups,omitempty"`
 }
 
 // Person is one joined identity.
@@ -54,6 +58,12 @@ type Person struct {
 	// Sources names the directories that know this person. Empty for a
 	// bot, which has no directory account by definition.
 	Sources []string `json:"sources,omitempty"`
+	// ExpectedSources names the directories that SHOULD know this person,
+	// derived from the entry's email domains. A person expected in a
+	// source that has never answered must not be treated as gone — the
+	// 2026-07-31 near-miss: presence-based protection alone let a person
+	// whose only source had never produced a snapshot look removable.
+	ExpectedSources []string `json:"expectedSources,omitempty"`
 	// Email is the primary address from the first directory that knew
 	// them, for display only. The join never keys on it.
 	Email string `json:"email,omitempty"`
@@ -117,6 +127,10 @@ const (
 	// are still shown, from the last known good read, but its removals
 	// must be skipped.
 	WarnStaleSource WarningKind = "stale-source"
+	// WarnAbsentGroup is a mapped group a HEALTHY source answered 404
+	// for (probe-group sources only). The teams it backs are left
+	// untouched until it exists.
+	WarnAbsentGroup WarningKind = "absent-group"
 )
 
 // Warning is one thing worth an operator's attention.
@@ -169,6 +183,23 @@ func Join(in Inputs) *Roster {
 			})
 		}
 	}
+
+	for _, snap := range in.Snapshots {
+		if snap == nil {
+			continue
+		}
+
+		for _, group := range snap.AbsentGroups {
+			r.AbsentGroups = append(r.AbsentGroups, strings.ToLower(group))
+			r.Warnings = append(r.Warnings, Warning{
+				Kind:    WarnAbsentGroup,
+				Subject: group,
+				Detail:  "mapped in the configuration but absent in " + snap.Source + "; the teams it backs are left untouched until it exists",
+			})
+		}
+	}
+
+	sort.Strings(r.AbsentGroups)
 
 	live, liveByEmail := livenessIndexes(in.Snapshots)
 
@@ -308,6 +339,8 @@ func join(in Inputs, entry mapping.Entry, live, liveByEmail map[string]*liveness
 		Class:  entry.Class,
 		Orgs:   map[string]Membership{},
 	}
+
+	person.ExpectedSources = expectedSources(in.Config, entry)
 
 	var resolved *liveness
 	resolved, claimed = resolveLiveness(entry, live, liveByEmail)
@@ -602,4 +635,34 @@ func sortWarnings(warnings []Warning) {
 
 		return warnings[i].Subject < warnings[j].Subject
 	})
+}
+
+// expectedSources names the configured sources whose domains cover the
+// entry's emails — the directories this person is DECLARED to exist in,
+// whether or not they have answered yet.
+func expectedSources(cfg *config.Config, entry mapping.Entry) []string {
+	if cfg == nil {
+		return nil
+	}
+
+	var out []string
+
+	for _, email := range entry.Emails {
+		_, domain, ok := strings.Cut(strings.ToLower(email), "@")
+		if !ok {
+			continue
+		}
+
+		for i := range cfg.Sources {
+			src := &cfg.Sources[i]
+
+			for _, d := range src.Domains {
+				if strings.EqualFold(d, domain) {
+					out = appendUnique(out, src.Name)
+				}
+			}
+		}
+	}
+
+	return out
 }

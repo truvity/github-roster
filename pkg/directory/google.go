@@ -2,12 +2,15 @@ package directory
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
 	"golang.org/x/oauth2/google"
 	admin "google.golang.org/api/admin/directory/v1"
+	"google.golang.org/api/googleapi"
 	"google.golang.org/api/option"
 )
 
@@ -21,9 +24,10 @@ var _ Source = (*Google)(nil)
 // two read-only scopes below — a token request including anything else is
 // rejected outright, which is a feature.
 type Google struct {
-	name    string
-	domains []string
-	groups  []string
+	name       string
+	domains    []string
+	groups     []string
+	probeGroup string
 
 	keyJSON []byte
 	subject string
@@ -42,6 +46,12 @@ type GoogleConfig struct {
 	// group in the Workspace would be slower and would read membership the
 	// service has no use for.
 	Groups []string
+
+	// ProbeGroup is the health canary: a group that always exists (the
+	// directory's all@, typically). When set, the fetch requires it to be
+	// readable, and in exchange tolerates a 404 on a MAPPED group as a
+	// recorded absence instead of a failed fetch. Optional.
+	ProbeGroup string
 
 	// KeyJSON is the service-account key.
 	KeyJSON []byte
@@ -63,11 +73,12 @@ func NewGoogle(cfg GoogleConfig) (*Google, error) {
 	}
 
 	return &Google{
-		name:    cfg.Name,
-		domains: cfg.Domains,
-		groups:  cfg.Groups,
-		keyJSON: cfg.KeyJSON,
-		subject: cfg.Subject,
+		name:       cfg.Name,
+		domains:    cfg.Domains,
+		groups:     cfg.Groups,
+		probeGroup: cfg.ProbeGroup,
+		keyJSON:    cfg.KeyJSON,
+		subject:    cfg.Subject,
 	}, nil
 }
 
@@ -99,9 +110,26 @@ func (g *Google) Fetch(ctx context.Context) (*Snapshot, error) {
 		snapshot.Users = append(snapshot.Users, users...)
 	}
 
+	// The probe group is the canary: a group that must exist (e.g. the
+	// directory's all@) and whose readability proves the source works.
+	// With the canary green, a 404 on a MAPPED group is a real absence —
+	// recorded per group so its teams fail safe individually — rather
+	// than a reason to distrust the whole directory.
+	if g.probeGroup != "" {
+		if _, err := g.membersOf(ctx, svc, g.probeGroup); err != nil {
+			return nil, fmt.Errorf("probe group %q: %w", g.probeGroup, err)
+		}
+	}
+
 	for _, group := range g.groups {
 		members, err := g.membersOf(ctx, svc, group)
 		if err != nil {
+			if g.probeGroup != "" && isNotFound(err) {
+				snapshot.AbsentGroups = append(snapshot.AbsentGroups, strings.ToLower(group))
+
+				continue
+			}
+
 			return nil, err
 		}
 
@@ -199,4 +227,12 @@ func userFrom(u *admin.User) User {
 		// departures would remove people who are merely on leave.
 		Live: !u.Suspended,
 	}
+}
+
+// isNotFound reports whether the Directory API answered 404 — the group
+// genuinely does not exist, as opposed to auth or transport failures.
+func isNotFound(err error) bool {
+	var apiErr *googleapi.Error
+
+	return errors.As(err, &apiErr) && apiErr.Code == http.StatusNotFound
 }

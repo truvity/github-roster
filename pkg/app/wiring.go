@@ -135,9 +135,10 @@ func buildSources(ctx context.Context, reader *secrets.Reader, cfg *config.Confi
 			// Only the groups some team maps to AND this source's
 			// directory owns — a source asked about a foreign company's
 			// group 403s and the whole fetch fails.
-			Groups:  cfg.MappedGroupsForDomains(src.Domains),
-			KeyJSON: []byte(values[fieldServiceAccountKey]),
-			Subject: values[fieldAdminEmail],
+			Groups:     cfg.MappedGroupsForDomains(src.Domains),
+			ProbeGroup: src.ProbeGroup,
+			KeyJSON:    []byte(values[fieldServiceAccountKey]),
+			Subject:    values[fieldAdminEmail],
 		})
 		if err != nil {
 			return nil, err

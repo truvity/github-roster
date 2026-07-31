@@ -170,6 +170,30 @@ func TestUnhealthySourceSuppressesRemoval(t *testing.T) {
 	require.Equal(t, []string{"corp"}, result.SkippedSources)
 }
 
+// The 2026-07-31 near-miss: a person whose ONLY declared directory has
+// never produced a snapshot has empty Sources — presence-based protection
+// alone let them look removable. The entry's email domains name the
+// EXPECTED source, and an unhealthy expected source protects them the
+// same way a stale one does.
+func TestExpectedSourceUnhealthySuppressesRemoval(t *testing.T) {
+	t.Parallel()
+
+	partner := person("Partner Person", "partner", false)
+	partner.Sources = nil
+	partner.ExpectedSources = []string{"partnerdir"}
+
+	result := render(t, peribolos.Inputs{
+		Mode:             peribolos.ModeRemovalsOnly,
+		Org:              orgConfig(),
+		Roster:           &roster.Roster{People: []roster.Person{partner}},
+		State:            state(member("partner")),
+		UnhealthySources: []string{"partnerdir"},
+	})
+
+	require.Empty(t, result.Removing,
+		"a person expected only in a never-read directory must be left alone")
+}
+
 // Dropping an invited person cancels an invitation they are about to
 // accept, and they see it happen.
 func TestPendingInvitationsSurviveBothModes(t *testing.T) {

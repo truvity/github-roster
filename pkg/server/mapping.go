@@ -3,6 +3,7 @@ package server
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -104,6 +105,33 @@ type mappingFormData struct {
 type directorySuggestion struct {
 	Name   string
 	Emails string
+	// K8s is the conventional namespace abbreviation derived from the
+	// name — first initial, dash, last name — offered as a prefill, never
+	// imposed: the operator sees and can change it before the review.
+	K8s string
+}
+
+// abbrevKeep strips everything a namespace abbreviation cannot carry.
+var abbrevKeep = regexp.MustCompile(`[^a-z0-9-]+`)
+
+// conventionalAbbrev renders "Oleg Tsarev" as "o-tsarev".
+func conventionalAbbrev(name string) string {
+	fields := strings.Fields(strings.ToLower(name))
+	if len(fields) == 0 {
+		return ""
+	}
+
+	abbrev := fields[0]
+	if len(fields) > 1 {
+		abbrev = abbrev[:1] + "-" + fields[len(fields)-1]
+	}
+
+	abbrev = abbrevKeep.ReplaceAllString(abbrev, "")
+	if len(abbrev) > mapping.MaxAbbrevLen {
+		abbrev = abbrev[:mapping.MaxAbbrevLen]
+	}
+
+	return strings.Trim(abbrev, "-")
 }
 
 // directorySuggestions lists everyone the cached snapshots know, so the
@@ -133,7 +161,11 @@ func (d *Deps) directorySuggestions() []directorySuggestion {
 	out := make([]directorySuggestion, 0, len(byName))
 	for name, emails := range byName {
 		sort.Strings(emails)
-		out = append(out, directorySuggestion{Name: name, Emails: strings.Join(emails, ", ")})
+		out = append(out, directorySuggestion{
+			Name:   name,
+			Emails: strings.Join(emails, ", "),
+			K8s:    conventionalAbbrev(name),
+		})
 	}
 
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })

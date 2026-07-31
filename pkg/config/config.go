@@ -133,6 +133,8 @@ type Source struct {
 	// some of them, and reading the rest would import people the service
 	// has no business managing.
 	Domains []string `yaml:"domains"`
+	// ProbeGroup is the source's health canary — see Directory.ProbeGroup.
+	ProbeGroup string `yaml:"probeGroup,omitempty"`
 }
 
 // Company is one company: a directory, and optionally the GitHub
@@ -157,6 +159,12 @@ type Directory struct {
 	// may serve several domains while this instance is only responsible
 	// for some of them.
 	Domains []string `yaml:"domains"`
+	// ProbeGroup is the health canary: a group that always exists (the
+	// directory's all@, typically). When set, the source is healthy as
+	// long as users and the probe read — and a mapped group answering
+	// 404 becomes a per-group absence whose teams fail safe
+	// individually, instead of poisoning the whole source. Optional.
+	ProbeGroup string `yaml:"probeGroup,omitempty"`
 }
 
 // CompanyGitHub is the organization a company owns, plus the credentials
@@ -311,9 +319,10 @@ func (c *Config) derive() {
 		company := c.Companies[code]
 
 		c.Sources = append(c.Sources, Source{
-			Name:      code,
-			SSMPrefix: company.Directory.SSMPrefix,
-			Domains:   company.Directory.Domains,
+			Name:       code,
+			SSMPrefix:  company.Directory.SSMPrefix,
+			Domains:    company.Directory.Domains,
+			ProbeGroup: company.Directory.ProbeGroup,
 		})
 
 		if gh := company.GitHub; gh != nil {
@@ -454,6 +463,17 @@ func (c *Config) validateCompanies() error {
 
 		if len(company.Directory.Domains) == 0 {
 			return fmt.Errorf("companies[%q].directory.domains is required: name the domains this company's directory is responsible for", code)
+		}
+
+		if probe := company.Directory.ProbeGroup; probe != "" {
+			domain, ok := emailDomain(probe)
+			if !ok {
+				return fmt.Errorf("companies[%q].directory.probeGroup %q is not a group address", code, probe)
+			}
+
+			if !containsFold(company.Directory.Domains, domain) {
+				return fmt.Errorf("companies[%q].directory.probeGroup %q is outside the directory's domains %v", code, probe, company.Directory.Domains)
+			}
 		}
 
 		if gh := company.GitHub; gh != nil {
@@ -694,6 +714,27 @@ func (c *Config) Org(name string) (*Org, bool) {
 func (o *Org) IsException(login string) bool {
 	for _, e := range o.Exceptions {
 		if strings.EqualFold(e, login) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// emailDomain returns the lowercased domain of a group address.
+func emailDomain(address string) (string, bool) {
+	local, domain, ok := strings.Cut(strings.ToLower(address), "@")
+	if !ok || local == "" || domain == "" {
+		return "", false
+	}
+
+	return domain, true
+}
+
+// containsFold reports whether list contains value, case-insensitively.
+func containsFold(list []string, value string) bool {
+	for _, item := range list {
+		if strings.EqualFold(item, value) {
 			return true
 		}
 	}

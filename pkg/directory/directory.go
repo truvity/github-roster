@@ -51,6 +51,12 @@ type Snapshot struct {
 	// reason.
 	Groups map[string][]string `json:"groups"`
 
+	// AbsentGroups are mapped groups the directory answered 404 for.
+	// Only ever populated when the source has a probe group: without the
+	// canary, a missing group is indistinguishable from a broken read
+	// and fails the whole fetch instead.
+	AbsentGroups []string `json:"absentGroups,omitempty"`
+
 	// FetchedAt is when this read completed.
 	FetchedAt time.Time `json:"fetchedAt"`
 }

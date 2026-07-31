@@ -10,6 +10,7 @@ require (
 	github.com/danielgtaylor/huma/v2 v2.39.1
 	github.com/gofiber/fiber/v3 v3.4.0
 	github.com/google/go-github/v76 v76.0.0
+	github.com/google/go-github/v89 v89.0.0
 	github.com/lestrrat-go/jwx/v4 v4.2.0
 	github.com/neilotoole/slogt/v2 v2.0.0
 	github.com/samber/slog-fiber v1.22.2
@@ -59,7 +60,7 @@ require (
 	github.com/gofiber/schema v1.8.2 // indirect
 	github.com/gofiber/utils/v2 v2.2.0 // indirect
 	github.com/google/gnostic-models v0.7.0 // indirect
-	github.com/google/go-querystring v1.1.0 // indirect
+	github.com/google/go-querystring v1.2.0 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.19 // indirect

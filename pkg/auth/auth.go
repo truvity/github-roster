@@ -19,9 +19,13 @@ package auth
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/lestrrat-go/jwx/v4/jwt"
@@ -123,35 +127,56 @@ func (d *disabled) Middleware() fiber.Handler {
 
 // verifier reads the JWT the gateway forwards and maps its claims to a role.
 type verifier struct {
-	logger     *slog.Logger
-	keys       *keySet
-	issuer     string
-	audience   string
-	rolesClaim string
-	roles      config.Roles
+	logger      *slog.Logger
+	keys        *keySet
+	issuer      string
+	audience    string
+	rolesClaim  string
+	roles       config.Roles
+	userinfoURI string
+
+	// display caches userinfo answers by subject, so the endpoint is
+	// asked once per person per TTL rather than once per page.
+	displayMu sync.Mutex
+	display   map[string]displayClaims
+	now       func() time.Time
 }
+
+type displayClaims struct {
+	Name      string
+	Email     string
+	FetchedAt time.Time
+}
+
+// displayTTL bounds how long a userinfo answer is reused. Names change
+// rarely; an hour keeps the endpoint out of the request path without
+// making a rename invisible for the workday.
+const displayTTL = time.Hour
 
 // NewVerifier builds an authenticator against the issuer's JWKS. Discovery
 // and the first key fetch happen here, so an unreachable or misconfigured
 // issuer fails at startup rather than on the first request.
 func NewVerifier(ctx context.Context, logger *slog.Logger, cfg config.OIDC) (Authenticator, error) {
-	jwksURL, err := discoverJWKS(ctx, cfg.Issuer)
+	found, err := discover(ctx, cfg.Issuer)
 	if err != nil {
 		return nil, err
 	}
 
-	keys, err := newKeySet(ctx, logger, jwksURL)
+	keys, err := newKeySet(ctx, logger, found.JWKSURI)
 	if err != nil {
 		return nil, err
 	}
 
 	return &verifier{
-		logger:     logger,
-		keys:       keys,
-		issuer:     cfg.Issuer,
-		audience:   cfg.Audience,
-		rolesClaim: cfg.RolesClaim,
-		roles:      cfg.Roles,
+		logger:      logger,
+		keys:        keys,
+		issuer:      cfg.Issuer,
+		audience:    cfg.Audience,
+		rolesClaim:  cfg.RolesClaim,
+		roles:       cfg.Roles,
+		userinfoURI: found.UserinfoURI,
+		display:     map[string]displayClaims{},
+		now:         time.Now,
 	}, nil
 }
 
@@ -181,6 +206,14 @@ func (v *verifier) Middleware() fiber.Handler {
 
 		if identity.Name == "" && identity.Email == "" {
 			v.fillDisplayClaims(c, &identity)
+		}
+
+		if identity.Name == "" && identity.Email == "" {
+			// The ID-token cookie was absent or unusable — browsers drop
+			// cookies past ~4 KiB, and an ID token with userinfo and role
+			// assertions can exceed that. Ask the issuer instead, with
+			// the access token that already proved itself.
+			v.fillFromUserinfo(c, raw, &identity)
 		}
 
 		if !identity.Role.CanView() {
@@ -230,6 +263,72 @@ func (v *verifier) fillDisplayClaims(c fiber.Ctx, identity *Identity) {
 
 	identity.Name = stringClaim(token, "name")
 	identity.Email = stringClaim(token, "email")
+}
+
+// fillFromUserinfo asks the issuer's userinfo endpoint who the caller is,
+// authenticating with the caller's own already-verified access token.
+// Answers are cached per subject: once an hour per person, not once a page.
+// Failures only log — display claims are never worth failing a request.
+func (v *verifier) fillFromUserinfo(c fiber.Ctx, accessToken string, identity *Identity) {
+	if v.userinfoURI == "" {
+		return
+	}
+
+	v.displayMu.Lock()
+	cached, ok := v.display[identity.Subject]
+	v.displayMu.Unlock()
+
+	if ok && v.now().Sub(cached.FetchedAt) < displayTTL {
+		identity.Name, identity.Email = cached.Name, cached.Email
+
+		return
+	}
+
+	req, err := http.NewRequestWithContext(c.Context(), http.MethodGet, v.userinfoURI, http.NoBody)
+	if err != nil {
+		return
+	}
+
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+
+	resp, err := newHTTPClient().Do(req)
+	if err != nil {
+		v.logger.WarnContext(c.Context(), "userinfo request failed", slog.Any("error", err))
+
+		return
+	}
+
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		v.logger.WarnContext(c.Context(), "userinfo refused", slog.String("status", resp.Status))
+
+		return
+	}
+
+	var body struct {
+		Sub   string `json:"sub"`
+		Name  string `json:"name"`
+		Email string `json:"email"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		v.logger.WarnContext(c.Context(), "userinfo undecodable", slog.Any("error", err))
+
+		return
+	}
+
+	// The endpoint answered for whoever the token belongs to; require that
+	// to be the caller before displaying anything.
+	if body.Sub != identity.Subject {
+		return
+	}
+
+	identity.Name, identity.Email = body.Name, body.Email
+
+	v.displayMu.Lock()
+	v.display[identity.Subject] = displayClaims{Name: body.Name, Email: body.Email, FetchedAt: v.now()}
+	v.displayMu.Unlock()
 }
 
 // parse validates the token's signature, issuer, audience and expiry.

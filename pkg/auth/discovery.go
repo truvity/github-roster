@@ -20,15 +20,22 @@ func newHTTPClient() *http.Client {
 	return &http.Client{Timeout: discoveryTimeout}
 }
 
-// discoverJWKS reads the provider's OpenID configuration and returns its
-// jwks_uri.
+// endpoints is what this service needs from the provider's discovery
+// document.
+type endpoints struct {
+	JWKSURI     string
+	UserinfoURI string
+}
+
+// discover reads the provider's OpenID configuration.
 //
 // Discovery is done by hand rather than pulled in with an OIDC relying-party
 // library: this service is not a relying party. It never runs a code flow,
 // holds no client credentials and mints no sessions — it verifies a token
-// somebody else obtained. One well-known document and one field is the whole
-// requirement.
-func discoverJWKS(ctx context.Context, issuer string) (string, error) {
+// somebody else obtained and, for display claims the access token does not
+// carry, asks the userinfo endpoint. One well-known document and two fields
+// is the whole requirement.
+func discover(ctx context.Context, issuer string) (*endpoints, error) {
 	wellKnown := strings.TrimSuffix(issuer, "/") + "/.well-known/openid-configuration"
 
 	ctx, cancel := context.WithTimeout(ctx, discoveryTimeout)
@@ -36,38 +43,39 @@ func discoverJWKS(ctx context.Context, issuer string) (string, error) {
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, wellKnown, http.NoBody)
 	if err != nil {
-		return "", fmt.Errorf("build discovery request for %q: %w", issuer, err)
+		return nil, fmt.Errorf("build discovery request for %q: %w", issuer, err)
 	}
 
 	resp, err := newHTTPClient().Do(req)
 	if err != nil {
-		return "", fmt.Errorf("fetch %q: %w", wellKnown, err)
+		return nil, fmt.Errorf("fetch %q: %w", wellKnown, err)
 	}
 
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("fetch %q: unexpected status %s", wellKnown, resp.Status)
+		return nil, fmt.Errorf("fetch %q: unexpected status %s", wellKnown, resp.Status)
 	}
 
 	var document struct {
-		Issuer  string `json:"issuer"`
-		JWKSURI string `json:"jwks_uri"`
+		Issuer      string `json:"issuer"`
+		JWKSURI     string `json:"jwks_uri"`
+		UserinfoURI string `json:"userinfo_endpoint"`
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&document); err != nil {
-		return "", fmt.Errorf("decode %q: %w", wellKnown, err)
+		return nil, fmt.Errorf("decode %q: %w", wellKnown, err)
 	}
 
 	// The issuer must match what we were configured with, or a redirect to
 	// somebody else's provider would silently hand them the console.
 	if document.Issuer != issuer {
-		return "", fmt.Errorf("discovery at %q declares issuer %q, want %q", wellKnown, document.Issuer, issuer)
+		return nil, fmt.Errorf("discovery at %q declares issuer %q, want %q", wellKnown, document.Issuer, issuer)
 	}
 
 	if document.JWKSURI == "" {
-		return "", fmt.Errorf("discovery at %q declares no jwks_uri", wellKnown)
+		return nil, fmt.Errorf("discovery at %q declares no jwks_uri", wellKnown)
 	}
 
-	return document.JWKSURI, nil
+	return &endpoints{JWKSURI: document.JWKSURI, UserinfoURI: document.UserinfoURI}, nil
 }

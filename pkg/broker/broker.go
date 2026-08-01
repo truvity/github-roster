@@ -115,6 +115,21 @@ func (d *Deps) requireOperator(c fiber.Ctx) error {
 	return c.Next()
 }
 
+// actorLabel names the human for logs and the audit trail: their email
+// when the identity carries one, their name next, and only then the
+// bare token subject — a numeric subject in an audit row answers "who"
+// with a riddle.
+func actorLabel(identity auth.Identity) string {
+	switch {
+	case identity.Email != "":
+		return identity.Email
+	case identity.Name != "":
+		return identity.Name
+	default:
+		return identity.Subject
+	}
+}
+
 func (d *Deps) org(c fiber.Ctx) (*Org, string, error) {
 	name := c.Params("org")
 	if org, ok := d.Orgs[name]; ok {
@@ -140,7 +155,7 @@ func (d *Deps) handlePlan(c fiber.Ctx) error {
 
 	identity, _ := auth.From(c)
 	d.Logger.InfoContext(c.Context(), "plan computed",
-		"org", name, "hash", hash, "actions", len(entry.Plan.Actions), "actor", identity.Subject)
+		"org", name, "hash", hash, "actions", len(entry.Plan.Actions), "actor", actorLabel(identity))
 
 	return c.JSON(respond(*entry, hash))
 }
@@ -177,7 +192,7 @@ func (d *Deps) handleApply(c fiber.Ctx) error {
 
 	identity, _ := auth.From(c)
 
-	fresh, applied, report, err := d.apply(c.Context(), name, org, approved, identity.Subject)
+	fresh, applied, report, err := d.apply(c.Context(), name, org, approved, actorLabel(identity))
 
 	switch {
 	case errors.Is(err, errDrift):
@@ -194,10 +209,10 @@ func (d *Deps) handleApply(c fiber.Ctx) error {
 	}
 
 	response := ApplyResponse{Org: name, Hash: approved, Applied: applied, Report: report}
-	response.AuditError = d.record(c.Context(), audit.TriggerOperator, identity.Subject, fresh, report, true, nil)
+	response.AuditError = d.record(c.Context(), audit.TriggerOperator, actorLabel(identity), fresh, report, true, nil)
 
 	d.Logger.InfoContext(c.Context(), "plan applied",
-		"org", name, "hash", approved, "actions", applied, "actor", identity.Subject)
+		"org", name, "hash", approved, "actions", applied, "actor", actorLabel(identity))
 
 	return c.JSON(response)
 }

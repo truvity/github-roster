@@ -58,6 +58,11 @@ spec:
         - path:
             type: PathPrefix
             value: /
+      # A hash-confirmed apply re-reads the organization and executes
+      # serially — ~30s on a real org. Envoy's 15s route default answered
+      # 504 to the operator while the apply finished fine server-side.
+      timeouts:
+        request: 60s
       backendRefs:
         # group/kind/weight are set explicitly: the Gateway API server
         # defaults them, and omitted fields diff forever under ArgoCD.

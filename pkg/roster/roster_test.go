@@ -28,6 +28,8 @@ companies:
       teams:
         team-engineers:
           groups: [team-engineers@example.com]
+        team-listed:
+          members: [alan@example.com, gone@example.com]
         robots:
           pinned: true
 `
@@ -387,4 +389,20 @@ func TestJoinMatchesByEmailFirst(t *testing.T) {
 		require.NotEqual(t, roster.WarnUnmapped, w.Kind,
 			"the directory spelling is claimed via the email; no unmapped warning for %q", w.Subject)
 	}
+}
+
+// A team declared by explicit member emails behaves exactly like a
+// group-backed one: live listed people are desired, and the list never
+// resurrects someone their directory says is gone.
+func TestExplicitMemberListDesiresOnlyTheLive(t *testing.T) {
+	t.Parallel()
+
+	r := join(t)
+
+	alan := person(t, r, "Alan Turing")
+	require.Contains(t, alan.Orgs["example-org"].DesiredTeams, "team-listed")
+
+	gone := person(t, r, "Gone Person")
+	require.NotContains(t, gone.Orgs["example-org"].DesiredTeams, "team-listed",
+		"a static list must not resurrect a suspended person")
 }

@@ -470,10 +470,11 @@ func membership(in Inputs, org *config.Org, entry mapping.Entry, l *liveness, is
 
 // desiredTeams is what the configuration says this person should be in.
 //
-// A directory-mapped team draws from the union of its groups, and only for
-// people who are live: a suspended person is in no team, whatever the
-// directory group still says. A pinned team draws from the mapping entry
-// alone, because it has no group to read.
+// A directory-mapped team draws from the union of its groups and its
+// explicit member list, and only for people who are live: a suspended
+// person is in no team, whatever the group or the list still says. A
+// pinned team draws from the mapping entry alone, because it has no group
+// to read.
 func desiredTeams(org *config.Org, entry mapping.Entry, l *liveness, isLive bool) []string {
 	var teams []string
 
@@ -484,16 +485,13 @@ func desiredTeams(org *config.Org, entry mapping.Entry, l *liveness, isLive bool
 				teams = append(teams, name)
 			}
 		case !isLive || l == nil:
-			// Not live, or no directory knows them: no group membership
-			// can apply.
+			// Not live, or no directory knows them: no membership can
+			// apply — an explicit list never resurrects a suspended
+			// person either.
 			continue
 		default:
-			for _, group := range team.Groups {
-				if l.groups[strings.ToLower(group)] {
-					teams = append(teams, name)
-
-					break
-				}
+			if matchesTeam(team, entry, l) {
+				teams = append(teams, name)
 			}
 		}
 	}
@@ -501,6 +499,35 @@ func desiredTeams(org *config.Org, entry mapping.Entry, l *liveness, isLive bool
 	sort.Strings(teams)
 
 	return teams
+}
+
+// matchesTeam reports whether a live person belongs to a directory-mapped
+// team, by group membership or by explicit member email.
+func matchesTeam(team config.Team, entry mapping.Entry, l *liveness) bool {
+	for _, group := range team.Groups {
+		if l.groups[strings.ToLower(group)] {
+			return true
+		}
+	}
+
+	for _, member := range team.Members {
+		// Declared emails on the mapping entry, plus every address a
+		// directory actually knows this person under — a list entry works
+		// whether or not the operator re-declared the email.
+		for _, email := range entry.Emails {
+			if strings.EqualFold(email, member) {
+				return true
+			}
+		}
+
+		for _, identity := range l.directories {
+			if strings.EqualFold(identity.Email, member) {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 func hasPinned(entry mapping.Entry, org, team string) bool {

@@ -11,7 +11,6 @@
 
 {{if not .Data.Result}}
 <form method="post" action="/sync/preview">
-  <input type="hidden" name="_csrf" value="{{.Data.CSRF}}">
   <p>
     <label for="org">Organization</label><br>
     <select id="org" name="org">
@@ -86,7 +85,6 @@
 {{if and .Data.Confirming .Data.Run .Data.Run.Succeeded}}
 <form method="post" action="/sync/apply" style="margin-top:16px"
       onsubmit="return confirm('Apply these changes to {{.Data.Org}}?')">
-  <input type="hidden" name="_csrf" value="{{.Data.CSRF}}">
   <input type="hidden" name="org" value="{{.Data.Org}}">
   <button type="submit">Apply to {{.Data.Org}}</button>
   <span class="muted">

@@ -34,7 +34,6 @@ type syncData struct {
 	// Confirming means the operator is looking at a dry run and may apply
 	// it.
 	Confirming bool
-	CSRF       string
 }
 
 func (d *Deps) handleSync(c fiber.Ctx) error {
@@ -42,7 +41,7 @@ func (d *Deps) handleSync(c fiber.Ctx) error {
 		Title:  "Sync",
 		Nav:    "sync",
 		AuthOn: d.Auth.Enabled(),
-		Data:   syncData{Orgs: d.orgNames(), CSRF: csrfToken(c)},
+		Data:   syncData{Orgs: d.orgNames()},
 	})
 }
 
@@ -69,7 +68,7 @@ func (d *Deps) handleSyncApply(c fiber.Ctx) error {
 
 func (d *Deps) runSync(c fiber.Ctx, confirm bool) error {
 	orgName := formValue(c, "org")
-	data := syncData{Orgs: d.orgNames(), Org: orgName, CSRF: csrfToken(c)}
+	data := syncData{Orgs: d.orgNames(), Org: orgName}
 
 	render := func(status int) error {
 		return d.Renderer.Render(c, status, "sync", ui.Page{

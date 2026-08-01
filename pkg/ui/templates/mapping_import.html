@@ -9,7 +9,6 @@
 {{if .Data.Error}}<div class="banner">{{.Data.Error}}</div>{{end}}
 
 <form method="post" action="/mapping/import">
-  <input type="hidden" name="_csrf" value="{{.Data.CSRF}}">
   <p>
     <textarea name="csv" rows="12" style="width:100%;font-family:ui-monospace,monospace"
               placeholder="name,github,k8s,class,pinned">{{.Data.Input}}</textarea>
@@ -54,7 +53,6 @@
 
 {{if .Data.Plan.Applicable}}
 <form method="post" action="/mapping/import/apply" style="margin-top:16px">
-  <input type="hidden" name="_csrf" value="{{.Data.CSRF}}">
   <input type="hidden" name="csv" value="{{.Data.Input}}">
   <button type="submit">Apply {{.Data.Creates}} creates and {{.Data.Updates}} updates</button>
 </form>

@@ -24,7 +24,6 @@
   {{end}}
 
   <form method="post" action="/mapping/save" style="margin-top:16px">
-    <input type="hidden" name="_csrf" value="{{.Data.CSRF}}">
     <input type="hidden" name="name" value="{{.Data.Entry.Name}}">
     <input type="hidden" name="github" value="{{.Data.Entry.GitHub}}">
     <input type="hidden" name="emails" value="{{.Data.Emails}}">
@@ -41,7 +40,6 @@
   {{if .Data.Error}}<div class="banner">{{.Data.Error}}</div>{{end}}
 
   <form method="post" action="/mapping/save">
-    <input type="hidden" name="_csrf" value="{{.Data.CSRF}}">
 
     <p>
       <label for="name">Name — the unique key, "First Last"</label><br>
@@ -123,7 +121,6 @@
   {{if .Data.Before}}
   <form method="post" action="/mapping/delete" style="margin-top:24px"
         onsubmit="return confirm('Delete {{.Data.Entry.Name}} from the mapping?')">
-    <input type="hidden" name="_csrf" value="{{.Data.CSRF}}">
     <input type="hidden" name="name" value="{{.Data.Entry.Name}}">
     <button type="submit" style="background:var(--danger)">Delete entry</button>
     <span class="muted">

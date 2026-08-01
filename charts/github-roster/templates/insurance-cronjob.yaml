@@ -1,10 +1,10 @@
-{{- if .Values.insuranceCronJob.enabled }}
+{{- if and .Values.insuranceCronJob.enabled .Values.broker.enabled }}
 # The insurance CronJob: revocation must survive a wedged ticker.
 #
-# The scheduled removals run inside the service process. If that goroutine
-# wedges while the HTTP listeners stay healthy, nothing restarts the pod —
+# The scheduled removals run inside the broker process. If that goroutine
+# wedges while the HTTP listener stays healthy, nothing restarts the pod —
 # and the leaver SLA quietly stops being met. This CronJob is the
-# independent heartbeat: it POSTs /sync on the internal listener, which
+# independent heartbeat: it POSTs the broker's /internal/sweep, which
 # triggers the same removals-only sweep through a different entry path.
 #
 # Safe to fire at any time: the sweep is removals-only by construction,
@@ -46,7 +46,7 @@ spec:
               command: ["/bin/sh", "-c"]
               args:
                 - |
-                  code=$(curl -sS -o /dev/null -w '%{http_code}' -X POST --max-time 240                     http://{{ include "github-roster.fullname" . }}:{{ .Values.healthPort }}/sync)
+                  code=$(curl -sS -o /dev/null -w '%{http_code}' -X POST --max-time 240                     http://{{ include "github-roster.fullname" . }}-broker:8080/internal/sweep)
                   case "$code" in
                     2*|409) echo "sync answered $code"; exit 0 ;;
                     *) echo "sync answered $code"; exit 1 ;;

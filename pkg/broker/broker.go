@@ -19,7 +19,6 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 
-	"github.com/truvity/github-roster/pkg/applier"
 	"github.com/truvity/github-roster/pkg/audit"
 	"github.com/truvity/github-roster/pkg/auth"
 	"github.com/truvity/github-roster/pkg/config"
@@ -92,6 +91,11 @@ func (d *Deps) Routes(app *fiber.App) {
 	d.plans = newPlanStore()
 
 	app.Get("/healthz", func(c fiber.Ctx) error { return c.SendString("ok") })
+
+	// The insurance heartbeat. No token: the network policy admits only
+	// this deployment's pods, and "sweep now" carries no content — the
+	// same trust model as the console's old internal listener.
+	app.Post("/internal/sweep", d.handleSweep)
 
 	v1 := app.Group("/v1", d.Auth.Middleware(), d.requireOperator)
 	v1.Post("/orgs/:org/plans", d.handlePlan)
@@ -327,7 +331,7 @@ func (d *Deps) record(ctx context.Context, trigger audit.Trigger, actor string,
 
 	// The audit record's run shape predates the broker; "job name" is the
 	// run's identity and stays meaningful as a broker run id.
-	run := &applier.Run{
+	run := &audit.Run{
 		JobName:   "broker-" + time.Now().UTC().Format("20060102t150405"),
 		Confirmed: confirmed,
 		Succeeded: runErr == nil,

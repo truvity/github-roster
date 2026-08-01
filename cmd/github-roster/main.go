@@ -49,7 +49,6 @@ func run() int {
 			return app.Run(ctx, info, cmd.String("config"))
 		},
 		Commands: []*cli.Command{
-			applyCommand(),
 			{
 				Name:  "broker",
 				Usage: "run the applier broker: the write-credential holder behind an intent-only API",

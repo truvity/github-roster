@@ -59,6 +59,10 @@ func RunBroker(ctx context.Context, info version.Info, configPath, listen string
 
 	deps.Routes(app)
 
+	// The unattended half lives here now: the credential holder acts on
+	// its own schedule and its own reads.
+	go deps.Schedule(ctx)
+
 	errs := make(chan error, 1)
 
 	go func() {

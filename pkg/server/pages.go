@@ -53,12 +53,15 @@ type structureOrg struct {
 }
 
 type structureTeam struct {
-	Name   string
-	Groups []string
-	Pinned bool
+	Name    string
+	Groups  []string
+	Members []string
+	Pinned  bool
 }
 
-func (d *Deps) handleStructure(c fiber.Ctx) error {
+// handleOverview is the landing page: the service at a glance — source
+// health, the configured organizations and teams, and answer freshness.
+func (d *Deps) handleOverview(c fiber.Ctx) error {
 	data := structureData{Orgs: make([]structureOrg, 0, len(d.Config.Orgs))}
 
 	for i := range d.Config.Orgs {
@@ -68,9 +71,10 @@ func (d *Deps) handleStructure(c fiber.Ctx) error {
 		for _, name := range sortedTeamNames(org.Teams) {
 			team := org.Teams[name]
 			view.Teams = append(view.Teams, structureTeam{
-				Name:   name,
-				Groups: team.Groups,
-				Pinned: team.Pinned,
+				Name:    name,
+				Groups:  team.Groups,
+				Members: team.Members,
+				Pinned:  team.Pinned,
 			})
 		}
 
@@ -79,8 +83,33 @@ func (d *Deps) handleStructure(c fiber.Ctx) error {
 
 	if d.Directories != nil {
 		data.Sources = d.Directories.Statuses()
+	}
 
-		for _, s := range data.Sources {
+	if d.Mapping != nil {
+		readAt := d.githubReadAt(c.Context())
+		for _, name := range slices.Sorted(maps.Keys(readAt)) {
+			data.GitHub = append(data.GitHub, githubAge{
+				Org: name,
+				Age: time.Since(readAt[name]).Round(time.Second).String(),
+			})
+		}
+	}
+
+	return d.Renderer.Render(c, fiber.StatusOK, "overview", ui.Page{
+		Title:  "Overview",
+		Nav:    "overview",
+		AuthOn: d.Auth.Enabled(),
+		Data:   data,
+	})
+}
+
+// handleStructure is the identity trace: the full join, per IdP and per
+// organization, plus the warnings a person has to decide about.
+func (d *Deps) handleStructure(c fiber.Ctx) error {
+	data := structureData{}
+
+	if d.Directories != nil {
+		for _, s := range d.Directories.Statuses() {
 			data.SourceNames = append(data.SourceNames, s.Source)
 		}
 

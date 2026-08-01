@@ -111,7 +111,8 @@ func NewApp(deps *Deps) *fiber.App {
 	// the gateway runs the login and forwards a token with every request.
 	app.Use(deps.Auth.Middleware())
 
-	app.Get("/", deps.handleStructure)
+	app.Get("/", deps.handleOverview)
+	app.Get("/structure", deps.handleStructure)
 
 	// The mapping editor and the audit log are operator surfaces: one
 	// changes access, the other records who changed it. Both are gated

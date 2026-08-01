@@ -92,8 +92,9 @@
 <header>
   <span class="brand">roster</span>
   <nav>
-    <a href="/" {{if eq .Nav "structure"}}class="current"{{end}}>Structure</a>
-    <a href="/mapping" {{if eq .Nav "mapping"}}class="current"{{end}}>Mapping</a>
+    <a href="/" {{if eq .Nav "overview"}}class="current"{{end}}>Overview</a>
+    <a href="/structure" {{if eq .Nav "structure"}}class="current"{{end}}>Structure</a>
+    <a href="/mapping" {{if eq .Nav "mapping"}}class="current"{{end}}>People</a>
     <a href="/sync" {{if eq .Nav "sync"}}class="current"{{end}}>Sync</a>
     <a href="/audit" {{if eq .Nav "audit"}}class="current"{{end}}>Audit</a>
   </nav>

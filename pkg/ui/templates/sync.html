@@ -88,4 +88,30 @@
 {{if or .Data.Plan .Data.Applied}}
 <p style="margin-top:16px"><a href="/sync">Start again</a></p>
 {{end}}
+
+{{if .Data.History}}
+<h2 style="font-size:16px;margin:28px 0 4px">Recent runs</h2>
+<p class="lede">Every run writes one audit record; the <a href="/audit">Audit</a> page is the full trail.</p>
+<table>
+  <thead>
+    <tr><th>When</th><th>Org</th><th>Trigger</th><th>Kind</th><th>Diff</th><th>Outcome</th></tr>
+  </thead>
+  <tbody>
+  {{range .Data.History}}
+    <tr>
+      <td>{{.At.Format "01-02 15:04Z"}}</td>
+      <td>{{.Org}}</td>
+      <td>{{.Trigger}}</td>
+      <td>{{if .Confirmed}}<span class="badge warn">applied</span>{{else}}preview{{end}}</td>
+      <td class="muted">{{if .Adding}}+{{len .Adding}}{{end}} {{if .Removing}}−{{len .Removing}}{{end}}{{if and (not .Adding) (not .Removing)}}—{{end}}</td>
+      <td>
+        {{if .Error}}<span class="badge danger">failed</span>
+        {{else if .Job}}{{if .Job.Succeeded}}<span class="badge ok">ok</span>{{else}}<span class="badge danger">failed</span>{{end}}
+        {{else}}<span class="badge ok">ok</span>{{end}}
+      </td>
+    </tr>
+  {{end}}
+  </tbody>
+</table>
+{{end}}
 {{end}}

@@ -3,17 +3,22 @@ package server
 import (
 	"errors"
 
+	"github.com/truvity/github-roster/pkg/audit"
+
 	"github.com/gofiber/fiber/v3"
 
 	"github.com/truvity/github-roster/pkg/broker"
 	"github.com/truvity/github-roster/pkg/ui"
 )
 
-// syncData drives the sync page: the form, a computed plan, and an apply
-// outcome.
+// syncData drives the sync page: the form, a computed plan, an apply
+// outcome, and the recent run history.
 type syncData struct {
 	Orgs []string
 	Org  string
+	// History is the most recent audit records — every run is one, so
+	// the sync page doubles as the reconciliation history.
+	History []audit.Record
 	// Plan is the broker's computed plan, shown for review. The console
 	// renders it and holds nothing but its hash.
 	Plan *broker.PlanResponse
@@ -26,13 +31,26 @@ type syncData struct {
 }
 
 func (d *Deps) handleSync(c fiber.Ctx) error {
+	data := syncData{Orgs: d.orgNames()}
+
+	// Best-effort: history must never keep the sync form from rendering.
+	if d.Audit != nil {
+		if records, err := d.Audit.List(c.Context(), "", historyLimit); err == nil {
+			data.History = records
+		}
+	}
+
 	return d.Renderer.Render(c, fiber.StatusOK, "sync", ui.Page{
 		Title:  "Sync",
 		Nav:    "sync",
 		AuthOn: d.Auth.Enabled(),
-		Data:   syncData{Orgs: d.orgNames()},
+		Data:   data,
 	})
 }
+
+// historyLimit bounds the sync page's recent-runs section; the Audit page
+// is the full trail.
+const historyLimit = 10
 
 // handleSyncPreview asks the broker to compute a plan.
 //

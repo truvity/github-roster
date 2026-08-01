@@ -251,8 +251,52 @@ func (r *Reader) ReadMembership(ctx context.Context) (*Membership, error) {
 	return out, nil
 }
 
+// ReadScoped reads the organization with team-member listings limited to
+// the named teams. The full team LIST is still read — existence checks
+// need it — but the per-team member fan-out, which dominates wall-clock
+// on a real organization, covers only the teams the caller manages.
+func (r *Reader) ReadScoped(ctx context.Context, teams []string) (*State, error) {
+	scope := make(map[string]bool, len(teams))
+	for _, slug := range teams {
+		scope[strings.ToLower(slug)] = true
+	}
+
+	var (
+		membership *Membership
+		teamState  *TeamState
+	)
+
+	group, groupCtx := errgroup.WithContext(ctx)
+
+	group.Go(func() error {
+		var err error
+		membership, err = r.ReadMembership(groupCtx)
+
+		return err
+	})
+
+	group.Go(func() error {
+		var err error
+		teamState, err = r.readTeams(groupCtx, scope)
+
+		return err
+	})
+
+	if err := group.Wait(); err != nil {
+		return nil, err
+	}
+
+	return assemble(r.org, membership, teamState), nil
+}
+
 // ReadTeams lists the teams and fans out over their member rosters.
 func (r *Reader) ReadTeams(ctx context.Context) (*TeamState, error) {
+	return r.readTeams(ctx, nil)
+}
+
+// readTeams reads the team list and the member rosters of every team in
+// scope; a nil scope means every team.
+func (r *Reader) readTeams(ctx context.Context, scope map[string]bool) (*TeamState, error) {
 	teams, err := r.Teams(ctx)
 	if err != nil {
 		return nil, err
@@ -268,6 +312,10 @@ func (r *Reader) ReadTeams(ctx context.Context) (*TeamState, error) {
 	var mu sync.Mutex
 
 	for _, team := range teams {
+		if scope != nil && !scope[strings.ToLower(team.Slug)] {
+			continue
+		}
+
 		fanout.Go(func() error {
 			members, err := r.TeamMembers(fanoutCtx, team.Slug)
 			if err != nil {

@@ -80,25 +80,32 @@ meeting the SLA.
 
 ## The write boundary
 
-The web tier holds a **read-only** GitHub App. Writes happen in a
-short-lived Kubernetes Job that mounts a **different** App, one with write
-permission. The Job runs the service's own `apply` subcommand against a
-config the service rendered into a ConfigMap.
+The web tier holds a **read-only** GitHub App. Writes happen in the
+**applier broker** — a separate single-replica deployment that alone
+holds the write-capable App's credentials (its own Pod Identity is the
+only principal allowed to read them), behind an intent-only API: the
+console sends verbs ("plan a sync", "apply the plan with this hash"),
+never content. The broker computes desired state itself, stores plans by
+content hash, re-verifies the caller's operator JWT on every request,
+and applies only when a fresh recomputation still matches the hash the
+operator approved. The unattended removals ticker — the leaver SLA —
+runs inside the broker too. See [broker.md](broker.md).
 
-The gain is concrete: an attacker who compromises the web process can read
-your organization and lie to your operators, but cannot change a single
-membership. The cost is one indirection and a slower feedback loop.
+The gain is concrete: an attacker who compromises the web process can
+read your organization and lie to your operators, but cannot change a
+single membership — and cannot even forge WHAT would change, because the
+broker accepts intent, not documents. The cost is one indirection.
 
-The Job originally ran upstream
-[peribolos](https://github.com/kubernetes-sigs/prow/tree/main/cmd/peribolos),
-chosen for its production hardening. It was replaced by the native
-subcommand when current peribolos coupled `--fix-team-members` to
-`--fix-teams`: with that coupling the config is authoritative for team
-existence and settings, which in this design belong to the structure
-engine, not the roster. The native applier has the ownership split as a
-type-level property — its write surface is one small interface with no
-team-creation method on it — at the cost of owning the invitation
-lifecycle and pagination ourselves.
+Two predecessors shaped this. Writes first ran as short-lived Kubernetes
+Jobs executing upstream
+[peribolos](https://github.com/kubernetes-sigs/prow/tree/main/cmd/peribolos);
+peribolos was replaced by a native `apply` subcommand when its flags
+coupled team-membership fixes to team creation/deletion — team existence
+belongs to the structure engine, and the native reconciler has that
+split as a type-level property (its write surface is one small interface
+with no team-creation method). The Job form was then replaced by the
+broker, which closed the remaining gap: a Job applied whatever document
+its creator rendered, while the broker derives the document itself.
 
 ## Where authentication happens
 

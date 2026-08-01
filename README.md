@@ -26,18 +26,21 @@ people to GitHub handles, and reconciles organization membership from it.
 
 ```
 directory (liveness + groups)  ─┐
-SSM mapping (name → handle)    ─┼─►  join  ──►  desired state  ──►  applier Job  ──►  GitHub
+SSM mapping (name → handle)    ─┼─►  join  ──►  desired state  ──►  applier broker  ──►  GitHub
 GitHub read state              ─┘                    │
                                                      └──►  audit record (S3)
 ```
 
-The reconciler is the service's own `apply` subcommand, run as a
-short-lived Job from the same image as the console but holding a different,
-write-capable credential. Its scope is a type-level property: organization
-membership (invitations included — a pending invite is neither re-invited
-nor miscounted) and membership of the teams named in the rendered document.
-There is no code in it that can create, delete, or edit a team, or touch
-organization settings.
+The reconciler is the applier broker: a separate deployment holding the
+write-capable credential behind an intent-only API. The console sends
+verbs, never content; the broker computes desired state itself, stores
+plans by content hash, and applies only an exact re-verified match. Its
+scope is a type-level property: organization membership (invitations
+included — a pending invite is neither re-invited nor miscounted) and
+membership of the teams named in the rendered document. There is no code
+in it that can create, delete, or edit a team, or touch organization
+settings. The unattended removals ticker — the leaver SLA — runs inside
+the broker on the same guards.
 
 Everything the service decides is a matter of *rendering the membership
 document*. The removals-only asymmetry of unattended runs is a property of

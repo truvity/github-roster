@@ -1,0 +1,27 @@
+{{- if and .Values.broker.enabled .Values.networkPolicy.enabled }}
+# The broker is reachable from the console pods only. Defense in depth on
+# top of the broker's own token verification: every verb requires the
+# operator's JWT regardless of who can open a socket.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "github-roster.fullname" . }}-broker-ingress
+  labels:
+    {{- include "github-roster.labels" . | nindent 4 }}
+    app.kubernetes.io/component: broker
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "github-roster.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: broker
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "github-roster.selectorLabels" . | nindent 14 }}
+      ports:
+        - port: http
+          protocol: TCP
+{{- end }}

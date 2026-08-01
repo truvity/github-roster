@@ -1,0 +1,33 @@
+{{- if .Values.broker.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "github-roster.fullname" . }}-broker
+  labels:
+    {{- include "github-roster.labels" . | nindent 4 }}
+    app.kubernetes.io/component: broker
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "github-roster.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: broker
+---
+# The broker's identity. Separate from the console's on purpose: IAM for
+# the applier App credentials binds HERE and nowhere else.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "github-roster.fullname" . }}-broker
+  labels:
+    {{- include "github-roster.labels" . | nindent 4 }}
+    app.kubernetes.io/component: broker
+  {{- with .Values.broker.serviceAccount.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+{{- end }}

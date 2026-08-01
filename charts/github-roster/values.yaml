@@ -98,6 +98,25 @@ networkPolicy:
   enabled: false
   extraIngress: []
 
+# The applier broker: the one deployment holding the write credential,
+# behind an intent-only API the console calls with the operator's own
+# token. Single replica, Recreate strategy — plans and applies must always
+# meet the same process. Point the console at it via config.broker.url
+# (normally http://<fullname>-broker:8080).
+broker:
+  enabled: false
+  serviceAccount:
+    # IRSA role with access to the applier App SSM prefixes, the directory
+    # credentials, and the audit bucket — the console's role has none of
+    # the applier prefixes.
+    annotations: {}
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      memory: 256Mi
+
 # The Role letting the service create reconciler Jobs in its own namespace.
 rbac:
   create: true

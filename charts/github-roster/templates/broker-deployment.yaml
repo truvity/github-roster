@@ -1,0 +1,90 @@
+{{- if .Values.broker.enabled }}
+# The applier broker: the ONE process holding the write credential, behind
+# an intent-only API. Single replica by design — applies serialize on an
+# in-process lock, and a second replica would only split the plan store.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "github-roster.fullname" . }}-broker
+  labels:
+    {{- include "github-roster.labels" . | nindent 4 }}
+    app.kubernetes.io/component: broker
+spec:
+  replicas: 1
+  strategy:
+    # Never two brokers mid-rollout: Recreate trades a few seconds of sync
+    # unavailability for the guarantee that plans and applies always meet
+    # the same process.
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "github-roster.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: broker
+  template:
+    metadata:
+      labels:
+        {{- include "github-roster.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: broker
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "github-roster.fullname" . }}-broker
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: broker
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - broker
+            - --config=/etc/github-roster/config.yaml
+            - --listen=:8080
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            {{- range $key, $value := .Values.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.broker.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/github-roster
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "github-roster.fullname" . }}-config
+        - name: tmp
+          emptyDir: {}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

@@ -9,16 +9,11 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"strings"
-
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 
 	"github.com/truvity/github-roster/pkg/auth"
 	"github.com/truvity/github-roster/pkg/broker"
 	"github.com/truvity/github-roster/pkg/config"
 
-	"github.com/truvity/github-roster/pkg/runlock"
 	"github.com/truvity/github-roster/pkg/server"
 	"github.com/truvity/github-roster/pkg/ui"
 	"github.com/truvity/github-roster/pkg/version"
@@ -96,19 +91,6 @@ func BuildDeps(ctx context.Context, logger *slog.Logger, cfg *config.Config, inf
 			slog.Any("error", err))
 	}
 
-	reconciler, err := buildApplier(logger, cfg)
-	if err != nil {
-		return nil, err
-	}
-
-	// Assigned via a variable so a nil *applier.Runner never becomes a
-	// non-nil interface — the typed-nil trap would make every "is the
-	// reconciler configured" check silently pass.
-	var jobRunner server.JobRunner
-	if reconciler != nil {
-		jobRunner = reconciler
-	}
-
 	// The broker client carries no credentials: every call forwards the
 	// operator's own bearer token, so the broker authorizes the human.
 	var brokerClient *broker.Client
@@ -121,17 +103,14 @@ func BuildDeps(ctx context.Context, logger *slog.Logger, cfg *config.Config, inf
 	return &server.Deps{
 		Logger:      logger,
 		Config:      cfg,
-		RunLock:     buildRunLock(logger),
 		Auth:        authenticator,
 		Renderer:    renderer,
 		Version:     info,
 		Mapping:     layers.Mapping,
 		Directories: layers.Directories,
 		Orgs:        layers.Orgs,
-		Applier:     jobRunner,
 		Broker:      brokerClient,
 		Audit:       layers.Audit,
-		ApplierApps: layers.ApplierApps,
 	}, nil
 }
 
@@ -177,35 +156,4 @@ func newLogger(cfg *config.Config) *slog.Logger {
 	}
 
 	return slog.New(handler)
-}
-
-// buildRunLock picks the sweep-serialization scope: a Kubernetes Lease
-// when running in a cluster (the lock must span replicas), the in-process
-// fallback otherwise. Never fatal — a local install without a cluster is
-// a supported shape.
-func buildRunLock(logger *slog.Logger) runlock.Lock {
-	restCfg, err := rest.InClusterConfig()
-	if err != nil {
-		logger.Info("run lock: in-process (not running in a cluster)")
-
-		return nil
-	}
-
-	client, err := kubernetes.NewForConfig(restCfg)
-	if err != nil {
-		logger.Warn("run lock: in-process (cluster client failed)", slog.Any("error", err))
-
-		return nil
-	}
-
-	ns, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
-	if err != nil {
-		logger.Warn("run lock: in-process (namespace unknown)", slog.Any("error", err))
-
-		return nil
-	}
-
-	logger.Info("run lock: kubernetes lease", slog.String("namespace", strings.TrimSpace(string(ns))))
-
-	return runlock.NewLease(logger, client, strings.TrimSpace(string(ns)), "github-roster-run")
 }

@@ -17,7 +17,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/truvity/github-roster/pkg/applier"
 	"github.com/truvity/github-roster/pkg/directory"
 	"github.com/truvity/github-roster/pkg/peribolos"
 )
@@ -71,8 +70,10 @@ type Record struct {
 	// Notes are the renderer's explanations.
 	Notes []string `json:"notes,omitempty"`
 
-	// Job is the reconciler's own report.
-	Job *applier.Run `json:"job,omitempty"`
+	// Job is the reconciler's own report. The name and shape predate the
+	// broker (runs were Kubernetes Jobs once) and stay stable: the audit
+	// trail's format outlives the mechanisms that write to it.
+	Job *Run `json:"job,omitempty"`
 	// Error is set when the run failed. A failed run is still recorded:
 	// the attempt is the thing being audited.
 	Error string `json:"error,omitempty"`
@@ -132,7 +133,7 @@ func sanitize(value string) string {
 }
 
 // FromRun assembles a record from everything a run produced.
-func FromRun(trigger Trigger, actor string, result *peribolos.Result, run *applier.Run, sources []directory.Status, runErr error) Record {
+func FromRun(trigger Trigger, actor string, result *peribolos.Result, run *Run, sources []directory.Status, runErr error) Record {
 	at := time.Now().UTC()
 	if run != nil && !run.StartedAt.IsZero() {
 		at = run.StartedAt.UTC()
@@ -168,7 +169,7 @@ func FromRun(trigger Trigger, actor string, result *peribolos.Result, run *appli
 	return record
 }
 
-func jobSuffix(run *applier.Run) string {
+func jobSuffix(run *Run) string {
 	if run == nil || run.JobName == "" {
 		return "norun"
 	}
@@ -191,4 +192,14 @@ func (r Record) Summary() string {
 	default:
 		return fmt.Sprintf("%s — %d added, %d removed", what, len(r.Adding), len(r.Removing))
 	}
+}
+
+// Run is one reconciler run as the audit record stores it.
+type Run struct {
+	JobName   string        `json:"jobName"`
+	Confirmed bool          `json:"confirmed"`
+	Succeeded bool          `json:"succeeded"`
+	Output    string        `json:"output"`
+	StartedAt time.Time     `json:"startedAt"`
+	Duration  time.Duration `json:"duration"`
 }

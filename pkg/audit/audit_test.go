@@ -6,7 +6,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/truvity/github-roster/pkg/applier"
 	"github.com/truvity/github-roster/pkg/audit"
 	"github.com/truvity/github-roster/pkg/audit/audittest"
 	"github.com/truvity/github-roster/pkg/peribolos"
@@ -57,7 +56,7 @@ func TestFromRunCapturesTheWholeStory(t *testing.T) {
 		Notes:          []string{"a note"},
 	}
 
-	run := &applier.Run{
+	run := &audit.Run{
 		JobName:   "roster-sync-1",
 		Confirmed: true,
 		Succeeded: true,

@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/truvity/github-roster/pkg/directory"
-
 	"github.com/truvity/github-roster/pkg/orgstate"
 	"github.com/truvity/github-roster/pkg/roster"
 )
@@ -81,16 +79,6 @@ func (d *Deps) githubReadAt(ctx context.Context) map[string]time.Time {
 	}
 
 	return out
-}
-
-// sourceStatuses reports directory health, or nothing when no directories
-// are wired (tests, local runs).
-func (d *Deps) sourceStatuses() []directory.Status {
-	if d.Directories == nil {
-		return nil
-	}
-
-	return d.Directories.Statuses()
 }
 
 // rosterResponse is the JSON body of GET /api/roster.

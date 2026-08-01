@@ -16,7 +16,6 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/recover"
 	slogfiber "github.com/samber/slog-fiber"
 
-	"github.com/truvity/github-roster/pkg/applier"
 	"github.com/truvity/github-roster/pkg/audit"
 	"github.com/truvity/github-roster/pkg/auth"
 	"github.com/truvity/github-roster/pkg/broker"
@@ -24,7 +23,6 @@ import (
 	"github.com/truvity/github-roster/pkg/directory"
 	"github.com/truvity/github-roster/pkg/mapping"
 	"github.com/truvity/github-roster/pkg/orgstate"
-	"github.com/truvity/github-roster/pkg/runlock"
 	"github.com/truvity/github-roster/pkg/ui"
 	"github.com/truvity/github-roster/pkg/version"
 )
@@ -43,53 +41,18 @@ type Deps struct {
 	Directories *directory.Set
 	// Orgs is one read-only GitHub reader per managed organization.
 	Orgs map[string]OrgReader
-	// Applier spawns reconciler Jobs. Kept for the (gated) unattended
-	// removals path until that moves into the broker; the operator sync
-	// surface no longer uses it.
-	Applier JobRunner
 	// Broker is the applier broker's client. Nil where none is
 	// configured, in which case the sync surface reports itself
 	// unavailable rather than pretending.
 	Broker *broker.Client
 	// Audit records every run, durably.
 	Audit audit.Sink
-	// RunLock serializes removals sweeps: ticker, insurance CronJob and
-	// any future caller all contend on it, and losers are told rather
-	// than queued. Nil is valid and falls back to an in-process lock —
-	// correct for exactly one replica; multi-replica installs must wire
-	// the Lease implementation (BuildDeps does, when in a cluster).
-	RunLock runlock.Lock
-
-	// fallbackLock backs the nil-RunLock case.
-	fallbackLock runlock.Memory
-
-	// ApplierApps carries each organization's applier App IDENTIFIERS.
-	//
-	// Identifiers only, never the key: the web tier reads app id and
-	// installation id so it can pass them as Job arguments, and the
-	// private key is mounted straight into the Job from a Secret this
-	// process never opens. That asymmetry is the whole privilege boundary,
-	// so it is visible in the type.
-	ApplierApps map[string]ApplierApp
-}
-
-// ApplierApp is the non-secret half of an applier App's credentials.
-type ApplierApp struct {
-	AppID          string
-	InstallationID string
 }
 
 // OrgReader reads one organization's current GitHub state.
 // *orgstate.Reader and *orgstate.Cache satisfy it; tests inject fakes.
 type OrgReader interface {
 	Read(ctx context.Context) (*orgstate.State, error)
-}
-
-// freshReader is the optional cache-bypass. The sync and removals paths
-// use it when present: the state an operator confirms, and the state a
-// sweep decides removals on, must be the truth right now.
-type freshReader interface {
-	ReadFresh(ctx context.Context) (*orgstate.State, error)
 }
 
 // invalidator is the optional bust-on-write hook, called after every
@@ -99,26 +62,11 @@ type invalidator interface {
 	Invalidate()
 }
 
-// readFresh reads bypassing any cache, falling back to a plain Read for
-// readers that have none.
-func readFresh(ctx context.Context, reader OrgReader) (*orgstate.State, error) {
-	if fresh, ok := reader.(freshReader); ok {
-		return fresh.ReadFresh(ctx)
-	}
-
-	return reader.Read(ctx)
-}
-
 // invalidate drops the reader's cache, when it has one.
 func invalidate(reader OrgReader) {
 	if cache, ok := reader.(invalidator); ok {
 		cache.Invalidate()
 	}
-}
-
-// JobRunner runs one reconciler Job. *applier.Runner satisfies it.
-type JobRunner interface {
-	Run(ctx context.Context, req applier.Request) (*applier.Run, error)
 }
 
 // Timeouts. The console serves small pages to humans; a request slower than
@@ -293,31 +241,9 @@ func NewHealthApp(deps *Deps) *fiber.App {
 		return c.JSON(fiber.Map{"status": "ok", "version": deps.Version.String()})
 	})
 
-	// POST /sync triggers one removals-only sweep NOW. It lives on the
-	// internal listener, unauthenticated, and that is a considered
-	// decision rather than an omission:
-	//
-	//   - the insurance CronJob that calls it runs in-cluster and cannot
-	//     obtain a gateway token; this port is not routed by the gateway
-	//     and the NetworkPolicy scopes it to the namespace;
-	//   - the operation is safe by construction: a removals-only render
-	//     can only remove people a healthy directory positively reports
-	//     gone. Triggering leaver revocation EARLY is not a privilege —
-	//     it is the service doing its one unattended job sooner;
-	//   - it is serialized (409 when a run is underway), so it cannot be
-	//     used to stampede the reconciler.
-	app.Post("/sync", func(c fiber.Ctx) error {
-		summary, err := deps.RunRemovals(c.Context())
-
-		switch {
-		case errors.Is(err, ErrRunInProgress):
-			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": err.Error()})
-		case err != nil:
-			return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{"error": err.Error()})
-		default:
-			return c.JSON(summary)
-		}
-	})
+	// The unattended removals path lives in the BROKER now — the insurance
+	// CronJob posts the broker's /internal/sweep. This listener keeps only
+	// health.
 
 	return app
 }
@@ -358,17 +284,6 @@ func errorHandler(deps *Deps) fiber.ErrorHandler {
 func Run(ctx context.Context, deps *Deps) error {
 	console := NewApp(deps)
 	health := NewHealthApp(deps)
-
-	// The unattended half. Only when a reconciler exists: a console with
-	// no cluster has nothing to sweep with, and says so once.
-	switch {
-	case deps.Applier == nil:
-		deps.Logger.Info("scheduled removals disabled: no reconciler configured")
-	case deps.Config.Schedule.RemovalsInterval <= 0:
-		deps.Logger.Info("scheduled removals disabled: no interval configured")
-	default:
-		go deps.scheduleLoop(ctx)
-	}
 
 	errs := make(chan error, 2)
 

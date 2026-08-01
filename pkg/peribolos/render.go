@@ -326,6 +326,21 @@ func renderTeams(in Inputs, result *Result) map[string]Team {
 			}
 		}
 
+		// A pinned team keeps its current members no matter what: its
+		// residents include non-humans (App and bot logins) that no
+		// mapping entry describes, so a computed list can only ever be
+		// missing them. Pins may add someone; removal from a pinned team
+		// is a manual, deliberate act.
+		if in.Org.Teams[name].Pinned {
+			current := in.State.TeamMembers[name]
+			if extra := missingFrom(members, current); len(extra) > 0 {
+				result.Notes = append(result.Notes,
+					fmt.Sprintf("team %s is pinned: keeping current member(s) %s", name, strings.Join(extra, ", ")))
+			}
+
+			members = append(members, current...)
+		}
+
 		teams[name] = Team{Members: sortedUnique(members)}
 	}
 
@@ -432,6 +447,25 @@ func containsFold(list []string, value string) bool {
 	}
 
 	return false
+}
+
+// missingFrom returns the current members a computed list would drop,
+// case-insensitively, in their original case.
+func missingFrom(computed, current []string) []string {
+	have := map[string]bool{}
+	for _, login := range computed {
+		have[strings.ToLower(login)] = true
+	}
+
+	var missing []string
+
+	for _, login := range current {
+		if !have[strings.ToLower(login)] {
+			missing = append(missing, login)
+		}
+	}
+
+	return sortedUnique(missing)
 }
 
 func sortedUnique(values []string) []string {

@@ -354,3 +354,45 @@ func joinerWantingTeam(name, login string) roster.Person {
 
 	return p
 }
+
+// A pinned team's residents include logins no mapping describes — bots,
+// App accounts. The render must keep them: pins may add, and removal from
+// a pinned team is a manual act, never a sync side effect.
+func TestPinnedTeamKeepsCurrentMembers(t *testing.T) {
+	t.Parallel()
+
+	st := state(member("ada"))
+	st.TeamMembers["robots"] = []string{"example-bot-app"}
+
+	result := render(t, peribolos.Inputs{
+		Mode:   peribolos.ModeFull,
+		Org:    orgConfig(),
+		Roster: &roster.Roster{People: []roster.Person{person("Ada Lovelace", "ada", true, "engineers")}},
+		State:  st,
+	})
+
+	require.Equal(t, []string{"example-bot-app"},
+		result.Document.Orgs[orgName].Teams["robots"].Members)
+	require.Contains(t, result.Notes[0], "pinned")
+}
+
+// A pin can still add someone to a pinned team; the current residents ride
+// along.
+func TestPinnedTeamUnionsPinsWithCurrent(t *testing.T) {
+	t.Parallel()
+
+	st := state(member("ada"), member("bot"))
+	st.TeamMembers["robots"] = []string{"example-bot-app"}
+
+	result := render(t, peribolos.Inputs{
+		Mode: peribolos.ModeFull,
+		Org:  orgConfig(),
+		Roster: &roster.Roster{People: []roster.Person{
+			person("Bot", "bot", true, "robots"),
+		}},
+		State: st,
+	})
+
+	require.Equal(t, []string{"bot", "example-bot-app"},
+		result.Document.Orgs[orgName].Teams["robots"].Members)
+}

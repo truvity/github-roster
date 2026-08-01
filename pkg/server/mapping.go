@@ -11,22 +11,16 @@ import (
 
 	"github.com/truvity/github-roster/pkg/auth"
 	"github.com/truvity/github-roster/pkg/mapping"
-	"github.com/truvity/github-roster/pkg/roster"
 	"github.com/truvity/github-roster/pkg/ui"
 )
 
 // mappingListData is the editor's index. It carries the join alongside the
 // raw entries so each row can trace the full identity chain — IdP(s) →
-// mapping → GitHub org(s) and team(s) — without leaving the page.
+// mapping → the pure editor. The identity trace (per IdP, per org)
+// lives on the Structure page since the tab split.
 type mappingListData struct {
 	Entries []mapping.Entry
 	Flash   string
-	// People indexes the joined roster by name; nil when the read layers
-	// are not wired (tests).
-	People map[string]roster.Person
-	// SourceNames and OrgNames are the trace columns, in stable order.
-	SourceNames []string
-	OrgNames    []string
 }
 
 func (d *Deps) handleMapping(c fiber.Ctx) error {
@@ -43,32 +37,8 @@ func (d *Deps) handleMapping(c fiber.Ctx) error {
 
 	data := mappingListData{Entries: entries, Flash: c.Query("flash")}
 
-	// The trace is best-effort: a broken directory or GitHub read must
-	// not take the EDITOR down — fixing the mapping may be exactly what
-	// the operator is here to do.
-	if joined, err := d.buildRoster(c.Context()); err == nil {
-		data.People = make(map[string]roster.Person, len(joined.People))
-		for i := range joined.People {
-			data.People[joined.People[i].Name] = joined.People[i]
-		}
-	}
-
-	if d.Directories != nil {
-		for _, s := range d.Directories.Statuses() {
-			data.SourceNames = append(data.SourceNames, s.Source)
-		}
-
-		sort.Strings(data.SourceNames)
-	}
-
-	for i := range d.Config.Orgs {
-		data.OrgNames = append(data.OrgNames, d.Config.Orgs[i].Name)
-	}
-
-	sort.Strings(data.OrgNames)
-
 	return d.Renderer.Render(c, fiber.StatusOK, "mapping", ui.Page{
-		Title:  "Mapping",
+		Title:  "People",
 		Nav:    "mapping",
 		AuthOn: d.Auth.Enabled(),
 		Data:   data,

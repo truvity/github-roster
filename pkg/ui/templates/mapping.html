@@ -1,9 +1,11 @@
 {{define "content"}}
-<h1>Mapping</h1>
+<h1>People</h1>
 <p class="lede">
-  Who is who: a person's directory name, their GitHub handle, and the
-  abbreviation their namespace is named after. Editing here is the only way
-  a person becomes known to this service.
+  Who is who: a person's directory name, their GitHub handle, their email
+  anchors, and the abbreviation their namespace is named after. Editing
+  here is the only way a person becomes known to this service. The full
+  identity trace (per IdP, per organization) lives on
+  <a href="/structure">Structure</a>.
 </p>
 
 {{if .Data.Flash}}<div class="banner">{{.Data.Flash}}</div>{{end}}
@@ -14,47 +16,22 @@
 </p>
 
 {{if .Data.Entries}}
-{{$people := .Data.People}}
-{{$sources := .Data.SourceNames}}
-{{$orgs := .Data.OrgNames}}
 <div style="overflow-x:auto">
 <table>
   <thead>
     <tr>
       <th>Name</th><th>GitHub</th><th>Declared emails</th><th>Namespace</th><th>Class</th>
-      {{range $sources}}<th>IdP · {{.}}</th>{{end}}
-      {{range $orgs}}<th>Org · {{.}}</th>{{end}}
       <th>Pinned teams</th><th>Rev</th><th></th>
     </tr>
   </thead>
   <tbody>
   {{range .Data.Entries}}
-    {{$p := index $people .Name}}
     <tr>
       <td>{{.Name}}</td>
       <td>{{.GitHub}}</td>
       <td>{{if .Emails}}{{range $i, $e := .Emails}}{{if $i}}<br>{{end}}{{$e}}{{end}}{{else}}—{{end}}</td>
       <td>{{if .K8s}}dev-{{.K8s}}{{else}}—{{end}}</td>
       <td>{{.Class}}</td>
-      {{range $src := $sources}}
-      {{$d := index $p.Directories $src}}
-      <td>
-        {{if $d.Email}}
-          {{if $d.Live}}<span class="badge ok">live</span>{{else}}<span class="badge danger">suspended</span>{{end}}
-          <div class="muted">{{$d.Email}}</div>
-        {{else}}—{{end}}
-      </td>
-      {{end}}
-      {{range $org := $orgs}}
-      {{$m := index $p.Orgs $org}}
-      <td>
-        {{if $m.InvitationPending}}<span class="badge warn">invited</span>
-        {{else if $m.Member}}{{if eq (printf "%s" $m.Role) "admin"}}<span class="badge ok">owner</span>{{else}}<span class="badge ok">member</span>{{end}}
-        {{else}}<span class="badge danger">no</span>{{end}}
-        {{if $m.Teams}}<div class="muted">{{range $i, $t := $m.Teams}}{{if $i}}, {{end}}{{$t}}{{end}}</div>{{end}}
-        {{if $m.DesiredTeams}}<div class="muted">→ {{range $i, $t := $m.DesiredTeams}}{{if $i}}, {{end}}{{$t}}{{end}}</div>{{end}}
-      </td>
-      {{end}}
       <td>{{if .Pinned}}{{range $i, $p := .Pinned}}{{if $i}}, {{end}}{{$p}}{{end}}{{else}}—{{end}}</td>
       <td class="muted">{{if .Revision}}{{.Revision}}{{else}}—{{end}}</td>
       <td><a href="/mapping/edit?name={{.Name}}">edit</a></td>

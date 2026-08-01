@@ -100,9 +100,23 @@ func NewApp(deps *Deps) *fiber.App {
 		ErrorHandler:   errorHandler(deps),
 	})
 
-	// A panic on one page must not take the process down: the scheduled
-	// removals run in it, and those are the part with an SLA.
+	// A panic on one page must not take the process down.
 	app.Use(recover.New())
+
+	// Hardening headers. The gateway authenticates; these bound what a
+	// page can do once rendered. unsafe-inline is a deliberate trade: the
+	// templates carry inline styles and one small progress script, and
+	// the console serves no user-authored content — the join's values
+	// are HTML-escaped by the template engine (tested).
+	app.Use(func(c fiber.Ctx) error {
+		c.Set("X-Content-Type-Options", "nosniff")
+		c.Set("X-Frame-Options", "DENY")
+		c.Set("Referrer-Policy", "no-referrer")
+		c.Set("Content-Security-Policy",
+			"default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; frame-ancestors 'none'")
+
+		return c.Next()
+	})
 	app.Use(slogfiber.New(deps.Logger))
 
 	// Everything is behind the token check, registered before any route

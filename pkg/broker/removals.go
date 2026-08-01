@@ -96,7 +96,7 @@ func (d *Deps) sweepOrg(ctx context.Context, cfgOrg *config.Org) OrgOutcome {
 
 	// Never a cached answer: a removal decided on stale state is exactly
 	// the mistake the fail-safes exist to prevent.
-	state, err := org.Reader.Read(ctx)
+	state, err := org.Reader.ReadScoped(ctx, teamNames(cfgOrg))
 	if err != nil {
 		outcome.Error = fmt.Sprintf("read organization: %v", err)
 

@@ -265,7 +265,10 @@ func (d *Deps) compute(ctx context.Context, name string, org *Org) (*stored, err
 		return nil, fmt.Errorf("read mapping: %w", err)
 	}
 
-	state, err := org.Reader.Read(ctx)
+	// Scoped: member listings only for the teams the document names. The
+	// per-team fan-out dominates a real organization's read time, and
+	// teams outside the document are untouchable by construction anyway.
+	state, err := org.Reader.ReadScoped(ctx, teamNames(cfgOrg))
 	if err != nil {
 		return nil, fmt.Errorf("read %s: %w", name, err)
 	}
@@ -313,6 +316,17 @@ func (d *Deps) compute(ctx context.Context, name string, org *Org) (*stored, err
 	}
 
 	return &stored{Org: name, Mode: peribolos.ModeFull, Plan: plan, Result: result}, nil
+}
+
+// teamNames lists the document-named teams of one organization — the
+// scope of every broker read.
+func teamNames(org *config.Org) []string {
+	names := make([]string, 0, len(org.Teams))
+	for name := range org.Teams {
+		names = append(names, name)
+	}
+
+	return names
 }
 
 // record writes the audit record. A failure never fails the run it

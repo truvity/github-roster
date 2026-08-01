@@ -1,7 +1,8 @@
 package server
 
 import (
-	"errors"
+	"bufio"
+	"fmt"
 
 	"github.com/truvity/github-roster/pkg/audit"
 
@@ -119,29 +120,84 @@ func (d *Deps) handleSyncApply(c fiber.Ctx) error {
 		return render()
 	}
 
-	applied, err := d.Broker.Apply(c.Context(), orgName, hash, c.Get(fiber.HeaderAuthorization))
-
-	var drift *broker.ErrDrift
-
-	switch {
-	case errors.As(err, &drift):
-		data.Drift = true
-		data.Plan = drift.Fresh
-
-		return render()
-	case err != nil:
+	runID, err := d.Broker.ApplyAsync(c.Context(), orgName, hash, c.Get(fiber.HeaderAuthorization))
+	if err != nil {
 		data.Error = err.Error()
 
 		return render()
 	}
 
-	// The broker just wrote to GitHub; whatever the console's cache holds
-	// is now wrong by construction.
+	// The broker is writing to GitHub as we redirect; whatever the
+	// console's cache holds is about to be wrong by construction.
 	invalidate(d.Orgs[orgName])
 
-	data.Applied = applied
+	return c.Redirect().To(fmt.Sprintf("/sync/run?org=%s&id=%s&hash=%s", orgName, runID, hash))
+}
 
-	return render()
+// handleSyncRun renders the live-run page: the transcript streams into
+// it over SSE from the console's proxy endpoint.
+func (d *Deps) handleSyncRun(c fiber.Ctx) error {
+	return d.Renderer.Render(c, fiber.StatusOK, "run", ui.Page{
+		Title:  "Applying",
+		Nav:    "sync",
+		AuthOn: d.Auth.Enabled(),
+		Data: syncRunData{
+			Org:  c.Query("org"),
+			ID:   c.Query("id"),
+			Hash: c.Query("hash"),
+		},
+	})
+}
+
+// syncRunData drives the live-run page.
+type syncRunData struct {
+	Org  string
+	ID   string
+	Hash string
+}
+
+// handleSyncRunStream proxies the broker's SSE stream. EventSource
+// cannot set an Authorization header, so the gateway-authenticated
+// console forwards the caller's token on their behalf. The gateway's
+// route timeout may cut a long stream; EventSource reconnects and the
+// broker replays the transcript, so nothing is lost.
+func (d *Deps) handleSyncRunStream(c fiber.Ctx) error {
+	if d.Broker == nil {
+		return fiber.NewError(fiber.StatusServiceUnavailable, "no applier broker is configured")
+	}
+
+	resp, err := d.Broker.StreamRun(c.Context(), c.Query("org"), c.Query("id"), c.Get(fiber.HeaderAuthorization))
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadGateway, err.Error())
+	}
+
+	c.Set(fiber.HeaderContentType, "text/event-stream")
+	c.Set(fiber.HeaderCacheControl, "no-cache")
+
+	c.Response().SetBodyStreamWriter(func(w *bufio.Writer) {
+		defer func() { _ = resp.Body.Close() }()
+
+		buf := make([]byte, 4096)
+
+		for {
+			n, readErr := resp.Body.Read(buf)
+			if n > 0 {
+				if _, writeErr := w.Write(buf[:n]); writeErr != nil {
+					return
+				}
+
+				if flushErr := w.Flush(); flushErr != nil {
+					return
+				}
+			}
+
+			if readErr != nil {
+				return
+			}
+		}
+	})
+
+	return nil
 }
 
 func (d *Deps) orgNames() []string {

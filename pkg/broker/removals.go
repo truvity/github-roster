@@ -205,7 +205,7 @@ func (d *Deps) recordSweep(ctx context.Context, entry *stored, report string, ru
 		entry = &stored{}
 	}
 
-	if auditErr := d.record(ctx, audit.TriggerSchedule, "schedule", entry, report, true, runErr); auditErr != "" {
+	if auditErr := d.record(ctx, audit.TriggerSchedule, "schedule", entry, report, runErr); auditErr != "" {
 		d.Logger.ErrorContext(ctx, "AUDIT RECORD LOST for sweep", "org", entry.Org, "error", auditErr)
 	}
 }

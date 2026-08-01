@@ -123,3 +123,50 @@ func (c *Client) call(ctx context.Context, method, path, token string, out any) 
 
 	return fmt.Errorf("broker: %s", envelope.Error)
 }
+
+// ApplyAsync starts an apply and returns the broker's run id; the
+// transcript streams from StreamRunURL's endpoint.
+func (c *Client) ApplyAsync(ctx context.Context, org, hash, token string) (string, error) {
+	var out struct {
+		RunID string `json:"runId"`
+	}
+
+	err := c.call(ctx, http.MethodPost, fmt.Sprintf("/v1/orgs/%s/plans/%s/apply-async", org, hash), token, &out)
+	if err != nil {
+		return "", err
+	}
+
+	if out.RunID == "" {
+		return "", fmt.Errorf("broker returned no run id")
+	}
+
+	return out.RunID, nil
+}
+
+// StreamRun opens the run's SSE stream. The caller owns the response
+// body and must close it; the client's normal timeout does not apply —
+// a stream lives as long as the run narrates.
+func (c *Client) StreamRun(ctx context.Context, org, id, token string) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
+		fmt.Sprintf("%s/v1/orgs/%s/runs/%s/stream", c.baseURL, org, id), http.NoBody)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Authorization", token)
+
+	streaming := &http.Client{} // no timeout: the stream outlives any sane one
+
+	resp, err := streaming.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("open run stream: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		_ = resp.Body.Close()
+
+		return nil, fmt.Errorf("run stream: %s", resp.Status)
+	}
+
+	return resp, nil
+}

@@ -1,18 +1,105 @@
 {{define "content"}}
 <h1>Structure</h1>
 <p class="lede">
-  The shape of access, team by team: what backs each team, who is in it,
-  and who should be. Per-person detail lives on
-  <a href="/mapping">People</a>.
+  One table over the whole join — filter it by organization, team,
+  directory, group, or person. Without a filter you see the shape of
+  access, team by team.
   {{range .Data.GitHub}}
   <span class="muted">GitHub state for {{.Org}} as of {{.Age}} ago.</span>
   {{end}}
 </p>
 
+<section class="card">
+<form method="get" action="/structure" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+  <label>Organization<br>
+    <select name="org">
+      <option value="">any</option>
+      {{range .Data.OrgNames}}<option value="{{.}}" {{if eq . $.Data.Filter.Org}}selected{{end}}>{{.}}</option>{{end}}
+    </select>
+  </label>
+  <label>Team<br>
+    <select name="team">
+      <option value="">any</option>
+      {{range .Data.TeamNames}}<option value="{{.}}" {{if eq . $.Data.Filter.Team}}selected{{end}}>{{.}}</option>{{end}}
+    </select>
+  </label>
+  <label>Directory<br>
+    <select name="source">
+      <option value="">any</option>
+      {{range .Data.SourceNames}}<option value="{{.}}" {{if eq . $.Data.Filter.Source}}selected{{end}}>{{.}}</option>{{end}}
+    </select>
+  </label>
+  <label>Group<br>
+    <select name="group">
+      <option value="">any</option>
+      {{range .Data.GroupNames}}<option value="{{.}}" {{if eq . $.Data.Filter.Group}}selected{{end}}>{{.}}</option>{{end}}
+    </select>
+  </label>
+  <label>Person<br>
+    <input type="text" name="q" value="{{.Data.Filter.Query}}" placeholder="name, login or email">
+  </label>
+  <button type="submit">Filter</button>
+  {{if .Data.Filter.Active}}<a href="/structure" style="align-self:center">reset</a>{{end}}
+</form>
+</section>
+
+{{if .Data.Filter.Active}}
+{{if .Data.People}}
+{{$sources := .Data.SourceNames}}
+{{$orgs := .Data.OrgNames}}
+<section class="card">
+<div style="overflow-x:auto">
+<table>
+  <thead>
+    <tr>
+      <th>Name</th><th>GitHub</th>
+      {{range $sources}}<th>IdP · {{.}}</th>{{end}}
+      {{range $orgs}}<th>Org · {{.}}</th>{{end}}
+      <th>Groups</th>
+    </tr>
+  </thead>
+  <tbody>
+  {{range .Data.People}}
+    {{$p := .}}
+    <tr>
+      <td><a href="/person?name={{$p.Name}}">{{$p.Name}}</a>{{if eq (printf "%s" $p.Class) "bot"}} <span class="muted">bot</span>{{end}}</td>
+      <td>{{$p.GitHub}}</td>
+      {{range $src := $sources}}
+      {{$d := index $p.Directories $src}}
+      <td>
+        {{if $d.Email}}
+          {{if $d.Live}}<span class="badge ok">live</span>{{else}}<span class="badge danger">suspended</span>{{end}}
+          <div class="muted">{{$d.Email}}</div>
+        {{else}}—{{end}}
+      </td>
+      {{end}}
+      {{range $org := $orgs}}
+      {{$m := index $p.Orgs $org}}
+      <td>
+        {{if $m.InvitationPending}}<span class="badge warn">invited</span>
+        {{else if $m.Member}}{{if eq (printf "%s" $m.Role) "admin"}}<span class="badge ok">owner</span>{{else}}<span class="badge ok">member</span>{{end}}
+        {{else}}<span class="badge danger">no</span>{{end}}
+        {{if $m.Teams}}<div class="muted">{{range $i, $t := $m.Teams}}{{if $i}}, {{end}}{{$t}}{{end}}</div>{{end}}
+        {{if $m.DesiredTeams}}<div class="muted">→ {{range $i, $t := $m.DesiredTeams}}{{if $i}}, {{end}}{{$t}}{{end}}</div>{{end}}
+      </td>
+      {{end}}
+      <td class="muted">{{range $i, $g := $p.Groups}}{{if $i}}, {{end}}{{$g}}{{end}}</td>
+    </tr>
+  {{end}}
+  </tbody>
+</table>
+</div>
+</section>
+{{else}}
+<p class="lede">Nobody matches this filter.</p>
+{{end}}
+{{end}}
+
 {{if .Data.RosterError}}
   <div class="banner">Could not resolve membership: {{.Data.RosterError}}</div>
 {{end}}
 
+{{if not .Data.Filter.Active}}
 {{range .Data.Orgs}}
 <h2>{{.Name}}</h2>
 <section class="card">
@@ -47,5 +134,6 @@
 <p class="lede">No teams configured.</p>
 {{end}}
 </section>
+{{end}}
 {{end}}
 {{end}}

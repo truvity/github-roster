@@ -23,7 +23,15 @@ import (
 type structureData struct {
 	// Person selects one person on the detail page.
 	Person string
-	Orgs   []structureOrg
+	// Filter is the explore state: which slice of the join is shown.
+	Filter exploreFilter
+	// People are the filtered join rows, present when any filter is set.
+	People []roster.Person
+	// GroupNames are every configured group, for the filter dropdown.
+	GroupNames []string
+	// TeamNames are org-qualified team names ("org/team") for the picker.
+	TeamNames []string
+	Orgs      []structureOrg
 	// Sources carries each directory's health. Shown rather than hidden:
 	// an operator reading a stale directory needs to know, because the
 	// alternative is confidently acting on it.
@@ -119,11 +127,119 @@ func (d *Deps) handleOverview(c fiber.Ctx) error {
 	})
 }
 
-// handleStructure is the shape of access, team-centric: each team, what
-// backs it, and its current versus desired membership. Per-person detail
-// lives on the People page.
+// exploreFilter is one slice of the join, straight from query params —
+// shareable and bookmarkable by construction.
+type exploreFilter struct {
+	Org    string
+	Team   string
+	Source string
+	Group  string
+	Query  string
+}
+
+// Active reports whether any filter is set; without one the page shows
+// the team-centric summary.
+func (f exploreFilter) Active() bool {
+	return f.Org != "" || f.Team != "" || f.Source != "" || f.Group != "" || f.Query != ""
+}
+
+// matches applies the filter to one person. Filters combine with AND —
+// each narrows the slice.
+func (f exploreFilter) matches(p *roster.Person) bool {
+	if f.Source != "" {
+		if _, ok := p.Directories[f.Source]; !ok {
+			return false
+		}
+	}
+
+	if f.Group != "" && !slices.Contains(p.Groups, strings.ToLower(f.Group)) {
+		return false
+	}
+
+	if f.Org != "" {
+		m, ok := p.Orgs[f.Org]
+		if !ok || (!m.Member && !m.InvitationPending && f.Team == "") {
+			return false
+		}
+	}
+
+	if f.Team != "" {
+		var m roster.Membership
+		if f.Org != "" {
+			m = p.Orgs[f.Org]
+		} else {
+			for _, candidate := range p.Orgs {
+				if slices.Contains(candidate.Teams, f.Team) || slices.Contains(candidate.DesiredTeams, f.Team) {
+					m = candidate
+					break
+				}
+			}
+		}
+
+		if !slices.Contains(m.Teams, f.Team) && !slices.Contains(m.DesiredTeams, f.Team) {
+			return false
+		}
+	}
+
+	if f.Query != "" {
+		q := strings.ToLower(f.Query)
+		hit := strings.Contains(strings.ToLower(p.Name), q) ||
+			strings.Contains(strings.ToLower(p.GitHub), q) ||
+			strings.Contains(strings.ToLower(p.Email), q)
+
+		for _, identity := range p.Directories {
+			hit = hit || strings.Contains(strings.ToLower(identity.Email), q)
+		}
+
+		if !hit {
+			return false
+		}
+	}
+
+	return true
+}
+
+// handleStructure is the explore surface over the join: one table, one
+// filter bar, presets as links. Without a filter it shows the
+// team-centric summary — the shape of access.
 func (d *Deps) handleStructure(c fiber.Ctx) error {
-	data := structureData{Orgs: make([]structureOrg, 0, len(d.Config.Orgs))}
+	data := structureData{
+		Orgs: make([]structureOrg, 0, len(d.Config.Orgs)),
+		Filter: exploreFilter{
+			Org:    c.Query("org"),
+			Team:   c.Query("team"),
+			Source: c.Query("source"),
+			Group:  c.Query("group"),
+			Query:  c.Query("q"),
+		},
+	}
+
+	if d.Directories != nil {
+		for _, s := range d.Directories.Statuses() {
+			data.SourceNames = append(data.SourceNames, s.Source)
+		}
+
+		sort.Strings(data.SourceNames)
+	}
+
+	groups := map[string]bool{}
+
+	for i := range d.Config.Orgs {
+		org := &d.Config.Orgs[i]
+		data.OrgNames = append(data.OrgNames, org.Name)
+
+		for _, name := range sortedTeamNames(org.Teams) {
+			data.TeamNames = append(data.TeamNames, name)
+
+			for _, group := range org.Teams[name].Groups {
+				groups[strings.ToLower(group)] = true
+			}
+		}
+	}
+
+	sort.Strings(data.OrgNames)
+	data.TeamNames = sortedUnique(data.TeamNames)
+	data.GroupNames = sortedKeys(groups)
 
 	var joined *roster.Roster
 
@@ -142,6 +258,21 @@ func (d *Deps) handleStructure(c fiber.Ctx) error {
 				Age: time.Since(readAt[name]).Round(time.Second).String(),
 			})
 		}
+	}
+
+	if data.Filter.Active() && joined != nil {
+		for i := range joined.People {
+			if data.Filter.matches(&joined.People[i]) {
+				data.People = append(data.People, joined.People[i])
+			}
+		}
+
+		return d.Renderer.Render(c, fiber.StatusOK, "structure", ui.Page{
+			Title:  "Structure",
+			Nav:    "structure",
+			AuthOn: d.Auth.Enabled(),
+			Data:   data,
+		})
 	}
 
 	for i := range d.Config.Orgs {
@@ -313,6 +444,16 @@ func requireOperator(c fiber.Ctx) error {
 // an error is a page or a JSON body.
 func wantsHTML(c fiber.Ctx) bool {
 	return strings.Contains(c.Get(fiber.HeaderAccept), fiber.MIMETextHTML)
+}
+
+func sortedUnique(values []string) []string {
+	slices.Sort(values)
+
+	return slices.Compact(values)
+}
+
+func sortedKeys(set map[string]bool) []string {
+	return slices.Sorted(maps.Keys(set))
 }
 
 func sortedTeamNames(teams map[string]config.Team) []string {

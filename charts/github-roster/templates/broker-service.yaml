@@ -14,8 +14,7 @@ spec:
       protocol: TCP
       name: http
   selector:
-    {{- include "github-roster.selectorLabels" . | nindent 4 }}
-    app.kubernetes.io/component: broker
+    {{- include "github-roster.brokerSelectorLabels" . | nindent 4 }}
 ---
 # The broker's identity. Separate from the console's on purpose: IAM for
 # the applier App credentials binds HERE and nowhere else.

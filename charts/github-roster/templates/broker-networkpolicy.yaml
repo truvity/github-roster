@@ -12,8 +12,7 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      {{- include "github-roster.selectorLabels" . | nindent 6 }}
-      app.kubernetes.io/component: broker
+      {{- include "github-roster.brokerSelectorLabels" . | nindent 6 }}
   policyTypes:
     - Ingress
   ingress:

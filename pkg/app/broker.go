@@ -49,6 +49,11 @@ func RunBroker(ctx context.Context, info version.Info, configPath, listen string
 
 	app := fiber.New(fiber.Config{
 		AppName: "github-roster-broker " + info.String(),
+		// The console forwards the operator's bearer token, and a Zitadel
+		// JWT with role assertions alone can exceed fasthttp's 4 KiB
+		// default — which answers 431 before any handler runs. Same
+		// lesson, same number as the console's own listener.
+		ReadBufferSize: 64 << 10,
 	})
 	app.Use(slogfiber.New(logger))
 

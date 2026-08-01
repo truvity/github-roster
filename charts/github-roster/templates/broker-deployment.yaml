@@ -18,13 +18,11 @@ spec:
     type: Recreate
   selector:
     matchLabels:
-      {{- include "github-roster.selectorLabels" . | nindent 6 }}
-      app.kubernetes.io/component: broker
+      {{- include "github-roster.brokerSelectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "github-roster.selectorLabels" . | nindent 8 }}
-        app.kubernetes.io/component: broker
+        {{- include "github-roster.brokerSelectorLabels" . | nindent 8 }}
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
         {{- with .Values.podAnnotations }}

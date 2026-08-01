@@ -396,3 +396,37 @@ func TestPinnedTeamUnionsPinsWithCurrent(t *testing.T) {
 	require.Equal(t, []string{"bot", "example-bot-app"},
 		result.Document.Orgs[orgName].Teams["robots"].Members)
 }
+
+// An absent backing group suppresses removals, never explicit additions:
+// the group contributes nobody, so a members: list must still fill the
+// team while current members stay protected. (2026-08-01: the trust-form
+// pre-ENG-52 fill rendered no team-adds because the fail-safe skipped
+// the explicit list entirely.)
+func TestAbsentGroupKeepsCurrentButExplicitMembersStillAdd(t *testing.T) {
+	t.Parallel()
+
+	org := orgConfig()
+	org.Teams["engineers"] = config.Team{
+		Groups:  []string{"engineers@example.com"},
+		Members: []string{"ada@example.com"},
+	}
+
+	st := state(member("ada"), member("veteran"))
+	st.TeamMembers["engineers"] = []string{"veteran"}
+
+	r := &roster.Roster{
+		People:       []roster.Person{person("Ada Lovelace", "ada", true, "engineers")},
+		AbsentGroups: []string{"engineers@example.com"},
+	}
+
+	result := render(t, peribolos.Inputs{
+		Mode:   peribolos.ModeFull,
+		Org:    org,
+		Roster: r,
+		State:  st,
+	})
+
+	members := result.Document.Orgs[orgName].Teams["engineers"].Members
+	require.Contains(t, members, "ada", "the explicit addition must survive the absent-group fail-safe")
+	require.Contains(t, members, "veteran", "current members must be kept while the group is absent")
+}

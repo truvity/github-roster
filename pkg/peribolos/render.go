@@ -296,16 +296,12 @@ func renderTeams(in Inputs, result *Result) map[string]Team {
 		}
 
 		// A team backed by a group its (healthy) directory says does not
-		// exist yet gets a NO-OP: current members restated verbatim. An
-		// empty desired list here would read as "remove everyone" the
-		// moment the team has members — the per-group fail-safe.
-		if group := absentBacking(in.Org.Teams[name], absent); group != "" {
-			teams[name] = Team{Members: sortedUnique(in.State.TeamMembers[name])}
-			result.Notes = append(result.Notes,
-				fmt.Sprintf("team %s: group %s does not exist in its directory yet — membership left untouched", name, group))
-
-			continue
-		}
+		// exist yet SUPPRESSES REMOVALS: current members are kept. It does
+		// not suppress additions — an absent group contributes nobody, so
+		// any computed member comes from an explicit members: list or a
+		// pin, both declarative and reviewable. The computed list is
+		// unioned below rather than skipped.
+		absentGroup := absentBacking(in.Org.Teams[name], absent)
 
 		var members []string
 
@@ -339,6 +335,12 @@ func renderTeams(in Inputs, result *Result) map[string]Team {
 			}
 
 			members = append(members, current...)
+		}
+
+		if absentGroup != "" {
+			members = append(members, in.State.TeamMembers[name]...)
+			result.Notes = append(result.Notes,
+				fmt.Sprintf("team %s: group %s does not exist in its directory yet — current members kept, explicit additions still apply", name, absentGroup))
 		}
 
 		teams[name] = Team{Members: sortedUnique(members)}

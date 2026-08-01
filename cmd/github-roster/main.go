@@ -51,6 +51,25 @@ func run() int {
 		Commands: []*cli.Command{
 			applyCommand(),
 			{
+				Name:  "broker",
+				Usage: "run the applier broker: the write-credential holder behind an intent-only API",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "config",
+						Usage:   "path to the configuration document",
+						Sources: cli.EnvVars(app.EnvConfigFile),
+					},
+					&cli.StringFlag{
+						Name:  "listen",
+						Usage: "address to serve the broker API on",
+						Value: ":8080",
+					},
+				},
+				Action: func(ctx context.Context, cmd *cli.Command) error {
+					return app.RunBroker(ctx, info, cmd.String("config"), cmd.String("listen"))
+				},
+			},
+			{
 				Name:  "version",
 				Usage: "print the build stamp and exit",
 				Action: func(context.Context, *cli.Command) error {

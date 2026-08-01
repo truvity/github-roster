@@ -112,7 +112,7 @@ companies: {}
 			doc: strings.Replace(minimal,
 				"        robots:\n          pinned: true",
 				"        robots: {}", 1),
-			contains: "needs groups, or pinned",
+			contains: "needs groups and/or members, or pinned",
 		},
 		{
 			name: "team name is not DNS-1123",

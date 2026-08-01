@@ -92,6 +92,10 @@ type Request struct {
 	// thing that is.
 	AppID          string
 	InstallationID string
+	// MinAdmins overrides the runner's owner guard for this run; 0 means
+	// the runner's configured value. Organizations differ in size, and a
+	// guard sized for one refuses every run for a smaller one.
+	MinAdmins int
 	// RunID namespaces the objects this run creates.
 	RunID string
 	// Actor is who asked for it, for the object labels and the record.
@@ -253,7 +257,7 @@ func (r *Runner) args(req Request) []string {
 		"--github-app-id=" + req.AppID,
 		"--github-app-installation-id=" + req.InstallationID,
 		"--github-app-private-key-path=" + credentialsMountPath + "/" + privateKeyFileName,
-		"--min-admins=" + strconv.Itoa(r.opts.MinAdmins),
+		"--min-admins=" + strconv.Itoa(r.minAdmins(req)),
 		"--maximum-removal-delta=" + strconv.FormatFloat(r.removalDelta(), 'f', -1, 64),
 	}
 
@@ -262,6 +266,15 @@ func (r *Runner) args(req Request) []string {
 	}
 
 	return args
+}
+
+// minAdmins picks the per-run override when set.
+func (r *Runner) minAdmins(req Request) int {
+	if req.MinAdmins > 0 {
+		return req.MinAdmins
+	}
+
+	return r.opts.MinAdmins
 }
 
 // removalDelta is peribolos's own shrink guard, driven by our configured

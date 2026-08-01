@@ -43,8 +43,11 @@ func (d *Deps) handleSyncPreview(c fiber.Ctx) error {
 	orgName := formValue(c, "org")
 	data := syncData{Orgs: d.orgNames(), Org: orgName}
 
-	render := func(status int) error {
-		return d.Renderer.Render(c, status, "sync", ui.Page{
+	// Always 200, even for failure banners: Cloudflare replaces 5xx
+	// bodies with its own error page, hiding the message the operator
+	// actually needs to read.
+	render := func() error {
+		return d.Renderer.Render(c, fiber.StatusOK, "sync", ui.Page{
 			Title: "Sync", Nav: "sync", AuthOn: d.Auth.Enabled(), Data: data,
 		})
 	}
@@ -52,19 +55,19 @@ func (d *Deps) handleSyncPreview(c fiber.Ctx) error {
 	if d.Broker == nil {
 		data.Error = "no applier broker is configured in this deployment"
 
-		return render(fiber.StatusServiceUnavailable)
+		return render()
 	}
 
 	plan, err := d.Broker.Plan(c.Context(), orgName, c.Get(fiber.HeaderAuthorization))
 	if err != nil {
 		data.Error = err.Error()
 
-		return render(fiber.StatusBadGateway)
+		return render()
 	}
 
 	data.Plan = plan
 
-	return render(fiber.StatusOK)
+	return render()
 }
 
 // handleSyncApply asks the broker to execute a reviewed plan, by hash.
@@ -77,8 +80,11 @@ func (d *Deps) handleSyncApply(c fiber.Ctx) error {
 	hash := formValue(c, "hash")
 	data := syncData{Orgs: d.orgNames(), Org: orgName}
 
-	render := func(status int) error {
-		return d.Renderer.Render(c, status, "sync", ui.Page{
+	// Always 200, even for failure banners: Cloudflare replaces 5xx
+	// bodies with its own error page, hiding the message the operator
+	// actually needs to read.
+	render := func() error {
+		return d.Renderer.Render(c, fiber.StatusOK, "sync", ui.Page{
 			Title: "Sync", Nav: "sync", AuthOn: d.Auth.Enabled(), Data: data,
 		})
 	}
@@ -86,13 +92,13 @@ func (d *Deps) handleSyncApply(c fiber.Ctx) error {
 	if d.Broker == nil {
 		data.Error = "no applier broker is configured in this deployment"
 
-		return render(fiber.StatusServiceUnavailable)
+		return render()
 	}
 
 	if hash == "" {
 		data.Error = "no plan hash: compute a plan first"
 
-		return render(fiber.StatusBadRequest)
+		return render()
 	}
 
 	applied, err := d.Broker.Apply(c.Context(), orgName, hash, c.Get(fiber.HeaderAuthorization))
@@ -104,11 +110,11 @@ func (d *Deps) handleSyncApply(c fiber.Ctx) error {
 		data.Drift = true
 		data.Plan = drift.Fresh
 
-		return render(fiber.StatusConflict)
+		return render()
 	case err != nil:
 		data.Error = err.Error()
 
-		return render(fiber.StatusBadGateway)
+		return render()
 	}
 
 	// The broker just wrote to GitHub; whatever the console's cache holds
@@ -117,7 +123,7 @@ func (d *Deps) handleSyncApply(c fiber.Ctx) error {
 
 	data.Applied = applied
 
-	return render(fiber.StatusOK)
+	return render()
 }
 
 func (d *Deps) orgNames() []string {

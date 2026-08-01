@@ -174,6 +174,7 @@ func (d *Deps) sweepOrg(ctx context.Context, org *config.Org, joined *roster.Ros
 		CredentialsSecret: org.ApplierSecretName(),
 		AppID:             d.ApplierApps[org.Name].AppID,
 		InstallationID:    d.ApplierApps[org.Name].InstallationID,
+		MinAdmins:         d.Config.MinAdminsFor(org.Name),
 		RunID:             runID() + "-" + org.Name,
 		Actor:             "schedule",
 	})

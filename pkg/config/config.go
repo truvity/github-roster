@@ -188,6 +188,11 @@ type CompanyGitHub struct {
 
 	Exceptions []string        `yaml:"exceptions"`
 	Teams      map[string]Team `yaml:"teams"`
+
+	// MinAdmins overrides reconciler.minAdmins for this organization.
+	// Organizations differ: a guard sized for one refuses every plan for
+	// a smaller one. 0 means the global value.
+	MinAdmins int `yaml:"minAdmins"`
 }
 
 // Org is one GitHub organization under management.
@@ -213,14 +218,27 @@ type Org struct {
 	// Teams whose membership this service reconciles. Creating and deleting
 	// teams is not this service's business — see docs/architecture.
 	Teams map[string]Team `yaml:"teams"`
+
+	// MinAdmins is this organization's owner-guard override; 0 means the
+	// global reconciler value.
+	MinAdmins int `yaml:"minAdmins"`
 }
 
-// Team is either directory-mapped or pinned, never both.
+// Team is directory-mapped (groups and/or explicit members) or pinned,
+// never both.
 type Team struct {
 	// Groups are directory groups whose union is the team's membership.
 	// Read flat: a nested group is not expanded, because a team whose
 	// membership you cannot determine by looking is not reviewable.
 	Groups []string `yaml:"groups"`
+
+	// Members are explicit member emails, unioned with Groups. A group is
+	// an automation for maintaining a member list; the target state is
+	// the same either way, and a team can be declared by list before its
+	// group exists. An explicit member must still be LIVE in the
+	// directory owning their email domain — a static list never
+	// resurrects a suspended person.
+	Members []string `yaml:"members"`
 
 	// Pinned teams are edited only in the operator UI and stored with the
 	// mapping. Scheduled runs never touch them.
@@ -342,9 +360,20 @@ func (c *Config) derive() {
 				ApplierSecret: gh.ApplierSecret,
 				Exceptions:    gh.Exceptions,
 				Teams:         gh.Teams,
+				MinAdmins:     gh.MinAdmins,
 			})
 		}
 	}
+}
+
+// MinAdminsFor resolves the owner guard for one organization: its own
+// override when set, the global reconciler value otherwise.
+func (c *Config) MinAdminsFor(org string) int {
+	if o, ok := c.Org(org); ok && o.MinAdmins > 0 {
+		return o.MinAdmins
+	}
+
+	return c.Reconciler.MinAdmins
 }
 
 // dns1123 is the shape a team name and a Kubernetes abbreviation must have.
@@ -512,10 +541,16 @@ func (c *Config) validateTeamInvariant(code string, gh *CompanyGitHub) error {
 		switch {
 		case !dns1123.MatchString(name):
 			return fmt.Errorf("companies[%q].github.teams[%q]: team name must be lowercase alphanumeric with dashes", code, name)
-		case team.Pinned && len(team.Groups) > 0:
+		case team.Pinned && (len(team.Groups) > 0 || len(team.Members) > 0):
 			return fmt.Errorf("companies[%q].github.teams[%q]: a team is either pinned or directory-mapped, not both", code, name)
-		case !team.Pinned && len(team.Groups) == 0:
-			return fmt.Errorf("companies[%q].github.teams[%q]: needs groups, or pinned: true", code, name)
+		case !team.Pinned && len(team.Groups) == 0 && len(team.Members) == 0:
+			return fmt.Errorf("companies[%q].github.teams[%q]: needs groups and/or members, or pinned: true", code, name)
+		}
+
+		for _, email := range team.Members {
+			if email != strings.ToLower(email) || !strings.Contains(email, "@") {
+				return fmt.Errorf("companies[%q].github.teams[%q]: member %q must be a lowercase email", code, name, email)
+			}
 		}
 
 		if team.Pinned {
@@ -645,10 +680,10 @@ func validateTeams(o *Org) error {
 		switch {
 		case !dns1123.MatchString(name):
 			return fmt.Errorf("orgs[%q].teams[%q]: team name must be lowercase alphanumeric with dashes", o.Name, name)
-		case team.Pinned && len(team.Groups) > 0:
+		case team.Pinned && (len(team.Groups) > 0 || len(team.Members) > 0):
 			return fmt.Errorf("orgs[%q].teams[%q]: a team is either pinned or directory-mapped, not both", o.Name, name)
-		case !team.Pinned && len(team.Groups) == 0:
-			return fmt.Errorf("orgs[%q].teams[%q]: needs groups, or pinned: true", o.Name, name)
+		case !team.Pinned && len(team.Groups) == 0 && len(team.Members) == 0:
+			return fmt.Errorf("orgs[%q].teams[%q]: needs groups and/or members, or pinned: true", o.Name, name)
 		}
 	}
 

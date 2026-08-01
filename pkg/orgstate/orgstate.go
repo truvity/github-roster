@@ -16,7 +16,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/go-github/v76/github"
+	"github.com/google/go-github/v89/github"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/truvity/github-roster/pkg/githubapp"
@@ -115,18 +115,20 @@ func NewReader(source *githubapp.TokenSource, org, baseURL string) (*Reader, err
 		return nil, fmt.Errorf("organization is required")
 	}
 
-	client := github.NewClient(&http.Client{
-		Transport: &tokenTransport{source: source},
-		Timeout:   requestTimeout,
-	})
+	opts := []github.ClientOptionsFunc{
+		github.WithHTTPClient(&http.Client{
+			Transport: &tokenTransport{source: source},
+			Timeout:   requestTimeout,
+		}),
+	}
 
 	if baseURL != "" {
-		var err error
+		opts = append(opts, github.WithEnterpriseURLs(baseURL, baseURL))
+	}
 
-		client, err = client.WithEnterpriseURLs(baseURL, baseURL)
-		if err != nil {
-			return nil, fmt.Errorf("set api base %q: %w", baseURL, err)
-		}
+	client, err := github.NewClient(opts...)
+	if err != nil {
+		return nil, fmt.Errorf("build github client: %w", err)
 	}
 
 	return &Reader{client: client, org: org}, nil

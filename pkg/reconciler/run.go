@@ -79,7 +79,12 @@ func Run(ctx context.Context, in RunInputs, out io.Writer) error {
 		return nil
 	}
 
-	if err := Execute(ctx, NewGitHubWriter(source), plan, func(line string) {
+	writer, err := NewGitHubWriter(source)
+	if err != nil {
+		return err
+	}
+
+	if err := Execute(ctx, writer, plan, func(line string) {
 		emit("  %s\n", line)
 	}); err != nil {
 		return err

@@ -48,6 +48,15 @@ type Config struct {
 	Audit      Audit      `yaml:"audit"`
 	Schedule   Schedule   `yaml:"schedule"`
 	Reconciler Reconciler `yaml:"reconciler"`
+	Broker     Broker     `yaml:"broker"`
+}
+
+// Broker configures the console's connection to the applier broker — the
+// service holding the write credential behind an intent-only API.
+type Broker struct {
+	// URL is the broker's base URL. Empty means no broker: the sync
+	// surface reports itself unavailable.
+	URL string `yaml:"url"`
 }
 
 // Reconciler configures the Jobs that carry out changes.

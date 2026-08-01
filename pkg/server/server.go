@@ -19,6 +19,7 @@ import (
 	"github.com/truvity/github-roster/pkg/applier"
 	"github.com/truvity/github-roster/pkg/audit"
 	"github.com/truvity/github-roster/pkg/auth"
+	"github.com/truvity/github-roster/pkg/broker"
 	"github.com/truvity/github-roster/pkg/config"
 	"github.com/truvity/github-roster/pkg/directory"
 	"github.com/truvity/github-roster/pkg/mapping"
@@ -42,10 +43,14 @@ type Deps struct {
 	Directories *directory.Set
 	// Orgs is one read-only GitHub reader per managed organization.
 	Orgs map[string]OrgReader
-	// Applier spawns reconciler Jobs. Nil where no cluster is reachable,
-	// in which case the sync surface reports itself unavailable rather
-	// than pretending.
+	// Applier spawns reconciler Jobs. Kept for the (gated) unattended
+	// removals path until that moves into the broker; the operator sync
+	// surface no longer uses it.
 	Applier JobRunner
+	// Broker is the applier broker's client. Nil where none is
+	// configured, in which case the sync surface reports itself
+	// unavailable rather than pretending.
+	Broker *broker.Client
 	// Audit records every run, durably.
 	Audit audit.Sink
 	// RunLock serializes removals sweeps: ticker, insurance CronJob and

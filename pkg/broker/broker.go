@@ -58,26 +58,26 @@ type Deps struct {
 	applyMu sync.Mutex
 }
 
-// planResponse is what the console renders. Content flows OUT of the
+// PlanResponse is what the console renders. Content flows OUT of the
 // broker only; nothing in it is accepted back on apply except the hash.
-type planResponse struct {
+type PlanResponse struct {
 	Org       string    `json:"org"`
 	Mode      string    `json:"mode"`
 	Hash      string    `json:"hash"`
-	Actions   []action  `json:"actions"`
+	Actions   []Action  `json:"actions"`
 	Notes     []string  `json:"notes,omitempty"`
 	Report    string    `json:"report"`
 	CreatedAt time.Time `json:"createdAt"`
 }
 
-type action struct {
+type Action struct {
 	Kind  string `json:"kind"`
 	Login string `json:"login"`
 	Team  string `json:"team,omitempty"`
 }
 
-// applyResponse reports an executed apply.
-type applyResponse struct {
+// ApplyResponse reports an executed apply.
+type ApplyResponse struct {
 	Org     string `json:"org"`
 	Hash    string `json:"hash"`
 	Applied int    `json:"applied"`
@@ -189,7 +189,7 @@ func (d *Deps) handleApply(c fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	response := applyResponse{Org: name, Hash: approved, Applied: applied, Report: report}
+	response := ApplyResponse{Org: name, Hash: approved, Applied: applied, Report: report}
 	response.AuditError = d.record(c.Context(), audit.TriggerOperator, identity.Subject, fresh, report, true, nil)
 
 	d.Logger.InfoContext(c.Context(), "plan applied",
@@ -347,16 +347,16 @@ func (d *Deps) record(ctx context.Context, trigger audit.Trigger, actor string,
 	return ""
 }
 
-func respond(entry stored, hash string) planResponse {
-	actions := make([]action, 0, len(entry.Plan.Actions))
+func respond(entry stored, hash string) PlanResponse {
+	actions := make([]Action, 0, len(entry.Plan.Actions))
 	for _, a := range entry.Plan.Actions {
-		actions = append(actions, action{Kind: string(a.Kind), Login: a.Login, Team: a.Team})
+		actions = append(actions, Action{Kind: string(a.Kind), Login: a.Login, Team: a.Team})
 	}
 
 	notes := append([]string{}, entry.Result.Notes...)
 	notes = append(notes, entry.Plan.Notes...)
 
-	return planResponse{
+	return PlanResponse{
 		Org:       entry.Org,
 		Mode:      string(entry.Mode),
 		Hash:      hash,

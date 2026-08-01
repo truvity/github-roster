@@ -1,15 +1,21 @@
 {{define "content"}}
 <h1>Sync</h1>
 <p class="lede">
-  Apply the desired state to an organization. A sync always runs as a dry
-  run first — the reconciler itself reports what it would change, so you are
-  reading its answer rather than this console's guess about it.
+  Apply the desired state to an organization. The broker computes the plan
+  from fresh data and stores it under a content hash — applying executes
+  exactly the plan you reviewed, or refuses if anything changed since.
 </p>
 
 {{if .Data.Error}}<div class="banner">{{.Data.Error}}</div>{{end}}
-{{if .Data.AuditError}}<div class="banner">{{.Data.AuditError}}</div>{{end}}
 
-{{if not .Data.Result}}
+{{if .Data.Drift}}
+<div class="banner">
+  The organization changed between review and apply. Nothing was changed on
+  GitHub — review the fresh plan below and apply that one.
+</div>
+{{end}}
+
+{{if and (not .Data.Plan) (not .Data.Applied)}}
 <form method="post" action="/sync/preview">
   <p>
     <label for="org">Organization</label><br>
@@ -17,40 +23,30 @@
       {{range .Data.Orgs}}<option value="{{.}}">{{.}}</option>{{end}}
     </select>
   </p>
-  <p><button type="submit">Dry run</button></p>
+  <p><button type="submit">Preview plan</button></p>
 </form>
 {{end}}
 
-{{with .Data.Result}}
-<h2 style="font-size:16px;margin:28px 0 4px">Plan for {{.Org}}</h2>
+{{with .Data.Plan}}
+<h2 style="font-size:16px;margin:28px 0 4px">
+  Plan for {{.Org}} <code class="muted" style="font-size:12px">{{.Hash}}</code>
+</h2>
 
-{{if or .Removing .Adding}}
+{{if .Actions}}
 <table>
-  <thead><tr><th>Change</th><th>Who</th></tr></thead>
+  <thead><tr><th>Change</th><th>Who</th><th>Team</th></tr></thead>
   <tbody>
-    {{if .Adding}}
+    {{range .Actions}}
     <tr>
-      <td>add</td>
-      <td>{{range $i, $l := .Adding}}{{if $i}}, {{end}}{{$l}}{{end}}</td>
-    </tr>
-    {{end}}
-    {{if .Removing}}
-    <tr>
-      <td><strong>remove</strong></td>
-      <td>{{range $i, $l := .Removing}}{{if $i}}, {{end}}{{$l}}{{end}}</td>
+      <td>{{.Kind}}</td>
+      <td>{{.Login}}</td>
+      <td>{{if .Team}}{{.Team}}{{else}}<span class="muted">—</span>{{end}}</td>
     </tr>
     {{end}}
   </tbody>
 </table>
 {{else}}
-<p class="lede">No membership changes.</p>
-{{end}}
-
-{{if .SkippedSources}}
-<div class="banner">
-  These directories are unhealthy, so people known only to them were left
-  alone: {{range $i, $s := .SkippedSources}}{{if $i}}, {{end}}{{$s}}{{end}}
-</div>
+<p class="lede">Nothing to change: the organization already matches the desired state.</p>
 {{end}}
 
 {{if .Notes}}
@@ -61,40 +57,35 @@
 {{end}}
 
 <details style="margin-top:16px">
-  <summary class="muted">The rendered configuration ({{.Mode}})</summary>
-  <pre style="overflow-x:auto;font-size:12px;border:1px solid var(--line);padding:12px;border-radius:6px">{{.YAML}}</pre>
+  <summary class="muted">The plan as the broker reports it</summary>
+  <pre style="overflow-x:auto;font-size:12px;border:1px solid var(--line);padding:12px;border-radius:6px">{{.Report}}</pre>
 </details>
-{{end}}
 
-{{with .Data.Run}}
-<h2 style="font-size:16px;margin:28px 0 4px">
-  Reconciler {{if .Confirmed}}run{{else}}dry run{{end}}
-</h2>
-<p class="lede">
-  Job <code>{{.JobName}}</code> ·
-  {{if .Succeeded}}succeeded{{else}}<strong>failed</strong>{{end}} ·
-  {{.Duration}}
-</p>
-{{if .Output}}
-<pre style="overflow-x:auto;font-size:12px;border:1px solid var(--line);padding:12px;border-radius:6px">{{.Output}}</pre>
-{{else}}
-<p class="lede muted">The Job produced no output that could be read.</p>
-{{end}}
-{{end}}
-
-{{if and .Data.Confirming .Data.Run .Data.Run.Succeeded}}
+{{if .Actions}}
 <form method="post" action="/sync/apply" style="margin-top:16px"
-      onsubmit="return confirm('Apply these changes to {{.Data.Org}}?')">
-  <input type="hidden" name="org" value="{{.Data.Org}}">
-  <button type="submit">Apply to {{.Data.Org}}</button>
+      onsubmit="return confirm('Apply plan {{.Hash}} to {{.Org}}?')">
+  <input type="hidden" name="org" value="{{.Org}}">
+  <input type="hidden" name="hash" value="{{.Hash}}">
+  <button type="submit">Apply plan {{.Hash}}</button>
   <span class="muted">
-    the plan is recomputed before applying — a preview seconds old may
-    already be stale
+    the broker re-checks against fresh state and executes only an exact match
   </span>
 </form>
 {{end}}
+{{end}}
 
-{{if .Data.Result}}
+{{with .Data.Applied}}
+<h2 style="font-size:16px;margin:28px 0 4px">Applied to {{.Org}}</h2>
+<p class="lede">
+  Plan <code>{{.Hash}}</code> · {{.Applied}} change(s) executed
+</p>
+{{if .AuditError}}<div class="banner">{{.AuditError}}</div>{{end}}
+{{if .Report}}
+<pre style="overflow-x:auto;font-size:12px;border:1px solid var(--line);padding:12px;border-radius:6px">{{.Report}}</pre>
+{{end}}
+{{end}}
+
+{{if or .Data.Plan .Data.Applied}}
 <p style="margin-top:16px"><a href="/sync">Start again</a></p>
 {{end}}
 {{end}}

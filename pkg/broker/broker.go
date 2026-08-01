@@ -52,6 +52,7 @@ type Deps struct {
 	Audit       audit.Sink
 
 	plans *planStore
+	runs  *runRegistry
 	// applyMu serializes applies. A mutex rather than a distributed lock
 	// because the broker is single-replica by design.
 	applyMu sync.Mutex
@@ -89,6 +90,7 @@ type ApplyResponse struct {
 // Routes mounts the broker API onto a fiber app.
 func (d *Deps) Routes(app *fiber.App) {
 	d.plans = newPlanStore()
+	d.runs = newRunRegistry()
 
 	app.Get("/healthz", func(c fiber.Ctx) error { return c.SendString("ok") })
 
@@ -101,6 +103,8 @@ func (d *Deps) Routes(app *fiber.App) {
 	v1.Post("/orgs/:org/plans", d.handlePlan)
 	v1.Get("/orgs/:org/plans/:hash", d.handleGetPlan)
 	v1.Post("/orgs/:org/plans/:hash/apply", d.handleApply)
+	v1.Post("/orgs/:org/plans/:hash/apply-async", d.handleApplyAsync)
+	v1.Get("/orgs/:org/runs/:id/stream", d.handleRunStream)
 }
 
 // requireOperator is the broker's whole authorization policy: every API
@@ -209,7 +213,7 @@ func (d *Deps) handleApply(c fiber.Ctx) error {
 	}
 
 	response := ApplyResponse{Org: name, Hash: approved, Applied: applied, Report: report}
-	response.AuditError = d.record(c.Context(), audit.TriggerOperator, actorLabel(identity), fresh, report, true, nil)
+	response.AuditError = d.record(c.Context(), audit.TriggerOperator, actorLabel(identity), fresh, report, nil)
 
 	d.Logger.InfoContext(c.Context(), "plan applied",
 		"org", name, "hash", approved, "actions", applied, "actor", actorLabel(identity))
@@ -245,7 +249,7 @@ func (d *Deps) apply(ctx context.Context, name string, org *Org, approved, actor
 
 	if execErr != nil {
 		// Half-applied is exactly what the audit record must say.
-		auditErr := d.record(ctx, audit.TriggerOperator, actor, fresh, report, true, execErr)
+		auditErr := d.record(ctx, audit.TriggerOperator, actor, fresh, report, execErr)
 		if auditErr != "" {
 			d.Logger.ErrorContext(ctx, "AUDIT RECORD LOST for failed apply", "org", name, "error", auditErr)
 		}
@@ -347,7 +351,7 @@ func teamNames(org *config.Org) []string {
 // record writes the audit record. A failure never fails the run it
 // records; it is returned for the response and logged loudly.
 func (d *Deps) record(ctx context.Context, trigger audit.Trigger, actor string,
-	entry *stored, report string, confirmed bool, runErr error,
+	entry *stored, report string, runErr error,
 ) string {
 	if d.Audit == nil {
 		return "no audit sink is configured; this run was not recorded"
@@ -361,8 +365,9 @@ func (d *Deps) record(ctx context.Context, trigger audit.Trigger, actor string,
 	// The audit record's run shape predates the broker; "job name" is the
 	// run's identity and stays meaningful as a broker run id.
 	run := &audit.Run{
-		JobName:   "broker-" + time.Now().UTC().Format("20060102t150405"),
-		Confirmed: confirmed,
+		JobName: "broker-" + time.Now().UTC().Format("20060102t150405"),
+		// Every broker record is a real run: previews never record.
+		Confirmed: true,
 		Succeeded: runErr == nil,
 		Output:    report,
 		StartedAt: time.Now(),

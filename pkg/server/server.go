@@ -161,6 +161,8 @@ func NewApp(deps *Deps) *fiber.App {
 	app.Get("/sync", requireOperator, deps.handleSync)
 	app.Post("/sync/preview", requireOperator, sameOriginOnly, deps.handleSyncPreview)
 	app.Post("/sync/apply", requireOperator, sameOriginOnly, deps.handleSyncApply)
+	app.Get("/sync/run", requireOperator, deps.handleSyncRun)
+	app.Get("/sync/run/stream", requireOperator, deps.handleSyncRunStream)
 
 	app.Get("/audit", requireOperator, deps.handleAudit)
 

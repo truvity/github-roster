@@ -1,0 +1,41 @@
+{{define "content"}}
+<h1>Applying to {{.Data.Org}}</h1>
+<p class="lede">
+  Plan <code>{{.Data.Hash}}</code> · run <code>{{.Data.ID}}</code> —
+  the broker narrates below as it executes. Leaving this page does not
+  stop the run; the audit record is the durable account.
+</p>
+
+<section class="card">
+<pre id="transcript" style="overflow-x:auto;font-size:12px;min-height:120px;margin:0"></pre>
+<p id="verdict" class="lede" style="margin:12px 0 0" hidden></p>
+</section>
+
+<p style="margin-top:16px"><a href="/sync">Back to Sync</a> · <a href="/audit?org={{.Data.Org}}">Audit</a></p>
+
+<script>
+(function () {
+  var transcript = document.getElementById("transcript");
+  var verdict = document.getElementById("verdict");
+  var source = new EventSource("/sync/run/stream?org={{.Data.Org}}&id={{.Data.ID}}");
+
+  source.addEventListener("line", function (e) {
+    transcript.textContent += e.data + "\n";
+    transcript.scrollTop = transcript.scrollHeight;
+  });
+
+  source.addEventListener("done", function (e) {
+    source.close();
+    verdict.hidden = false;
+    verdict.innerHTML = e.data === "succeeded"
+      ? '<span class="badge ok">succeeded</span>'
+      : '<span class="badge danger">' + e.data + '</span> — see the transcript and the audit record';
+  });
+
+  // A gateway timeout mid-stream triggers EventSource's automatic
+  // reconnect; the broker replays the transcript from the start, so we
+  // clear before each (re)connection's first line arrives.
+  source.onopen = function () { transcript.textContent = ""; };
+})();
+</script>
+{{end}}

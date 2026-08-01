@@ -98,7 +98,6 @@ type mappingFormData struct {
 	Confirming bool
 	// Change describes what confirming would do.
 	Change string
-	CSRF   string
 }
 
 // directorySuggestion is one directory person offered by the add form.
@@ -174,7 +173,7 @@ func (d *Deps) directorySuggestions() []directorySuggestion {
 }
 
 func (d *Deps) handleMappingForm(c fiber.Ctx) error {
-	data := mappingFormData{CSRF: csrfToken(c), Suggestions: d.directorySuggestions()}
+	data := mappingFormData{Suggestions: d.directorySuggestions()}
 
 	if name := c.Query("name"); name != "" {
 		entry, err := d.Mapping.Get(c.Context(), name)
@@ -255,7 +254,6 @@ func (d *Deps) handleMappingSave(c fiber.Ctx) error {
 		Pinned:        pinnedRaw,
 		Emails:        strings.Join(entry.Emails, ", "),
 		EmailsFetched: emailsFetched,
-		CSRF:          csrfToken(c),
 	}
 
 	before, err := d.Mapping.Get(c.Context(), entry.Name)
@@ -346,7 +344,6 @@ type importData struct {
 	// method.
 	Creates, Updates, Unchanged, Rejects int
 	Error                                string
-	CSRF                                 string
 }
 
 func (d *Deps) handleImportForm(c fiber.Ctx) error {
@@ -354,7 +351,7 @@ func (d *Deps) handleImportForm(c fiber.Ctx) error {
 		Title:  "Bulk import",
 		Nav:    "mapping",
 		AuthOn: d.Auth.Enabled(),
-		Data:   importData{CSRF: csrfToken(c)},
+		Data:   importData{},
 	})
 }
 
@@ -365,7 +362,7 @@ func (d *Deps) handleImportForm(c fiber.Ctx) error {
 // plan shown in between.
 func (d *Deps) handleImportPreview(c fiber.Ctx) error {
 	input := formValue(c, "csv")
-	data := importData{Input: input, CSRF: csrfToken(c)}
+	data := importData{Input: input}
 
 	rows, err := mapping.ParseCSV(input)
 	if err != nil {

@@ -23,8 +23,6 @@ type editor struct {
 	t     *testing.T
 	app   *fiber.App
 	store mapping.Store
-	token string
-	jar   []*http.Cookie
 }
 
 func newEditor(t *testing.T, role auth.Role) *editor {
@@ -35,21 +33,12 @@ func newEditor(t *testing.T, role auth.Role) *editor {
 	store, ok := deps.Mapping.(mapping.Store)
 	require.True(t, ok)
 
-	e := &editor{t: t, app: server.NewApp(deps), store: store}
-
-	// A viewer cannot reach the form, so there is no token to fetch.
-	if role.CanOperate() {
-		e.refreshToken()
-	}
-
-	return e
+	return &editor{t: t, app: server.NewApp(deps), store: store}
 }
 
-// save posts a confirmed entry the way the UI does, refreshing the token
-// first because a browser loads the form before every submission.
+// save posts a confirmed entry the way the UI does.
 func (e *editor) save(name, github, k8s string) *http.Response {
 	e.t.Helper()
-	e.refreshToken()
 
 	form := entryForm(name, github, k8s, "employee")
 	form.Set("confirm", "yes")
@@ -57,56 +46,20 @@ func (e *editor) save(name, github, k8s string) *http.Response {
 	return e.post("/mapping/save", form, true)
 }
 
-// refreshToken loads a form page to obtain a CSRF token and its cookie,
-// exactly as a browser would before submitting.
-func (e *editor) refreshToken() {
+// post submits a form. sameOrigin=false simulates a cross-site submission
+// — a browser posting our form from somebody else's page.
+func (e *editor) post(path string, form url.Values, sameOrigin bool) *http.Response {
 	e.t.Helper()
-
-	req := httptest.NewRequest(http.MethodGet, "/mapping/edit", http.NoBody)
-	req.Header.Set(fiber.HeaderAccept, fiber.MIMETextHTML)
-
-	resp, err := e.app.Test(req)
-	require.NoError(e.t, err)
-
-	defer func() { _ = resp.Body.Close() }()
-
-	body, err := io.ReadAll(resp.Body)
-	require.NoError(e.t, err)
-
-	e.jar = resp.Cookies()
-	e.token = tokenFrom(e.t, string(body))
-}
-
-func tokenFrom(t *testing.T, body string) string {
-	t.Helper()
-
-	const marker = `name="_csrf" value="`
-
-	i := strings.Index(body, marker)
-	require.GreaterOrEqual(t, i, 0, "the form must carry a CSRF token")
-
-	rest := body[i+len(marker):]
-
-	end := strings.Index(rest, `"`)
-	require.Positive(t, end, "the token must be terminated")
-
-	return rest[:end]
-}
-
-// post submits a form. withToken=false simulates a cross-site submission.
-func (e *editor) post(path string, form url.Values, withToken bool) *http.Response {
-	e.t.Helper()
-
-	if withToken {
-		form.Set("_csrf", e.token)
-	}
 
 	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(form.Encode()))
 	req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationForm)
 	req.Header.Set(fiber.HeaderAccept, fiber.MIMETextHTML)
 
-	for _, cookie := range e.jar {
-		req.AddCookie(cookie)
+	if sameOrigin {
+		req.Header.Set("Sec-Fetch-Site", "same-origin")
+	} else {
+		req.Header.Set("Sec-Fetch-Site", "cross-site")
+		req.Header.Set(fiber.HeaderOrigin, "https://evil.example")
 	}
 
 	resp, err := e.app.Test(req)
@@ -194,7 +147,6 @@ func TestSaveSurfacesInvariantFailures(t *testing.T) {
 	_ = resp.Body.Close()
 
 	// Same abbreviation, different person.
-	e.refreshToken()
 	clash := entryForm("Alan Turing", "alan", "ada", "employee")
 
 	resp = e.post("/mapping/save", clash, true)
@@ -298,8 +250,6 @@ func TestDeleteRemovesTheEntry(t *testing.T) {
 
 	_ = e.save("Ada Lovelace", "ada", "ada").Body.Close()
 
-	e.refreshToken()
-
 	resp := e.post("/mapping/delete", url.Values{"name": {"Ada Lovelace"}}, true)
 	require.Equal(t, fiber.StatusSeeOther, resp.StatusCode)
 	_ = resp.Body.Close()
@@ -326,7 +276,6 @@ func TestStoredValuesSurviveLaterRequests(t *testing.T) {
 
 	// Several further requests, with longer values, to reuse the buffers.
 	for _, name := range []string{"Alan Turing", "Grace Hopper", "Barbara Liskov"} {
-		e.refreshToken()
 		_ = e.post("/mapping/save", entryForm(name, "someone-else", "", "employee"), true).Body.Close()
 	}
 

@@ -7,10 +7,11 @@
 // cannot mutate it — there is no code path from an HTTP handler to a GitHub
 // write, only a path to "create a Job that has one".
 //
-// The reconciler itself is upstream peribolos, unmodified. It owns the
-// parts of GitHub's membership model that are genuinely hard: invitation
-// lifecycle, organization membership as distinct from team membership,
-// pagination and rate limits.
+// The reconciler is this service's own `apply` subcommand (pkg/reconciler),
+// running from the same image as the console. It replaced upstream
+// peribolos, whose current flags couple team-membership fixes to team
+// creation/deletion — a coupling that contradicts this service's ownership
+// split, where team existence belongs to the structure engine.
 package applier
 
 import (
@@ -59,16 +60,16 @@ type Options struct {
 	// Namespace is where Jobs and ConfigMaps are created. The service's
 	// RBAC is scoped to this one namespace.
 	Namespace string
-	// Image is the upstream peribolos image.
+	// Image runs the reconciler: this service's own image, whose `apply`
+	// subcommand is the Job entrypoint. Pinned by the deployment.
 	Image string
 	// ServiceAccount the Job runs as.
 	ServiceAccount string
 	// Timeout bounds one run.
 	Timeout time.Duration
-	// MinAdmins is peribolos's own guard: it refuses a configuration with
-	// fewer owners than this. Configurable because the upstream default of
-	// five assumes an organization larger than ours, and a guard that is
-	// always tripped is a guard nobody reads.
+	// MinAdmins makes the reconciler refuse a configuration with fewer
+	// owners than this. A guard that is always tripped is a guard nobody
+	// reads, so it is configurable rather than assumed.
 	MinAdmins int
 	// MaxRemovalFraction refuses a run removing more than this share of an
 	// organization. The circuit breaker against a directory returning
@@ -231,30 +232,29 @@ func objectName(req Request) string {
 	return name
 }
 
-// args builds the reconciler's command line.
+// args builds the reconciler's command line: the service's own `apply`
+// subcommand.
 //
-// What is ABSENT matters as much as what is present:
-//
-//   - no --fix-org, so organization settings are never touched. They are
-//     the structure engine's.
-//   - no --fix-teams, so teams are never created or deleted. Also the
-//     structure engine's. Only --fix-team-members, and only for a full
-//     sync.
-//   - --confirm only when an operator has confirmed. Without it peribolos
-//     reports what it would do and changes nothing, which is exactly the
-//     preview.
+//   - --org and --mode restate what the document is for, so a document and
+//     a Job that disagree fail loudly rather than applying whatever the
+//     file says.
+//   - --confirm only when an operator has confirmed. Without it the
+//     subcommand reports what it would do and changes nothing, which is
+//     exactly the preview.
+//   - What the subcommand CANNOT do is not on this list at all: it has no
+//     code path that creates, deletes, or edits a team, or touches
+//     organization settings. Those are the structure engine's.
 func (r *Runner) args(req Request) []string {
 	args := []string{
+		"apply",
 		"--config-path=" + configMountPath + "/" + configFileName,
+		"--org=" + req.Result.Org,
+		"--mode=" + string(req.Result.Mode),
 		"--github-app-id=" + req.AppID,
+		"--github-app-installation-id=" + req.InstallationID,
 		"--github-app-private-key-path=" + credentialsMountPath + "/" + privateKeyFileName,
-		"--fix-org-members",
 		"--min-admins=" + strconv.Itoa(r.opts.MinAdmins),
 		"--maximum-removal-delta=" + strconv.FormatFloat(r.removalDelta(), 'f', -1, 64),
-	}
-
-	if req.Result.Mode == peribolos.ModeFull {
-		args = append(args, "--fix-team-members")
 	}
 
 	if req.Confirm {
@@ -307,7 +307,7 @@ func (r *Runner) createJob(ctx context.Context, name string, req Request) (*batc
 					RestartPolicy:      corev1.RestartPolicyNever,
 					ServiceAccountName: r.opts.ServiceAccount,
 					Containers: []corev1.Container{{
-						Name:  "peribolos",
+						Name:  "reconciler",
 						Image: r.opts.Image,
 						Args:  r.args(req),
 						VolumeMounts: []corev1.VolumeMount{

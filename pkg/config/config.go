@@ -56,8 +56,9 @@ type Config struct {
 // spawns a Job holding the write credential. Everything here describes that
 // Job.
 type Reconciler struct {
-	// Image is the upstream peribolos image, normally via a pull-through
-	// cache. Pinned by digest or tag in the deployment, never floating.
+	// Image runs the reconciler: this service's own image, whose `apply`
+	// subcommand is the Job entrypoint. Pinned by digest or tag in the
+	// deployment, never floating.
 	Image string `yaml:"image"`
 	// Namespace is where Jobs are created. Empty means the pod's own,
 	// which is what the chart's RBAC is scoped to.
@@ -66,10 +67,9 @@ type Reconciler struct {
 	// the Job needs no Kubernetes permissions of its own, only GitHub
 	// ones, which arrive as a mounted Secret.
 	ServiceAccount string `yaml:"serviceAccount"`
-	// MinAdmins is peribolos's own guard: it refuses a configuration with
-	// fewer owners. Configurable because upstream's default of five
-	// assumes a larger organization, and a guard that always trips is one
-	// nobody reads.
+	// MinAdmins makes the reconciler refuse a configuration naming fewer
+	// owners. A guard that always trips is one nobody reads, so it is
+	// configurable rather than assumed.
 	MinAdmins int `yaml:"minAdmins"`
 	// Timeout bounds one run.
 	Timeout time.Duration `yaml:"timeout"`

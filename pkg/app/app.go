@@ -15,6 +15,7 @@ import (
 	"k8s.io/client-go/rest"
 
 	"github.com/truvity/github-roster/pkg/auth"
+	"github.com/truvity/github-roster/pkg/broker"
 	"github.com/truvity/github-roster/pkg/config"
 
 	"github.com/truvity/github-roster/pkg/runlock"
@@ -108,6 +109,15 @@ func BuildDeps(ctx context.Context, logger *slog.Logger, cfg *config.Config, inf
 		jobRunner = reconciler
 	}
 
+	// The broker client carries no credentials: every call forwards the
+	// operator's own bearer token, so the broker authorizes the human.
+	var brokerClient *broker.Client
+	if cfg.Broker.URL != "" {
+		brokerClient = broker.NewClient(cfg.Broker.URL)
+	} else {
+		logger.Warn("no broker configured; the sync surface will report itself unavailable")
+	}
+
 	return &server.Deps{
 		Logger:      logger,
 		Config:      cfg,
@@ -119,6 +129,7 @@ func BuildDeps(ctx context.Context, logger *slog.Logger, cfg *config.Config, inf
 		Directories: layers.Directories,
 		Orgs:        layers.Orgs,
 		Applier:     jobRunner,
+		Broker:      brokerClient,
 		Audit:       layers.Audit,
 		ApplierApps: layers.ApplierApps,
 	}, nil

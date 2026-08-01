@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/truvity/github-roster/pkg/applier"
@@ -237,6 +238,12 @@ func (d *Deps) shrinkRefusal(result *peribolos.Result, state *orgstate.State) st
 	return fmt.Sprintf(
 		"refusing to remove %d of %d members (%.0f%% > %.0f%% threshold); an operator must run this sync",
 		len(result.Removing), seats, fraction*100, threshold*100)
+}
+
+// runID names the objects one run creates. Time-based and lowercase so it
+// is both sortable in kubectl and a legal object name.
+func runID() string {
+	return strings.ToLower(time.Now().UTC().Format("20060102t150405"))
 }
 
 // recordSweep writes the audit record for one org's part of a sweep.

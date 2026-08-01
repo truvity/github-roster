@@ -74,6 +74,10 @@ type Person struct {
 	Directories map[string]DirectoryIdentity `json:"directories,omitempty"`
 	// Orgs is this person's GitHub standing, keyed by organization.
 	Orgs map[string]Membership `json:"orgs"`
+	// Groups are the directory group addresses this person belongs to,
+	// lowercased and sorted, across every source that knows them. The
+	// explore filters pivot on these.
+	Groups []string `json:"groups,omitempty"`
 }
 
 // DirectoryIdentity is one directory's view of a person.
@@ -350,6 +354,12 @@ func join(in Inputs, entry mapping.Entry, live, liveByEmail map[string]*liveness
 		person.Email = resolved.email
 		person.Sources = resolved.sources
 		person.Directories = resolved.directories
+
+		for group := range resolved.groups {
+			person.Groups = append(person.Groups, group)
+		}
+
+		sort.Strings(person.Groups)
 	}
 
 	// A bot has no directory account and therefore no liveness signal.

@@ -134,6 +134,9 @@ func NewApp(deps *Deps) *fiber.App {
 	// the other end, and provenance is the whole question here.
 
 	app.Get("/mapping", requireOperator, deps.handleMapping)
+	// The person detail page is a read-only trace, viewer-accessible like
+	// Structure — it changes nothing and names no secrets.
+	app.Get("/person", deps.handlePerson)
 	app.Get("/mapping/edit", requireOperator, deps.handleMappingForm)
 	app.Post("/mapping/save", requireOperator, sameOriginOnly, deps.handleMappingSave)
 	app.Post("/mapping/delete", requireOperator, sameOriginOnly, deps.handleMappingDelete)

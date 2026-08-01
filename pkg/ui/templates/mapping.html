@@ -3,9 +3,8 @@
 <p class="lede">
   Who is who: a person's directory name, their GitHub handle, their email
   anchors, and the abbreviation their namespace is named after. Editing
-  here is the only way a person becomes known to this service. The full
-  identity trace (per IdP, per organization) lives on
-  <a href="/structure">Structure</a>.
+  here is the only way a person becomes known to this service. Click a
+  name for the full identity trace — every IdP, every organization.
 </p>
 
 {{if .Data.Flash}}<div class="banner">{{.Data.Flash}}</div>{{end}}
@@ -27,7 +26,7 @@
   <tbody>
   {{range .Data.Entries}}
     <tr>
-      <td>{{.Name}}</td>
+      <td><a href="/person?name={{.Name}}">{{.Name}}</a></td>
       <td>{{.GitHub}}</td>
       <td>{{if .Emails}}{{range $i, $e := .Emails}}{{if $i}}<br>{{end}}{{$e}}{{end}}{{else}}—{{end}}</td>
       <td>{{if .K8s}}dev-{{.K8s}}{{else}}—{{end}}</td>

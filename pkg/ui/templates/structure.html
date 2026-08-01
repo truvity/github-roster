@@ -1,84 +1,51 @@
 {{define "content"}}
 <h1>Structure</h1>
-<h2 style="margin-top:0">People</h2>
 <p class="lede">
-  Directory liveness joined with the mapping and GitHub state. A person
-  with no mapping entry is not here — they appear below as a warning, and
-  are granted nothing until an operator maps them.
+  The shape of access, team by team: what backs each team, who is in it,
+  and who should be. Per-person detail lives on
+  <a href="/mapping">People</a>.
   {{range .Data.GitHub}}
   <span class="muted">GitHub state for {{.Org}} as of {{.Age}} ago.</span>
   {{end}}
 </p>
 
 {{if .Data.RosterError}}
-  <div class="banner">Could not build the roster: {{.Data.RosterError}}</div>
-{{else if .Data.Roster}}
-{{$sources := .Data.SourceNames}}
-{{$orgs := .Data.OrgNames}}
+  <div class="banner">Could not resolve membership: {{.Data.RosterError}}</div>
+{{end}}
+
+{{range .Data.Orgs}}
+<h2>{{.Name}}</h2>
 <section class="card">
-<div style="overflow-x:auto">
+{{if .Teams}}
 <table>
   <thead>
-    <tr>
-      <th>Name</th><th>GitHub</th><th>Namespace</th>
-      {{range $sources}}<th>IdP · {{.}}</th>{{end}}
-      {{range $orgs}}<th>Org · {{.}}</th>{{end}}
-    </tr>
+    <tr><th>Team</th><th>Membership from</th><th>Current</th><th>Desired</th></tr>
   </thead>
   <tbody>
-  {{range .Data.Roster.People}}
-    {{$p := .}}
+  {{range .Teams}}
     <tr>
-      <td>{{$p.Name}}{{if eq $p.Class "bot"}} <span class="muted">bot</span>{{end}}</td>
-      <td>{{$p.GitHub}}</td>
-      <td>{{if $p.K8s}}dev-{{$p.K8s}}{{else}}—{{end}}</td>
-      {{range $src := $sources}}
-      {{$d := index $p.Directories $src}}
+      <td>{{.Name}}</td>
       <td>
-        {{if $d.Email}}
-          {{if $d.Live}}<span class="badge ok">live</span>{{else}}<span class="badge danger">suspended</span>{{end}}
-          <div class="muted">{{$d.Email}}</div>
-        {{else}}—{{end}}
+        {{if .Pinned}}
+          <span class="badge warn">pinned</span>
+        {{else}}
+          {{range $i, $g := .Groups}}{{if $i}}, {{end}}{{$g}}{{end}}
+          {{if .Members}}<div class="muted">+ explicit: {{range $i, $m := .Members}}{{if $i}}, {{end}}{{$m}}{{end}}</div>{{end}}
+        {{end}}
       </td>
-      {{end}}
-      {{range $org := $orgs}}
-      {{$m := index $p.Orgs $org}}
       <td>
-        {{if $m.InvitationPending}}<span class="badge warn">invited</span>
-        {{else if $m.Member}}{{if eq (printf "%s" $m.Role) "admin"}}<span class="badge ok">owner</span>{{else}}<span class="badge ok">member</span>{{end}}
-        {{else}}<span class="badge danger">no</span>{{end}}
-        {{if $m.Teams}}<div class="muted">{{range $i, $t := $m.Teams}}{{if $i}}, {{end}}{{$t}}{{end}}</div>{{end}}
-        {{if $m.DesiredTeams}}<div class="muted">→ {{range $i, $t := $m.DesiredTeams}}{{if $i}}, {{end}}{{$t}}{{end}}</div>{{end}}
+        {{if .Current}}{{range $i, $l := .Current}}{{if $i}}, {{end}}{{$l}}{{end}}{{else}}<span class="muted">nobody</span>{{end}}
       </td>
-      {{end}}
+      <td>
+        {{if .Desired}}{{range $i, $l := .Desired}}{{if $i}}, {{end}}{{$l}}{{end}}{{else}}<span class="muted">—</span>{{end}}
+      </td>
     </tr>
   {{end}}
   </tbody>
 </table>
-</div>
-</section>
-
-{{if .Data.Roster.Warnings}}
-<h2>Needs attention</h2>
-<p class="lede">
-  These never block a sync. They are the things a person has to decide.
-</p>
-<section class="card">
-<table>
-  <thead><tr><th>Kind</th><th>Subject</th><th>Detail</th></tr></thead>
-  <tbody>
-  {{range .Data.Roster.Warnings}}
-    <tr>
-      <td>{{.Kind}}</td>
-      <td>{{.Subject}}{{if .Org}} <span class="muted">({{.Org}})</span>{{end}}</td>
-      <td>{{.Detail}}</td>
-    </tr>
-  {{end}}
-  </tbody>
-</table>
-</section>
-{{end}}
 {{else}}
-<p class="lede">The read layers are not configured, so there is no join to show.</p>
+<p class="lede">No teams configured.</p>
+{{end}}
+</section>
 {{end}}
 {{end}}

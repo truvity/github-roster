@@ -130,9 +130,9 @@ func TestTemplatesEscapeTheirData(t *testing.T) {
 
 	app := server.NewApp(deps)
 
-	// The join renders on /structure since the tab split; the landing
-	// page is the config-only overview.
-	_, body := get(t, app, "/structure")
+	// Person names render on the person detail page since the IA rework;
+	// Structure is team-centric and shows logins only.
+	_, body := get(t, app, "/person?name=%3Cscript%3Ealert(1)%3C/script%3E")
 
 	require.NotContains(t, body, "<script>alert(1)</script>", "mapping name was interpolated unescaped")
 	require.Contains(t, body, "&lt;script&gt;", "the test is not checking what it thinks")

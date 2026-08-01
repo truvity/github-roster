@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/google/go-github/v76/github"
+	"github.com/google/go-github/v89/github"
 
 	"github.com/truvity/github-roster/pkg/githubapp"
 )
@@ -22,13 +22,16 @@ type GitHubWriter struct {
 }
 
 // NewGitHubWriter builds a writer from the applier App's credentials.
-func NewGitHubWriter(source *githubapp.TokenSource) *GitHubWriter {
-	return &GitHubWriter{
-		client: github.NewClient(&http.Client{
-			Transport: &appTransport{source: source},
-			Timeout:   writeTimeout,
-		}),
+func NewGitHubWriter(source *githubapp.TokenSource) (*GitHubWriter, error) {
+	client, err := github.NewClient(github.WithHTTPClient(&http.Client{
+		Transport: &appTransport{source: source},
+		Timeout:   writeTimeout,
+	}))
+	if err != nil {
+		return nil, fmt.Errorf("build github client: %w", err)
 	}
+
+	return &GitHubWriter{client: client}, nil
 }
 
 // appTransport attaches a fresh installation token to every request, the

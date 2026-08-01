@@ -23,7 +23,7 @@ The service is built in phases, one pull request each, each with green CI:
 4. **Mapping editor** — operator-only forms, server-enforced invariants,
    bulk import.
 5. **Reconciler orchestration** — rendering the membership document,
-   spawning the applier Job, dry-run preview.
+   calling the applier broker: instant preview, hash-confirmed apply.
 6. **Audit** — one record per run to S3, and `GET /audit`.
 7. **Schedule and guardrails** — the removals-only ticker, staleness
    handling, shrink threshold, insurance CronJob.

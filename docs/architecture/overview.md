@@ -82,18 +82,23 @@ meeting the SLA.
 
 The web tier holds a **read-only** GitHub App. Writes happen in a
 short-lived Kubernetes Job that mounts a **different** App, one with write
-permission. The Job runs an unmodified upstream
-[peribolos](https://github.com/kubernetes-sigs/prow/tree/main/cmd/peribolos)
-image against a config the service rendered into a ConfigMap.
+permission. The Job runs the service's own `apply` subcommand against a
+config the service rendered into a ConfigMap.
 
 The gain is concrete: an attacker who compromises the web process can read
 your organization and lie to your operators, but cannot change a single
 membership. The cost is one indirection and a slower feedback loop.
 
-Peribolos was chosen over an in-process API client because the parts of the
-problem that are actually hard — invitation lifecycle, membership versus
-team membership, pagination, rate limits, exempting bots — are production-
-hardened there at a scale we will never reach.
+The Job originally ran upstream
+[peribolos](https://github.com/kubernetes-sigs/prow/tree/main/cmd/peribolos),
+chosen for its production hardening. It was replaced by the native
+subcommand when current peribolos coupled `--fix-team-members` to
+`--fix-teams`: with that coupling the config is authoritative for team
+existence and settings, which in this design belong to the structure
+engine, not the roster. The native applier has the ownership split as a
+type-level property — its write surface is one small interface with no
+team-creation method on it — at the cost of owning the invitation
+lifecycle and pagination ourselves.
 
 ## Where authentication happens
 

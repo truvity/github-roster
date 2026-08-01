@@ -26,22 +26,23 @@ people to GitHub handles, and reconciles organization membership from it.
 
 ```
 directory (liveness + groups)  ─┐
-SSM mapping (name → handle)    ─┼─►  join  ──►  desired state  ──►  peribolos Job  ──►  GitHub
+SSM mapping (name → handle)    ─┼─►  join  ──►  desired state  ──►  applier Job  ──►  GitHub
 GitHub read state              ─┘                    │
                                                      └──►  audit record (S3)
 ```
 
-The reconciler is [peribolos](https://github.com/kubernetes-sigs/prow/tree/main/cmd/peribolos),
-the Kubernetes project's organization reconciler, run as an unmodified
-upstream image. It owns the parts of GitHub's membership model that are easy
-to get wrong: the invitation lifecycle (a pending invite is neither
-re-invited nor miscounted), organization membership as distinct from team
-membership, pagination and rate limits.
+The reconciler is the service's own `apply` subcommand, run as a
+short-lived Job from the same image as the console but holding a different,
+write-capable credential. Its scope is a type-level property: organization
+membership (invitations included — a pending invite is neither re-invited
+nor miscounted) and membership of the teams named in the rendered document.
+There is no code in it that can create, delete, or edit a team, or touch
+organization settings.
 
-Everything the service decides is a matter of *rendering peribolos config*.
-The removals-only asymmetry of unattended runs is a property of that
-rendered document, not of a command-line flag — which is what makes it
-reviewable.
+Everything the service decides is a matter of *rendering the membership
+document*. The removals-only asymmetry of unattended runs is a property of
+that rendered document, re-checked by the subcommand — which is what makes
+it reviewable.
 
 ## Status
 

@@ -140,32 +140,21 @@ func TestConfirmedRunCarriesConfirm(t *testing.T) {
 	require.True(t, hasArg(args(t, createdJob(t, client, out.JobName)), "--confirm"))
 }
 
-// What is ABSENT is the point: organization settings and team
-// creation/deletion belong to the structure engine, and this service must
-// never be the thing that changes them.
-func TestJobNeverFixesOrgSettingsOrTeamExistence(t *testing.T) {
+// The Job runs the service's own apply subcommand, and restates the
+// document's org and mode on the command line so a document and a Job that
+// disagree fail loudly in the subcommand instead of applying silently.
+func TestJobRunsTheApplySubcommandWithOrgAndMode(t *testing.T) {
 	t.Parallel()
 
 	for _, mode := range []peribolos.Mode{peribolos.ModeRemovalsOnly, peribolos.ModeFull} {
 		client, out := run(t, request(mode, true))
 		list := args(t, createdJob(t, client, out.JobName))
 
-		require.False(t, hasArg(list, "--fix-org"), "mode %s must not touch org settings", mode)
-		require.False(t, hasArg(list, "--fix-teams"), "mode %s must not create or delete teams", mode)
-		require.True(t, hasArg(list, "--fix-org-members"))
+		require.Equal(t, "apply", list[0])
+		require.True(t, hasArg(list, "--mode="+string(mode)))
+		require.True(t, hasArg(list, "--org=example-org"))
+		require.True(t, hasArg(list, "--github-app-installation-id=149694485"))
 	}
-}
-
-// Team membership is an operator's decision; an unattended run touches
-// organization membership only.
-func TestOnlyFullSyncFixesTeamMembers(t *testing.T) {
-	t.Parallel()
-
-	client, out := run(t, request(peribolos.ModeRemovalsOnly, true))
-	require.False(t, hasArg(args(t, createdJob(t, client, out.JobName)), "--fix-team-members"))
-
-	client, out = run(t, request(peribolos.ModeFull, true))
-	require.True(t, hasArg(args(t, createdJob(t, client, out.JobName)), "--fix-team-members"))
 }
 
 func TestGuardsArePassedToTheReconciler(t *testing.T) {

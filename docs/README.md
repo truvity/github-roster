@@ -22,8 +22,8 @@ The service is built in phases, one pull request each, each with green CI:
 3. **Join** — liveness ⋈ mapping ⋈ GitHub, and `GET /roster`.
 4. **Mapping editor** — operator-only forms, server-enforced invariants,
    bulk import.
-5. **Reconciler orchestration** — rendering peribolos config, spawning the
-   Job, dry-run preview.
+5. **Reconciler orchestration** — rendering the membership document,
+   spawning the applier Job, dry-run preview.
 6. **Audit** — one record per run to S3, and `GET /audit`.
 7. **Schedule and guardrails** — the removals-only ticker, staleness
    handling, shrink threshold, insurance CronJob.

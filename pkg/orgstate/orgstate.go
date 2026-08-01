@@ -51,6 +51,8 @@ type Member struct {
 // them as a member causes a removal that cancels their pending invite. Both
 // are visible to the person on the other end.
 type Invitation struct {
+	// ID is what the cancel-invitation API takes.
+	ID int64 `json:"id"`
 	// Login is empty for an invitation sent to an email address that has
 	// no GitHub account yet.
 	Login     string    `json:"login,omitempty"`
@@ -352,6 +354,7 @@ func (r *Reader) PendingInvitations(ctx context.Context) ([]Invitation, error) {
 
 		for _, invite := range page {
 			invitations = append(invitations, Invitation{
+				ID:        invite.GetID(),
 				Login:     invite.GetLogin(),
 				Email:     invite.GetEmail(),
 				Role:      invite.GetRole(),

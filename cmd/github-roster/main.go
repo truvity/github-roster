@@ -49,6 +49,7 @@ func run() int {
 			return app.Run(ctx, info, cmd.String("config"))
 		},
 		Commands: []*cli.Command{
+			applyCommand(),
 			{
 				Name:  "version",
 				Usage: "print the build stamp and exit",

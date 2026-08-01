@@ -5,6 +5,28 @@
   are under management, and how fresh every answer is.
 </p>
 
+{{if .Data.RosterError}}
+  <div class="banner">Could not build the roster: {{.Data.RosterError}}</div>
+{{end}}
+{{if .Data.Roster}}{{if .Data.Roster.Warnings}}
+<h2>Needs attention</h2>
+<p class="lede">These never block a sync. They are the things a person has to decide.</p>
+<section class="card">
+<table>
+  <thead><tr><th>Kind</th><th>Subject</th><th>Detail</th></tr></thead>
+  <tbody>
+  {{range .Data.Roster.Warnings}}
+    <tr>
+      <td>{{.Kind}}</td>
+      <td><a href="/person?name={{.Subject}}">{{.Subject}}</a>{{if .Org}} <span class="muted">({{.Org}})</span>{{end}}</td>
+      <td>{{.Detail}}</td>
+    </tr>
+  {{end}}
+  </tbody>
+</table>
+</section>
+{{end}}{{end}}
+
 <h2>Directory sources</h2>
 <p class="lede">
   A source that cannot be read keeps its last known good answer and has

@@ -21,7 +21,9 @@ import (
 // the config type: the page shows teams in a stable order, which a map
 // cannot promise, and ranging a map would reshuffle the page on every load.
 type structureData struct {
-	Orgs []structureOrg
+	// Person selects one person on the detail page.
+	Person string
+	Orgs   []structureOrg
 	// Sources carries each directory's health. Shown rather than hidden:
 	// an operator reading a stale directory needs to know, because the
 	// alternative is confidently acting on it.
@@ -57,6 +59,12 @@ type structureTeam struct {
 	Groups  []string
 	Members []string
 	Pinned  bool
+	// Current and Desired are the team's resolved membership, by GitHub
+	// login, from the join. A person appears in Desired when the
+	// directory says they belong; in Current when GitHub says they are
+	// in. The two agreeing is the steady state.
+	Current []string
+	Desired []string
 }
 
 // handleOverview is the landing page: the service at a glance — source
@@ -86,6 +94,14 @@ func (d *Deps) handleOverview(c fiber.Ctx) error {
 	}
 
 	if d.Mapping != nil {
+		// The join, for the needs-attention list: Overview is the "what
+		// needs me" page, and the warnings are exactly that.
+		if joined, err := d.buildRoster(c.Context()); err != nil {
+			data.RosterError = err.Error()
+		} else {
+			data.Roster = joined
+		}
+
 		readAt := d.githubReadAt(c.Context())
 		for _, name := range slices.Sorted(maps.Keys(readAt)) {
 			data.GitHub = append(data.GitHub, githubAge{
@@ -103,9 +119,98 @@ func (d *Deps) handleOverview(c fiber.Ctx) error {
 	})
 }
 
-// handleStructure is the identity trace: the full join, per IdP and per
-// organization, plus the warnings a person has to decide about.
+// handleStructure is the shape of access, team-centric: each team, what
+// backs it, and its current versus desired membership. Per-person detail
+// lives on the People page.
 func (d *Deps) handleStructure(c fiber.Ctx) error {
+	data := structureData{Orgs: make([]structureOrg, 0, len(d.Config.Orgs))}
+
+	var joined *roster.Roster
+
+	if d.Mapping != nil {
+		if j, err := d.buildRoster(c.Context()); err != nil {
+			d.Logger.ErrorContext(c.Context(), "structure page: join failed", "error", err)
+			data.RosterError = err.Error()
+		} else {
+			joined = j
+		}
+
+		readAt := d.githubReadAt(c.Context())
+		for _, name := range slices.Sorted(maps.Keys(readAt)) {
+			data.GitHub = append(data.GitHub, githubAge{
+				Org: name,
+				Age: time.Since(readAt[name]).Round(time.Second).String(),
+			})
+		}
+	}
+
+	for i := range d.Config.Orgs {
+		org := &d.Config.Orgs[i]
+		view := structureOrg{Name: org.Name, Teams: make([]structureTeam, 0, len(org.Teams))}
+
+		current, desired := teamMembership(joined, org.Name)
+
+		for _, name := range sortedTeamNames(org.Teams) {
+			team := org.Teams[name]
+			view.Teams = append(view.Teams, structureTeam{
+				Name:    name,
+				Groups:  team.Groups,
+				Members: team.Members,
+				Pinned:  team.Pinned,
+				Current: current[name],
+				Desired: desired[name],
+			})
+		}
+
+		data.Orgs = append(data.Orgs, view)
+	}
+
+	return d.Renderer.Render(c, fiber.StatusOK, "structure", ui.Page{
+		Title:  "Structure",
+		Nav:    "structure",
+		AuthOn: d.Auth.Enabled(),
+		Data:   data,
+	})
+}
+
+// teamMembership inverts the join: per team, who is in (per GitHub) and
+// who should be (per the directory), by login.
+func teamMembership(joined *roster.Roster, org string) (current, desired map[string][]string) {
+	current, desired = map[string][]string{}, map[string][]string{}
+
+	if joined == nil {
+		return current, desired
+	}
+
+	for i := range joined.People {
+		person := &joined.People[i]
+
+		membership, ok := person.Orgs[org]
+		if !ok {
+			continue
+		}
+
+		for _, team := range membership.Teams {
+			current[team] = append(current[team], person.GitHub)
+		}
+
+		for _, team := range membership.DesiredTeams {
+			desired[team] = append(desired[team], person.GitHub)
+		}
+	}
+
+	for _, m := range []map[string][]string{current, desired} {
+		for team := range m {
+			sort.Strings(m[team])
+		}
+	}
+
+	return current, desired
+}
+
+// handlePersonTraceData assembles the per-person trace columns shared by
+// the People list and the person detail page.
+func (d *Deps) personTraceData(c fiber.Ctx) structureData {
 	data := structureData{}
 
 	if d.Directories != nil {
@@ -144,9 +249,19 @@ func (d *Deps) handleStructure(c fiber.Ctx) error {
 		}
 	}
 
-	return d.Renderer.Render(c, fiber.StatusOK, "structure", ui.Page{
-		Title:  "Structure",
-		Nav:    "structure",
+	return data
+}
+
+// handlePerson is the detail page: one person's whole identity trace —
+// every IdP identity, every organization's standing and teams, and the
+// mapping entry behind it.
+func (d *Deps) handlePerson(c fiber.Ctx) error {
+	data := d.personTraceData(c)
+	data.Person = c.Query("name")
+
+	return d.Renderer.Render(c, fiber.StatusOK, "person", ui.Page{
+		Title:  data.Person,
+		Nav:    "mapping",
 		AuthOn: d.Auth.Enabled(),
 		Data:   data,
 	})

@@ -1,0 +1,67 @@
+{{define "content"}}
+{{$name := .Data.Person}}
+{{$found := false}}
+<p><a href="/mapping">← People</a></p>
+
+{{if .Data.RosterError}}
+  <div class="banner">Could not build the roster: {{.Data.RosterError}}</div>
+{{else if .Data.Roster}}
+{{range .Data.Roster.People}}
+{{if eq .Name $name}}
+{{$found = true}}
+{{$p := .}}
+<h1>{{$p.Name}}{{if eq $p.Class "bot"}} <span class="muted">bot</span>{{end}}</h1>
+<p class="lede">
+  GitHub <strong>{{$p.GitHub}}</strong>
+  {{if $p.K8s}} · namespace dev-{{$p.K8s}}{{end}}
+  · <a href="/mapping/edit?name={{$p.Name}}">edit mapping</a>
+</p>
+
+<h2>Identity providers</h2>
+<section class="card">
+<table>
+  <thead><tr><th>Directory</th><th>Email</th><th>State</th></tr></thead>
+  <tbody>
+  {{range $src := $.Data.SourceNames}}
+    {{$d := index $p.Directories $src}}
+    <tr>
+      <td>{{$src}}</td>
+      <td>{{if $d.Email}}{{$d.Email}}{{else}}<span class="muted">not known here</span>{{end}}</td>
+      <td>{{if $d.Email}}{{if $d.Live}}<span class="badge ok">live</span>{{else}}<span class="badge danger">suspended</span>{{end}}{{else}}—{{end}}</td>
+    </tr>
+  {{end}}
+  </tbody>
+</table>
+</section>
+
+<h2>Organizations</h2>
+<section class="card">
+<table>
+  <thead><tr><th>Organization</th><th>Standing</th><th>Teams (current)</th><th>Teams (desired)</th></tr></thead>
+  <tbody>
+  {{range $org := $.Data.OrgNames}}
+    {{$m := index $p.Orgs $org}}
+    <tr>
+      <td>{{$org}}</td>
+      <td>
+        {{if $m.InvitationPending}}<span class="badge warn">invited</span>
+        {{else if $m.Member}}{{if eq (printf "%s" $m.Role) "admin"}}<span class="badge ok">owner</span>{{else}}<span class="badge ok">member</span>{{end}}
+        {{else}}<span class="badge danger">not a member</span>{{end}}
+      </td>
+      <td>{{if $m.Teams}}{{range $i, $t := $m.Teams}}{{if $i}}, {{end}}{{$t}}{{end}}{{else}}—{{end}}</td>
+      <td>{{if $m.DesiredTeams}}{{range $i, $t := $m.DesiredTeams}}{{if $i}}, {{end}}{{$t}}{{end}}{{else}}—{{end}}</td>
+    </tr>
+  {{end}}
+  </tbody>
+</table>
+</section>
+{{end}}
+{{end}}
+{{if not $found}}
+<h1>{{$name}}</h1>
+<p class="lede">Nobody by this name is in the roster. They may be unmapped — check <a href="/">Overview</a> for warnings, or <a href="/mapping/edit?name={{$name}}">create a mapping entry</a>.</p>
+{{end}}
+{{else}}
+<p class="lede">The read layers are not configured, so there is no trace to show.</p>
+{{end}}
+{{end}}

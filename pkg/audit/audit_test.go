@@ -63,7 +63,7 @@ func TestFromRunCapturesTheWholeStory(t *testing.T) {
 		StartedAt: time.Date(2026, 7, 29, 12, 0, 0, 0, time.UTC),
 	}
 
-	record := audit.FromRun(audit.TriggerOperator, "operator@example.com", result, run, nil, nil)
+	record := audit.FromRun(audit.TriggerOperator, audit.Actor{Subject: "sub-1", Email: "operator@example.com"}, result, run, nil, nil)
 
 	require.Equal(t, "example-org", record.Org)
 	require.Equal(t, peribolos.ModeFull, record.Mode)
@@ -81,7 +81,7 @@ func TestFromRunCapturesTheWholeStory(t *testing.T) {
 func TestFailedRunsAreRecorded(t *testing.T) {
 	t.Parallel()
 
-	record := audit.FromRun(audit.TriggerSchedule, "", nil, nil, nil,
+	record := audit.FromRun(audit.TriggerSchedule, audit.Actor{}, nil, nil, nil,
 		errRun("the reconciler could not start"))
 
 	require.Equal(t, audit.TriggerSchedule, record.Trigger)

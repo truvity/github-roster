@@ -102,3 +102,13 @@ editing, and the sync pages — which now render the broker's plans instead
 of spawning Jobs. The console keeps its read-only GitHub App for the
 Structure pages; the broker does its own reading with its own credential
 and never trusts console-supplied state.
+
+## Availability posture
+
+Deliberately single-replica: applies take seconds and serialize on one
+lock; plans and run transcripts are derived, in-memory data. A broker
+restart loses unapplied plans and live transcripts — an operator
+recomputes (seconds) and the audit record remains the durable account of
+anything that ran. The Recreate strategy guarantees plans and applies
+always meet the same process. What must never be lost never lives here:
+mapping (SSM), audit (S3), credentials (SSM), desired state (config).

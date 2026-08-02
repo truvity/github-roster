@@ -48,6 +48,11 @@ type Record struct {
 	Trigger Trigger `json:"trigger"`
 	// Actor is the operator's subject, or empty for a scheduled run.
 	Actor string `json:"actor,omitempty"`
+	// ActorEmail and ActorName identify the human behind the subject —
+	// an id alone answers "who" with a riddle. Both best-effort: the
+	// token's userinfo may not resolve.
+	ActorEmail string `json:"actorEmail,omitempty"`
+	ActorName  string `json:"actorName,omitempty"`
 	// Mode is what the rendered document was capable of.
 	Mode peribolos.Mode `json:"mode"`
 	// Confirmed distinguishes a real run from a preview.
@@ -133,19 +138,29 @@ func sanitize(value string) string {
 }
 
 // FromRun assembles a record from everything a run produced.
-func FromRun(trigger Trigger, actor string, result *peribolos.Result, run *Run, sources []directory.Status, runErr error) Record {
+// Actor identifies who caused a run: the token subject plus the human
+// coordinates behind it.
+type Actor struct {
+	Subject string
+	Email   string
+	Name    string
+}
+
+func FromRun(trigger Trigger, actor Actor, result *peribolos.Result, run *Run, sources []directory.Status, runErr error) Record {
 	at := time.Now().UTC()
 	if run != nil && !run.StartedAt.IsZero() {
 		at = run.StartedAt.UTC()
 	}
 
 	record := Record{
-		ID:      NewID(at, jobSuffix(run)),
-		At:      at,
-		Trigger: trigger,
-		Actor:   actor,
-		Sources: sources,
-		Job:     run,
+		ID:         NewID(at, jobSuffix(run)),
+		At:         at,
+		Trigger:    trigger,
+		Actor:      actor.Subject,
+		ActorEmail: actor.Email,
+		ActorName:  actor.Name,
+		Sources:    sources,
+		Job:        run,
 	}
 
 	if result != nil {

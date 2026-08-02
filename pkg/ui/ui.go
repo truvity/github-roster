@@ -23,6 +23,12 @@ import (
 //go:embed templates/*.html
 var templateFS embed.FS
 
+// StaticFS carries the console's few scripts, served from /static/ so
+// the CSP needs no unsafe-inline for scripts.
+//
+//go:embed static/*.js
+var StaticFS embed.FS
+
 const layoutFile = "templates/layout.html"
 
 // Renderer renders named pages inside the shared layout.

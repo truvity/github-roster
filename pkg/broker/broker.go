@@ -119,6 +119,11 @@ func (d *Deps) requireOperator(c fiber.Ctx) error {
 	return c.Next()
 }
 
+// auditActor carries the whole identity into the audit record.
+func auditActor(identity auth.Identity) audit.Actor {
+	return audit.Actor{Subject: identity.Subject, Email: identity.Email, Name: identity.Name}
+}
+
 // actorLabel names the human for logs and the audit trail: their email
 // when the identity carries one, their name next, and only then the
 // bare token subject — a numeric subject in an audit row answers "who"
@@ -196,7 +201,7 @@ func (d *Deps) handleApply(c fiber.Ctx) error {
 
 	identity, _ := auth.From(c)
 
-	fresh, applied, report, err := d.apply(c.Context(), name, org, approved, actorLabel(identity))
+	fresh, applied, report, err := d.apply(c.Context(), name, org, approved, auditActor(identity))
 
 	switch {
 	case errors.Is(err, errDrift):
@@ -213,7 +218,7 @@ func (d *Deps) handleApply(c fiber.Ctx) error {
 	}
 
 	response := ApplyResponse{Org: name, Hash: approved, Applied: applied, Report: report}
-	response.AuditError = d.record(c.Context(), audit.TriggerOperator, actorLabel(identity), fresh, report, nil)
+	response.AuditError = d.record(c.Context(), audit.TriggerOperator, auditActor(identity), fresh, report, nil)
 
 	d.Logger.InfoContext(c.Context(), "plan applied",
 		"org", name, "hash", approved, "actions", applied, "actor", actorLabel(identity))
@@ -223,7 +228,7 @@ func (d *Deps) handleApply(c fiber.Ctx) error {
 
 // apply recomputes and executes. Returns the fresh entry either way: on
 // drift it is the plan to re-review, on success the plan that ran.
-func (d *Deps) apply(ctx context.Context, name string, org *Org, approved, actor string,
+func (d *Deps) apply(ctx context.Context, name string, org *Org, approved string, actor audit.Actor,
 ) (fresh *stored, applied int, report string, err error) {
 	fresh, err = d.compute(ctx, name, org)
 	if err != nil {
@@ -350,7 +355,7 @@ func teamNames(org *config.Org) []string {
 
 // record writes the audit record. A failure never fails the run it
 // records; it is returned for the response and logged loudly.
-func (d *Deps) record(ctx context.Context, trigger audit.Trigger, actor string,
+func (d *Deps) record(ctx context.Context, trigger audit.Trigger, actor audit.Actor,
 	entry *stored, report string, runErr error,
 ) string {
 	if d.Audit == nil {

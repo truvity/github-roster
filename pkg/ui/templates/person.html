@@ -13,7 +13,7 @@
 <h1>{{$p.Name}}{{if eq $p.Class "bot"}} <span class="muted">bot</span>{{end}}</h1>
 <p class="lede">
   GitHub <strong>{{$p.GitHub}}</strong>
-  {{if $p.K8s}} · namespace dev-{{$p.K8s}}{{end}}
+  {{if $p.K8s}} · namespace emp-{{$p.K8s}}{{end}}
   · <a href="/mapping/edit?name={{$p.Name}}">edit mapping</a>
 </p>
 

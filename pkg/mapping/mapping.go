@@ -61,7 +61,7 @@ type Entry struct {
 	// differently cannot silently detach a person from their liveness.
 	Emails []string `json:"emails,omitempty"`
 
-	// K8s is the abbreviation their `dev-<abbr>` namespace is named after.
+	// K8s is the abbreviation their `emp-<abbr>` namespace is named after.
 	// DNS-1123, unique, and immutable once assigned — renaming it would
 	// orphan a live namespace.
 	K8s string `json:"k8s"`
@@ -117,7 +117,7 @@ var dns1123 = regexp.MustCompile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`)
 
 // MaxAbbrevLen caps the abbreviation.
 //
-// The abbreviation is a prefix of object names — `dev-<abbr>` namespaces,
+// The abbreviation is a prefix of object names — `emp-<abbr>` namespaces,
 // and release names inside them — and Kubernetes caps several of those at
 // 63 characters. 20 leaves room for whatever gets appended without anyone
 // having to think about it again.

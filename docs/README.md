@@ -2,28 +2,23 @@
 
 | Document | What it covers |
 |---|---|
-| [architecture/overview.md](architecture/overview.md) | What the service is, the three sources it joins, and why the write path is a separate Job |
+| [architecture/overview.md](architecture/overview.md) | What the service is, the three sources it joins, the two asymmetries, and the write boundary |
+| [architecture/broker.md](architecture/broker.md) | The applier broker: intent-only API, hash-confirmed applies, security properties |
+| [operations/runbook.md](operations/runbook.md) | On-call knowledge: restart semantics, failure signatures, recovery |
 | [reference/configuration.md](reference/configuration.md) | Every configuration key, and what belongs in the environment instead |
 | [reference/roster-api.md](reference/roster-api.md) | `GET /api/roster` — the cross-repository contract, and how to read it safely |
 | [development/testing.md](development/testing.md) | Unit, integration and end-to-end test layers, and what each needs |
 
-Arriving with the phase that makes it true: `operations/runbook.md`
-(phase 5).
+Repo-level: [CHANGELOG.md](../CHANGELOG.md) ·
+[CONTRIBUTING.md](../CONTRIBUTING.md) · [SECURITY.md](../SECURITY.md).
 
-## Build order
+## How the service grew
 
-The service is built in phases, one pull request each, each with green CI:
-
-1. **Skeleton** — configuration, health endpoint, server-rendered layout,
-   OIDC middleware with `viewer`/`operator` roles, structured logging.
-2. **Read layers** — directory sources (liveness + groups) with per-source
-   last-known-good, the SSM mapping reader, GitHub read state including
-   pending invitations.
-3. **Join** — liveness ⋈ mapping ⋈ GitHub, and `GET /roster`.
-4. **Mapping editor** — operator-only forms, server-enforced invariants,
-   bulk import.
-5. **Reconciler orchestration** — rendering the membership document,
-   calling the applier broker: instant preview, hash-confirmed apply.
-6. **Audit** — one record per run to S3, and `GET /audit`.
-7. **Schedule and guardrails** — the removals-only ticker, staleness
-   handling, shrink threshold, insurance CronJob.
+The original seven build phases (skeleton → read layers → join → mapping
+editor → reconciler orchestration → audit → schedule and guardrails)
+shipped as 0.1–0.2. Since then the write path moved twice — peribolos
+Jobs → a native applier Job (0.3) → the applier broker (0.4, removals
+path 0.6) — and the console grew its explore/person/audit surfaces
+(0.7–0.12), actor identity on audit records (0.13), live SSE run
+streaming (0.14), and a strict no-inline-scripts CSP (0.15). One line
+per release in [CHANGELOG.md](../CHANGELOG.md).

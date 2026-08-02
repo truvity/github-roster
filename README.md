@@ -49,7 +49,12 @@ it reviewable.
 
 ## Status
 
-Under construction. See [docs/](docs/) for the design and the phase plan.
+In production. The console serves five surfaces — Overview (source
+health), Structure (org ⇄ teams ⇄ groups), People (the join, with
+per-person status), person detail, Audit (who did what, with the actor's
+identity) — and Sync, where plans are reviewed and applies stream their
+transcript live over SSE. See [docs/](docs/) for the architecture and
+[CHANGELOG.md](CHANGELOG.md) for the release history.
 
 ## Quickstart
 

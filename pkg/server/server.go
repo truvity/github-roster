@@ -113,7 +113,7 @@ func NewApp(deps *Deps) *fiber.App {
 		c.Set("X-Frame-Options", "DENY")
 		c.Set("Referrer-Policy", "no-referrer")
 		c.Set("Content-Security-Policy",
-			"default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; frame-ancestors 'none'")
+			"default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; frame-ancestors 'none'")
 
 		return c.Next()
 	})
@@ -124,6 +124,22 @@ func NewApp(deps *Deps) *fiber.App {
 	// page someone forgets to wrap. There are no sign-in routes to exempt:
 	// the gateway runs the login and forwards a token with every request.
 	app.Use(deps.Auth.Middleware())
+
+	// The console's scripts, embedded and served same-origin so the CSP
+	// carries no unsafe-inline for script-src.
+	app.Get("/static/*", func(c fiber.Ctx) error {
+		name := c.Params("*")
+
+		data, err := ui.StaticFS.ReadFile("static/" + name)
+		if err != nil {
+			return fiber.NewError(fiber.StatusNotFound, "no such asset")
+		}
+
+		c.Set(fiber.HeaderContentType, "text/javascript; charset=utf-8")
+		c.Set(fiber.HeaderCacheControl, "no-cache")
+
+		return c.Send(data)
+	})
 
 	app.Get("/", deps.handleOverview)
 	app.Get("/structure", deps.handleStructure)

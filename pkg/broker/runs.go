@@ -162,7 +162,7 @@ func (d *Deps) handleApplyAsync(c fiber.Ctx) error {
 	}
 
 	identity, _ := auth.From(c)
-	actor := actorLabel(identity)
+	actor := auditActor(identity)
 
 	r := d.runs.create(name, approved)
 
@@ -174,7 +174,7 @@ func (d *Deps) handleApplyAsync(c fiber.Ctx) error {
 }
 
 // runApply is the asynchronous body: serialize, apply, record, narrate.
-func (d *Deps) runApply(ctx context.Context, r *run, name string, org *Org, approved, actor string) {
+func (d *Deps) runApply(ctx context.Context, r *run, name string, org *Org, approved string, actor audit.Actor) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
 
@@ -197,7 +197,7 @@ func (d *Deps) runApply(ctx context.Context, r *run, name string, org *Org, appr
 }
 
 // applyStreaming mirrors apply() but narrates into the run.
-func (d *Deps) applyStreaming(ctx context.Context, r *run, name string, org *Org, approved, actor string,
+func (d *Deps) applyStreaming(ctx context.Context, r *run, name string, org *Org, approved string, actor audit.Actor,
 ) (fresh *stored, applied int, report string, err error) {
 	fresh, err = d.compute(ctx, name, org)
 	if err != nil {

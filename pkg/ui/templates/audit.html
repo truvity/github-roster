@@ -26,6 +26,7 @@
       <td>{{.Org}}</td>
       <td>
         {{if eq (printf "%s" .Trigger) "schedule"}}<span class="badge warn">schedule</span>
+        {{else if .ActorEmail}}{{.ActorEmail}}{{if .ActorName}} <span class="muted">{{.ActorName}}</span>{{end}}<div class="muted">{{.Actor}}</div>
         {{else if .Actor}}{{.Actor}}
         {{else}}operator{{end}}
         {{if not .Confirmed}} <span class="muted">dry run</span>{{end}}

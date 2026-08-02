@@ -4,6 +4,11 @@ Reconstructed from release tags; one line per release. Full detail lives
 in the release notes and the git history.
 
 ## 0.15.x
+- **0.15.3** — friendly 403 page: the gateway's deny answers with a
+  configurable HTML body (`exposure.deniedResponseHTML`) instead of
+  Envoy's bare "RBAC: access denied".
+- **0.15.2** — `emp-` namespace labels; docs overhaul (changelog,
+  contributing, operations runbook). Supersedes the retracted v0.15.1.
 - **0.15.0** — audit actor identity (subject + email + name) on every
   record; strict CSP with no inline scripts.
 

@@ -164,4 +164,18 @@ spec:
       type: Cookie
       cookie:
         name: BearerToken
+  # The gateway's deny-by-default authorization answers 403 with Envoy's
+  # bare "RBAC: access denied" — correct, and unhelpful to the person who
+  # just followed a link here. Replace the body; the status stays 403.
+  responseOverride:
+    - match:
+        statusCodes:
+          - type: Value
+            value: 403
+      response:
+        contentType: text/html
+        body:
+          type: Inline
+          inline: |-
+            {{ .Values.exposure.deniedResponseHTML | default "<!doctype html><html><head><title>Access restricted</title></head><body style=\"font-family: system-ui, sans-serif; max-width: 40rem; margin: 4rem auto; padding: 0 1rem\"><h1>Access restricted</h1><p>You are signed in, but your account does not hold a role for this console.</p><p>If you believe you should have access, ask your administrator to grant you a viewer or operator role.</p></body></html>" }}
 {{- end }}

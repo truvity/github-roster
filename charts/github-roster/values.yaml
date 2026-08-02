@@ -93,6 +93,11 @@ exposure:
     create: true
     name: ""
     projectRef: ""
+  # HTML body served instead of Envoy's bare "RBAC: access denied" when
+  # an authenticated user holds no console role (403). Empty = a generic
+  # built-in page; set it to name the group/process that grants access
+  # in your organization.
+  deniedResponseHTML: ""
 
 networkPolicy:
   enabled: false

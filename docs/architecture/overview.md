@@ -127,6 +127,22 @@ because "only reachable through the gateway" is a property of a network
 policy — one file away from being wrong — and a service that can remove
 people's access should not rest its authorization on that.
 
+## The console surfaces
+
+Each page answers one question:
+
+- **Overview** — are the sources healthy? Per-source liveness with
+  last-known-good ages.
+- **Structure** — what shape is the organization? Org ⇄ teams ⇄ backing
+  groups, with membership provenance (group, explicit member, pinned).
+- **People** — who is in the join, and in what state? One table over the
+  whole join with filters and presets; each person links to a detail page
+  tracing directory accounts, mapping entry, and GitHub standing.
+- **Sync** — what would change, and what did? Plans with dry-run diffs;
+  an apply streams its transcript live (SSE) and lands in run history.
+- **Audit** — who did what? One record per run from object storage, with
+  the actor's identity on operator-triggered records.
+
 ## Failure semantics
 
 - **A failed source fetch skips that source's removals.** Missing data must

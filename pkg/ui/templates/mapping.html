@@ -32,7 +32,7 @@
       <td><a href="/person?name={{.Name}}">{{.Name}}</a></td>
       <td>{{.GitHub}}</td>
       <td>{{if .Emails}}{{range $i, $e := .Emails}}{{if $i}}<br>{{end}}{{$e}}{{end}}{{else}}—{{end}}</td>
-      <td>{{if .K8s}}dev-{{.K8s}}{{else}}—{{end}}</td>
+      <td>{{if .K8s}}emp-{{.K8s}}{{else}}—{{end}}</td>
       <td>{{.Class}}</td>
       {{range $src := $.Data.SourceNames}}
       {{$d := index $p.Directories $src}}

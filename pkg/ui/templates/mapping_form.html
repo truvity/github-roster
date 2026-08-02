@@ -10,7 +10,7 @@
       <tr><th>Name</th><td>{{.Data.Entry.Name}}</td></tr>
       <tr><th>GitHub</th><td>{{.Data.Entry.GitHub}}</td></tr>
       <tr><th>Emails</th><td>{{if .Data.Emails}}{{.Data.Emails}}{{if .Data.EmailsFetched}} <span class="badge ok">fetched from IdP</span>{{end}}{{else}}—{{end}}</td></tr>
-      <tr><th>Namespace</th><td>{{if .Data.Entry.K8s}}dev-{{.Data.Entry.K8s}}{{else}}—{{end}}</td></tr>
+      <tr><th>Namespace</th><td>{{if .Data.Entry.K8s}}emp-{{.Data.Entry.K8s}}{{else}}—{{end}}</td></tr>
       <tr><th>Class</th><td>{{.Data.Entry.Class}}</td></tr>
       <tr><th>Pinned teams</th><td>{{if .Data.Pinned}}{{.Data.Pinned}}{{else}}—{{end}}</td></tr>
     </tbody>
@@ -69,7 +69,7 @@
     </p>
 
     <p>
-      <label for="k8s">Namespace abbreviation — becomes <code>dev-&lt;abbr&gt;</code></label><br>
+      <label for="k8s">Namespace abbreviation — becomes <code>emp-&lt;abbr&gt;</code></label><br>
       <input id="k8s" name="k8s" value="{{.Data.Entry.K8s}}" style="width:340px">
       <br><span class="muted">
         lowercase, dashes, up to 20 characters. Optional, and

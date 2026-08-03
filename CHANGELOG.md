@@ -4,6 +4,12 @@ Reconstructed from release tags; one line per release. Full detail lives
 in the release notes and the git history.
 
 ## 0.15.x
+- **0.15.4** — mapping form prefill works again: the directory-pick
+  script moved to `/static/` (the strict CSP was silently blocking it
+  inline since 0.15.0) and listens on `input` too (Safari datalist);
+  the offered abbreviation now follows the fleet's `emp-{slug5}`
+  convention (`otsar`, not `o-tsarev`). Guard test rejects inline
+  `<script>` in templates.
 - **0.15.3** — friendly 403 page: the gateway's deny answers with a
   configurable HTML body (`exposure.deniedResponseHTML`) instead of
   Envoy's bare "RBAC: access denied".

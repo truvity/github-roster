@@ -37,9 +37,12 @@
       <td>{{.Class}}</td>
       <td>
         {{- /* The teams the configuration resolves this person to. A
-             person no team claims will be silently absent from every
-             sync plan — say so where the operator is looking. */ -}}
-        {{if $p.NoTeam}}<span class="badge danger" title="no group, members: entry or pin claims this person — no sync will include them">no team</span>
+             LIVE person no team claims will be silently absent from
+             every sync plan — say so where the operator is looking. A
+             suspended person is teamless by design (the removals path),
+             so the alarm would only cry wolf — same rule as the join's
+             no-team warning. */ -}}
+        {{if $p.NoTeam}}{{if $p.Live}}<span class="badge danger" title="no group, members: entry or pin claims this person — no sync will include them">no team</span>{{else}}—{{end}}
         {{else}}{{range $i, $t := $p.DesiredAnywhere}}{{if $i}}<br>{{end}}<span class="muted">{{$t}}</span>{{end}}{{end}}
       </td>
       {{range $src := $.Data.SourceNames}}

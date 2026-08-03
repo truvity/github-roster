@@ -3,14 +3,17 @@ package server
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 
 	"github.com/truvity/github-roster/pkg/auth"
 	"github.com/truvity/github-roster/pkg/mapping"
+	"github.com/truvity/github-roster/pkg/orgstate"
 	"github.com/truvity/github-roster/pkg/roster"
 	"github.com/truvity/github-roster/pkg/ui"
 )
@@ -300,7 +303,57 @@ func (d *Deps) handleMappingSave(c fiber.Ctx) error {
 		return err
 	}
 
-	return c.Redirect().To("/mapping?flash=" + saved(data.Before, entry))
+	flash := saved(data.Before, entry)
+
+	// The 2026-08-03 lesson: a person no team claims produces
+	// hash-identical sync plans, and nothing said why. Say it at the
+	// moment the entry is written, when the operator can still fix it
+	// in the same sitting.
+	if d.entryHasNoTeam(entry) {
+		flash += url.QueryEscape(" — WARNING: matches no team; no sync will include them until a group, members: entry or pin does")
+	}
+
+	return c.Redirect().To("/mapping?flash=" + flash)
+}
+
+// entryHasNoTeam answers "would any team claim this entry" from the
+// configuration and the directory caches alone — no GitHub reads, cheap
+// enough for a form submit. False on any doubt: a warning that can cry
+// wolf gets ignored.
+func (d *Deps) entryHasNoTeam(entry mapping.Entry) bool {
+	joined := d.desiredOnlyJoin([]mapping.Entry{entry})
+
+	for i := range joined.People {
+		if joined.People[i].Name == entry.Name {
+			return joined.People[i].NoTeam
+		}
+	}
+
+	return false
+}
+
+// desiredOnlyJoin runs the roster join without GitHub state: enough to
+// resolve desired teams (config × directories × mapping), which is all
+// the no-team surfaces need.
+func (d *Deps) desiredOnlyJoin(entries []mapping.Entry) *roster.Roster {
+	in := roster.Inputs{
+		Config:  d.Config,
+		Entries: entries,
+		Orgs:    map[string]*orgstate.State{},
+		Now:     time.Now(),
+	}
+
+	if d.Directories != nil {
+		in.SourceStatuses = d.Directories.Statuses()
+
+		for _, cache := range d.Directories.Caches() {
+			if snapshot, ok := cache.Snapshot(); ok {
+				in.Snapshots = append(in.Snapshots, snapshot)
+			}
+		}
+	}
+
+	return roster.Join(in)
 }
 
 func (d *Deps) writeEntry(c fiber.Ctx, entry mapping.Entry) error {

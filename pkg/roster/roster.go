@@ -74,6 +74,12 @@ type Person struct {
 	Directories map[string]DirectoryIdentity `json:"directories,omitempty"`
 	// Orgs is this person's GitHub standing, keyed by organization.
 	Orgs map[string]Membership `json:"orgs"`
+	// NoTeam is true when the configuration resolves this person to no
+	// team in any organization — the mapping identifies them, but no
+	// group, member list or pin claims them, so no sync will ever
+	// include them. The 2026-08-03 incident: a freshly mapped person
+	// produced hash-identical plans and everyone read it as a sync bug.
+	NoTeam bool `json:"noTeam,omitempty"`
 	// Groups are the directory group addresses this person belongs to,
 	// lowercased and sorted, across every source that knows them. The
 	// explore filters pivot on these.
@@ -135,6 +141,11 @@ const (
 	// for (probe-group sources only). The teams it backs are left
 	// untouched until it exists.
 	WarnAbsentGroup WarningKind = "absent-group"
+	// WarnNoTeam is a mapped person no team claims — no group, member
+	// list or pin resolves to them, so every sync plan will silently
+	// exclude them. Orphaned entries are excluded here: they already
+	// carry their own warning, and the fix is different.
+	WarnNoTeam WarningKind = "no-team"
 )
 
 // Warning is one thing worth an operator's attention.
@@ -375,7 +386,32 @@ func join(in Inputs, entry mapping.Entry, live, liveByEmail map[string]*liveness
 		person.Orgs[org.Name] = membership(in, org, entry, resolved, person.Live)
 	}
 
+	person.NoTeam = true
+	for _, m := range person.Orgs {
+		if len(m.DesiredTeams) > 0 {
+			person.NoTeam = false
+
+			break
+		}
+	}
+
 	return person, claimed
+}
+
+// DesiredAnywhere is the union of the person's desired teams across every
+// organization, org-qualified and sorted — the People page's Teams column.
+func (p Person) DesiredAnywhere() []string {
+	var teams []string
+
+	for org, m := range p.Orgs {
+		for _, team := range m.DesiredTeams {
+			teams = append(teams, org+"/"+team)
+		}
+	}
+
+	sort.Strings(teams)
+
+	return teams
 }
 
 // resolveLiveness connects an entry to the directory records that prove the
@@ -600,6 +636,32 @@ func membershipWarnings(in Inputs, people []Person) []Warning {
 				Kind:    WarnOrphanedMapping,
 				Subject: p.Name,
 				Detail:  "mapped to " + p.GitHub + " but no directory knows this name; the entry grants nothing",
+			})
+
+			continue
+		}
+
+		// Suspended people are desired in no team BY DESIGN — warning
+		// about them would bury the signal under every leaver.
+		if p.Live && p.NoTeam {
+			warnings = append(warnings, Warning{
+				Kind:    WarnNoTeam,
+				Subject: p.Name,
+				Detail:  "matches no team in any organization — no sync will ever include them; add a directory group membership, a team members: entry, or a pin",
+			})
+		}
+	}
+
+	// A bot never has directory sources, so the loop above skips it as
+	// orphaned-adjacent — but a bot no pin claims is just as invisible
+	// to every sync as an unclaimed employee.
+	for i := range people {
+		p := &people[i]
+		if p.Class == mapping.ClassBot && p.NoTeam {
+			warnings = append(warnings, Warning{
+				Kind:    WarnNoTeam,
+				Subject: p.Name,
+				Detail:  "bot matches no team in any organization — no sync will ever include it; add a pin to a pinned team",
 			})
 		}
 	}

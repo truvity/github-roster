@@ -2,7 +2,9 @@ package server
 
 import (
 	"bufio"
+	"context"
 	"fmt"
+	"sort"
 
 	"github.com/truvity/github-roster/pkg/audit"
 
@@ -29,10 +31,40 @@ type syncData struct {
 	// review and apply.
 	Drift bool
 	Error string
+	// NoTeam names mapped people no team claims — every plan silently
+	// excludes them, so the sync page says so before showing a plan.
+	NoTeam []string
+}
+
+// noTeamNames lists mapped people the configuration resolves to no team,
+// from the desired-only join — cheap, no GitHub reads. Best-effort: an
+// unreadable mapping must not keep the sync form from rendering.
+func (d *Deps) noTeamNames(ctx context.Context) []string {
+	if d.Mapping == nil {
+		return nil
+	}
+
+	entries, err := d.Mapping.List(ctx)
+	if err != nil {
+		return nil
+	}
+
+	var names []string
+
+	joined := d.desiredOnlyJoin(entries)
+	for i := range joined.People {
+		if joined.People[i].NoTeam {
+			names = append(names, joined.People[i].Name)
+		}
+	}
+
+	sort.Strings(names)
+
+	return names
 }
 
 func (d *Deps) handleSync(c fiber.Ctx) error {
-	data := syncData{Orgs: d.orgNames()}
+	data := syncData{Orgs: d.orgNames(), NoTeam: d.noTeamNames(c.Context())}
 
 	// Best-effort: history must never keep the sync form from rendering.
 	if d.Audit != nil {

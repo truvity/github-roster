@@ -8,6 +8,14 @@
 
 {{if .Data.Error}}<div class="banner">{{.Data.Error}}</div>{{end}}
 
+{{if .Data.NoTeam}}
+<div class="banner">
+  Matched by no team — every plan silently excludes:
+  {{range $i, $n := .Data.NoTeam}}{{if $i}}, {{end}}<a href="/person?name={{$n}}">{{$n}}</a>{{end}}.
+  Fix on the <a href="/mapping">People</a> page (group, <code>members:</code> entry, or pin).
+</div>
+{{end}}
+
 {{if .Data.Drift}}
 <div class="banner">
   The organization changed between review and apply. Nothing was changed on

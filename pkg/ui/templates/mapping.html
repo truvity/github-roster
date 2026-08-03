@@ -20,6 +20,7 @@
   <thead>
     <tr>
       <th>Name</th><th>GitHub</th><th>Declared emails</th><th>Namespace</th><th>Class</th>
+      <th>Teams</th>
       {{range .Data.SourceNames}}<th>{{.}}</th>{{end}}
       {{range .Data.OrgNames}}<th>{{.}}</th>{{end}}
       <th>Pinned teams</th><th>Rev</th><th></th>
@@ -34,6 +35,13 @@
       <td>{{if .Emails}}{{range $i, $e := .Emails}}{{if $i}}<br>{{end}}{{$e}}{{end}}{{else}}—{{end}}</td>
       <td>{{if .K8s}}emp-{{.K8s}}{{else}}—{{end}}</td>
       <td>{{.Class}}</td>
+      <td>
+        {{- /* The teams the configuration resolves this person to. A
+             person no team claims will be silently absent from every
+             sync plan — say so where the operator is looking. */ -}}
+        {{if $p.NoTeam}}<span class="badge danger" title="no group, members: entry or pin claims this person — no sync will include them">no team</span>
+        {{else}}{{range $i, $t := $p.DesiredAnywhere}}{{if $i}}<br>{{end}}<span class="muted">{{$t}}</span>{{end}}{{end}}
+      </td>
       {{range $src := $.Data.SourceNames}}
       {{$d := index $p.Directories $src}}
       <td>

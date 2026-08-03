@@ -406,3 +406,72 @@ func TestExplicitMemberListDesiresOnlyTheLive(t *testing.T) {
 	require.NotContains(t, gone.Orgs["example-org"].DesiredTeams, "team-listed",
 		"a static list must not resurrect a suspended person")
 }
+
+// The 2026-08-03 incident: a freshly mapped, live person no team claims
+// produces hash-identical sync plans, and nothing said why. The join now
+// flags them — on the person and as a warning.
+func TestNoTeamPersonIsFlaggedAndReported(t *testing.T) {
+	t.Parallel()
+
+	snap := snapshot()
+	snap.Users = append(snap.Users, directory.User{
+		Name: "New Hire", Email: "new.hire@example.com", Live: true,
+	})
+
+	r := roster.Join(roster.Inputs{
+		Config:         cfg(t),
+		Snapshots:      []*directory.Snapshot{snap},
+		SourceStatuses: []directory.Status{{Source: "corp", Healthy: true, Ready: true}},
+		Entries: append(entries(),
+			mapping.Entry{Name: "New Hire", GitHub: "new-hire", Class: mapping.ClassEmployee}),
+		Orgs: map[string]*orgstate.State{"example-org": orgState()},
+		Now:  time.Date(2026, 8, 3, 12, 0, 0, 0, time.UTC),
+	})
+
+	hire := person(t, r, "New Hire")
+	require.True(t, hire.Live)
+	require.True(t, hire.NoTeam)
+	require.Empty(t, hire.DesiredAnywhere())
+
+	found := warnings(r, roster.WarnNoTeam)
+	require.Len(t, found, 1)
+	require.Equal(t, "New Hire", found[0].Subject)
+
+	// People with teams are not flagged.
+	require.False(t, person(t, r, "Ada Lovelace").NoTeam)
+	require.Equal(t, []string{"example-org/team-engineers"},
+		person(t, r, "Ada Lovelace").DesiredAnywhere())
+}
+
+// A suspended person is desired in no team BY DESIGN (the removals path);
+// warning about them would bury the signal under every leaver. An orphaned
+// entry already has its own warning with a different fix.
+func TestNoTeamWarningSkipsSuspendedAndOrphaned(t *testing.T) {
+	t.Parallel()
+
+	r := join(t)
+
+	require.True(t, person(t, r, "Gone Person").NoTeam)
+	require.True(t, person(t, r, "Ghost Entry").NoTeam)
+	require.Empty(t, warnings(r, roster.WarnNoTeam))
+}
+
+// A bot no pin claims is as invisible to every sync as an unclaimed
+// employee — and it has no directory to claim it any other way.
+func TestUnpinnedBotIsReportedAsNoTeam(t *testing.T) {
+	t.Parallel()
+
+	r := roster.Join(roster.Inputs{
+		Config:         cfg(t),
+		Snapshots:      []*directory.Snapshot{snapshot()},
+		SourceStatuses: []directory.Status{{Source: "corp", Healthy: true, Ready: true}},
+		Entries: append(entries(),
+			mapping.Entry{Name: "Stray Bot", GitHub: "stray-bot", Class: mapping.ClassBot}),
+		Orgs: map[string]*orgstate.State{"example-org": orgState()},
+		Now:  time.Date(2026, 8, 3, 12, 0, 0, 0, time.UTC),
+	})
+
+	found := warnings(r, roster.WarnNoTeam)
+	require.Len(t, found, 1)
+	require.Equal(t, "Stray Bot", found[0].Subject)
+}

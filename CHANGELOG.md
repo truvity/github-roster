@@ -4,6 +4,10 @@ Reconstructed from release tags; one line per release. Full detail lives
 in the release notes and the git history.
 
 ## 0.15.x
+- **0.15.5** — "no team — will never sync" surfaced everywhere it
+  matters (#61): Teams column on People, warning flash on mapping save,
+  banner on Sync, `no-team` roster warning + `noTeam` on Person. Live
+  people only — suspended and orphaned entries keep their own signals.
 - **0.15.4** — mapping form prefill works again: the directory-pick
   script moved to `/static/` (the strict CSP was silently blocking it
   inline since 0.15.0) and listens on `input` too (Safari datalist);

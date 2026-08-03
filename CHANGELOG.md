@@ -4,6 +4,9 @@ Reconstructed from release tags; one line per release. Full detail lives
 in the release notes and the git history.
 
 ## 0.15.x
+- **0.15.6** — the People page's "no team" badge alarms for LIVE people
+  only; a suspended person shows a dash — teamless by design, same rule
+  the join's warning already followed.
 - **0.15.5** — "no team — will never sync" surfaced everywhere it
   matters (#61): Teams column on People, warning flash on mapping save,
   banner on Sync, `no-team` roster warning + `noTeam` on Person. Live

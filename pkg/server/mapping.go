@@ -325,7 +325,8 @@ func (d *Deps) entryHasNoTeam(entry mapping.Entry) bool {
 
 	for i := range joined.People {
 		if joined.People[i].Name == entry.Name {
-			return joined.People[i].NoTeam
+			// Same live-only gate as every other no-team surface.
+			return joined.People[i].NoTeam && joined.People[i].Live
 		}
 	}
 

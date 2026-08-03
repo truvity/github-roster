@@ -53,7 +53,10 @@ func (d *Deps) noTeamNames(ctx context.Context) []string {
 
 	joined := d.desiredOnlyJoin(entries)
 	for i := range joined.People {
-		if joined.People[i].NoTeam {
+		// Live people only — a suspended person is teamless by design
+		// (the removals path), same gate as the join's warning and the
+		// People-page badge.
+		if joined.People[i].NoTeam && joined.People[i].Live {
 			names = append(names, joined.People[i].Name)
 		}
 	}

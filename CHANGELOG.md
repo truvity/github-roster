@@ -4,6 +4,9 @@ Reconstructed from release tags; one line per release. Full detail lives
 in the release notes and the git history.
 
 ## 0.15.x
+- **0.15.7** — the live-only gate reaches the remaining no-team
+  surfaces: the Sync-page banner and the save flash no longer name
+  suspended people (0.15.6 fixed only the People-page badge).
 - **0.15.6** — the People page's "no team" badge alarms for LIVE people
   only; a suspended person shows a dash — teamless by design, same rule
   the join's warning already followed.

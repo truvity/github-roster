@@ -112,7 +112,9 @@ type directorySuggestion struct {
 // abbrevKeep strips everything a namespace abbreviation cannot carry.
 var abbrevKeep = regexp.MustCompile(`[^a-z0-9-]+`)
 
-// conventionalAbbrev renders "Oleg Tsarev" as "o-tsarev".
+// conventionalAbbrev renders "Oleg Tsarev" as "otsar" — the emp-{slug5}
+// convention the fleet's namespaces follow: first initial plus the first
+// four letters of the last name (otsar, ktere, aprok).
 func conventionalAbbrev(name string) string {
 	fields := strings.Fields(strings.ToLower(name))
 	if len(fields) == 0 {
@@ -121,7 +123,13 @@ func conventionalAbbrev(name string) string {
 
 	abbrev := fields[0]
 	if len(fields) > 1 {
-		abbrev = abbrev[:1] + "-" + fields[len(fields)-1]
+		first := []rune(fields[0])
+		last := []rune(fields[len(fields)-1])
+		if len(last) > 4 {
+			last = last[:4]
+		}
+
+		abbrev = string(first[:1]) + string(last)
 	}
 
 	abbrev = abbrevKeep.ReplaceAllString(abbrev, "")

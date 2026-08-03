@@ -98,24 +98,7 @@
   </form>
 
   {{if .Data.Suggestions}}
-  <script>
-    // Picking a directory person prefills what the platform already
-    // knows — the IdP addresses and the conventional namespace — but
-    // only into EMPTY fields; typed values are never overwritten.
-    (function () {
-      var name = document.getElementById("name");
-      if (!name) return;
-      name.addEventListener("change", function () {
-        var opt = document.querySelector(
-          '#directory-people option[value="' + CSS.escape(name.value) + '"]');
-        if (!opt) return;
-        var emails = document.getElementById("emails");
-        if (emails && !emails.value) emails.value = opt.dataset.emails || "";
-        var k8s = document.getElementById("k8s");
-        if (k8s && !k8s.value) k8s.value = opt.dataset.k8s || "";
-      });
-    })();
-  </script>
+  <script src="/static/mapping-form.js" defer></script>
   {{end}}
 
   {{if .Data.Before}}

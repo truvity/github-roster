@@ -4,6 +4,12 @@ Reconstructed from release tags; one line per release. Full detail lives
 in the release notes and the git history.
 
 ## 0.15.x
+- **0.15.9** — the console's directory view refreshes itself: a page
+  view whose snapshot is older than 15 minutes kicks one background
+  re-read (single-flight, one-minute backoff on a failing source), so
+  "Last read" stops aging until the next pod rollout. Display only —
+  rendering never waits on Google, and mutations still refresh their
+  sources synchronously at plan time.
 - **0.15.8** — identity uniqueness at the source: an email address now
   belongs to exactly one entry, compared case-insensitively, alongside
   the GitHub-login rule that already held. Downstream reads the store

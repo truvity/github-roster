@@ -3,6 +3,7 @@ package directory_test
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 	"time"
 
@@ -215,4 +216,111 @@ func TestSetStatuses(t *testing.T) {
 	require.True(t, byName["a"].Healthy)
 	require.False(t, byName["b"].Healthy)
 	require.NotZero(t, byName["a"].FetchedAt)
+}
+
+// countingSource mints a fresh snapshot per fetch and records attempts; a
+// gate, when set, holds a fetch in flight so tests can observe overlap.
+type countingSource struct {
+	name string
+	err  error
+
+	mu      sync.Mutex
+	fetches int
+	gate    chan struct{}
+}
+
+func (f *countingSource) Name() string { return f.name }
+
+func (f *countingSource) Fetch(context.Context) (*directory.Snapshot, error) {
+	f.mu.Lock()
+	f.fetches++
+	gate := f.gate
+	f.mu.Unlock()
+
+	if gate != nil {
+		<-gate
+	}
+
+	if f.err != nil {
+		return nil, f.err
+	}
+
+	return &directory.Snapshot{Source: f.name, FetchedAt: time.Now()}, nil
+}
+
+func (f *countingSource) count() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	return f.fetches
+}
+
+func TestRefreshIfStaleRefreshesAnOldSnapshotInBackground(t *testing.T) {
+	t.Parallel()
+
+	source := &countingSource{name: "corp"}
+	set := directory.NewSet(slogt.New(t), source)
+	set.Caches()[0].Set(&directory.Snapshot{Source: "corp", FetchedAt: time.Now().Add(-time.Hour)})
+
+	require.True(t, set.RefreshIfStale(15*time.Minute, 0))
+
+	require.Eventually(t, func() bool {
+		snap, ok := set.Caches()[0].Snapshot()
+
+		return ok && time.Since(snap.FetchedAt) < time.Minute
+	}, 5*time.Second, 10*time.Millisecond, "the stale snapshot must be replaced by the background sweep")
+
+	require.Equal(t, 1, source.count())
+}
+
+func TestRefreshIfStaleLeavesAFreshSnapshotAlone(t *testing.T) {
+	t.Parallel()
+
+	source := &countingSource{name: "corp"}
+	set := directory.NewSet(slogt.New(t), source)
+	set.Caches()[0].Set(&directory.Snapshot{Source: "corp", FetchedAt: time.Now()})
+
+	require.False(t, set.RefreshIfStale(15*time.Minute, 0))
+	require.Equal(t, 0, source.count())
+}
+
+func TestRefreshIfStaleBacksOffAFailingSource(t *testing.T) {
+	t.Parallel()
+
+	source := &countingSource{name: "corp", err: errors.New("directory unreachable")}
+	// Never fetched: stale by definition, and the zero lastTry passes any
+	// backoff — the first render after startup may retry immediately.
+	set := directory.NewSet(slogt.New(t), source)
+
+	require.True(t, set.RefreshIfStale(15*time.Minute, time.Minute))
+
+	require.Eventually(t, func() bool {
+		return set.Caches()[0].Status().Error != ""
+	}, 5*time.Second, 10*time.Millisecond)
+
+	require.False(t, set.RefreshIfStale(15*time.Minute, time.Minute),
+		"a failure within the backoff window must not be retried per render")
+	require.Equal(t, 1, source.count())
+}
+
+func TestRefreshIfStaleIsSingleFlight(t *testing.T) {
+	t.Parallel()
+
+	gate := make(chan struct{})
+	source := &countingSource{name: "corp", gate: gate}
+	set := directory.NewSet(slogt.New(t), source)
+
+	require.True(t, set.RefreshIfStale(15*time.Minute, 0))
+	require.False(t, set.RefreshIfStale(15*time.Minute, 0),
+		"a second render must join the sweep in flight, not start another")
+
+	close(gate)
+
+	require.Eventually(t, func() bool {
+		_, ok := set.Caches()[0].Snapshot()
+
+		return ok
+	}, 5*time.Second, 10*time.Millisecond)
+
+	require.Equal(t, 1, source.count())
 }

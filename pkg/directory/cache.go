@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -142,9 +143,34 @@ func (c *Cache) Set(snapshot *Snapshot) {
 	c.lastTry = time.Now()
 }
 
+// staleAt reports whether a background refresh is warranted at now: the
+// snapshot is missing or older than ttl, and the last attempt — success or
+// failure — is older than retryBackoff. The backoff is what keeps a broken
+// source from being retried on every page view: without it, a directory
+// that answers with an error in 50ms would be hit once per render.
+func (c *Cache) staleAt(now time.Time, ttl, retryBackoff time.Duration) bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	if c.snapshot != nil && now.Sub(c.snapshot.FetchedAt) <= ttl {
+		return false
+	}
+
+	return now.Sub(c.lastTry) >= retryBackoff
+}
+
+// refreshTimeout bounds one background refresh sweep. A real fetch takes a
+// few seconds per source; a source that cannot answer within this is the
+// failure case the cache exists for.
+const refreshTimeout = 2 * time.Minute
+
 // Set is the group of caches the service reads, one per configured source.
 type Set struct {
 	caches []*Cache
+
+	// refreshing is the single-flight guard for RefreshIfStale: many
+	// renders may notice staleness at once, one sweep runs.
+	refreshing atomic.Bool
 }
 
 // NewSet builds a set from sources.
@@ -173,6 +199,54 @@ func (s *Set) Refresh(ctx context.Context) map[string]error {
 	}
 
 	return errs
+}
+
+// RefreshIfStale starts one background refresh of every source whose
+// snapshot is older than ttl, provided that source has not been attempted
+// within retryBackoff. It reports whether a refresh was started.
+//
+// It never blocks: the caller is a page render, and a page must serve the
+// cache it has rather than wait on a directory (the next view sees the
+// fresh read). The refresh runs on a detached context — deliberately not
+// the request's, which dies with the response and whose fasthttp backing
+// is recycled.
+//
+// This is display freshness only. Anything that mutates refreshes its
+// sources synchronously at plan time and does not rely on this.
+func (s *Set) RefreshIfStale(ttl, retryBackoff time.Duration) bool {
+	now := time.Now()
+
+	var stale []*Cache
+
+	for _, cache := range s.caches {
+		if cache.staleAt(now, ttl, retryBackoff) {
+			stale = append(stale, cache)
+		}
+	}
+
+	if len(stale) == 0 {
+		return false
+	}
+
+	if !s.refreshing.CompareAndSwap(false, true) {
+		return false
+	}
+
+	go func() {
+		defer s.refreshing.Store(false)
+
+		ctx, cancel := context.WithTimeout(context.Background(), refreshTimeout)
+		defer cancel()
+
+		// The error is recorded in the cache and logged by Refresh;
+		// failures update lastTry, which arms the backoff for the next
+		// render.
+		for _, cache := range stale {
+			_ = cache.Refresh(ctx)
+		}
+	}()
+
+	return true
 }
 
 // Statuses reports every source's health.

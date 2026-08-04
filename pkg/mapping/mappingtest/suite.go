@@ -126,6 +126,37 @@ func StoreSuite(t *testing.T, newStore func(t *testing.T) mapping.Store) {
 		require.ErrorIs(t, err, mapping.ErrImmutable)
 	})
 
+	// One address on two entries makes every email → person lookup below
+	// this package ambiguous, so the store refuses it too.
+	t.Run("an address belongs to one entry only", func(t *testing.T) {
+		store := newStore(t)
+
+		require.NoError(t, store.Put(ctx, mapping.Entry{
+			Name:   "A Person",
+			GitHub: "octocat",
+			Emails: []string{"a.person@example.com", "a.person@example.invalid"},
+			Class:  mapping.ClassEmployee,
+		}))
+
+		err := store.Put(ctx, mapping.Entry{
+			Name:   "B Person",
+			GitHub: "hubot",
+			Emails: []string{"b.person@example.com", "a.person@example.invalid"},
+			Class:  mapping.ClassEmployee,
+		})
+		require.ErrorIs(t, err, mapping.ErrDuplicate)
+		require.ErrorContains(t, err, "A Person")
+
+		// Keeping one's own addresses across an edit is not a collision.
+		require.NoError(t, store.Put(ctx, mapping.Entry{
+			Name:   "A Person",
+			GitHub: "octocat",
+			Emails: []string{"a.person@example.com", "a.person@example.invalid"},
+			K8s:    "aperson",
+			Class:  mapping.ClassEmployee,
+		}))
+	})
+
 	t.Run("delete removes the entry", func(t *testing.T) {
 		store := newStore(t)
 

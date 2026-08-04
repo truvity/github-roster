@@ -13,6 +13,14 @@ func entry(name, github, k8s string) mapping.Entry {
 	return mapping.Entry{Name: name, GitHub: github, K8s: k8s, Class: mapping.ClassEmployee}
 }
 
+// withEmails is the same entry plus the addresses the directories know the
+// person under. Several per person is the normal case, not the exception.
+func withEmails(e mapping.Entry, emails ...string) mapping.Entry {
+	e.Emails = emails
+
+	return e
+}
+
 func TestValidateEntry(t *testing.T) {
 	t.Parallel()
 
@@ -113,6 +121,134 @@ func TestCheckInvariants(t *testing.T) {
 		updated.Class = mapping.ClassBot
 		require.NoError(t, mapping.CheckInvariants(updated, existing[0], existing))
 	})
+}
+
+// TestIdentityUniqueness pins the rule the generated per-person email set
+// depends on: every identity a person has — each address, and their GitHub
+// login — resolves to exactly one entry, and therefore to exactly one
+// namespace. Several addresses per person is the normal case and stays
+// legal; the same address on two people never is.
+func TestIdentityUniqueness(t *testing.T) {
+	t.Parallel()
+
+	// "Legacy Person" carries a mixed-case address on purpose. ValidateEntry
+	// has forced lowercase since it was written, but an entry stored before
+	// that rule must still not let a duplicate through.
+	stored := []mapping.Entry{
+		withEmails(entry("A Person", "octocat", "aperson"), "a.person@example.com", "a.person@example.invalid"),
+		withEmails(entry("B Person", "hubot", "bperson"), "b.person@example.com"),
+		withEmails(entry("Legacy Person", "legacy", "legacy"), "Legacy.Person@Example.com"),
+	}
+
+	cases := []struct {
+		name string
+		next mapping.Entry
+		// before is the entry being replaced; the zero Entry for a create.
+		before mapping.Entry
+		// wantIs is the sentinel the error must wrap, nil when the write is
+		// allowed. wantErr is a substring of the message, checked whenever
+		// it is set — usually the name of the entry already holding the
+		// identity, which is what an operator needs to see.
+		wantIs  error
+		wantErr string
+	}{
+		{
+			name: "several addresses on one person is normal",
+			next: withEmails(entry("C Person", "monalisa", "cperson"),
+				"c.person@example.com", "c.person@example.invalid", "c@example.test"),
+		},
+		{
+			// Deliberately not an error. A person with no address simply
+			// does not appear in what the fleet generates from this store,
+			// which is a gap to surface at the moment it is created — not
+			// a reason to refuse the write. Bots never have one at all.
+			name: "no addresses at all is allowed",
+			next: entry("C Person", "monalisa", "cperson"),
+		},
+		{
+			name:    "an address already held by another entry",
+			next:    withEmails(entry("C Person", "monalisa", "cperson"), "a.person@example.com"),
+			wantIs:  mapping.ErrDuplicate,
+			wantErr: "A Person",
+		},
+		{
+			name: "a later address collides even when the first does not",
+			next: withEmails(entry("C Person", "monalisa", "cperson"),
+				"c.person@example.com", "b.person@example.com"),
+			wantIs:  mapping.ErrDuplicate,
+			wantErr: "B Person",
+		},
+		{
+			name:    "an address stored in another case is the same address",
+			next:    withEmails(entry("C Person", "monalisa", "cperson"), "legacy.person@example.com"),
+			wantIs:  mapping.ErrDuplicate,
+			wantErr: "Legacy Person",
+		},
+		{
+			// The mixed-case duplicate cannot reach the uniqueness check
+			// from this side: the single-entry rule rejects it first. Both
+			// answers are a rejection; only the message differs.
+			name:    "a mixed-case address is rejected before uniqueness",
+			next:    withEmails(entry("C Person", "monalisa", "cperson"), "A.Person@example.com"),
+			wantErr: "lowercase",
+		},
+		{
+			name:    "a github login already held by another entry",
+			next:    entry("C Person", "hubot", "cperson"),
+			wantIs:  mapping.ErrDuplicate,
+			wantErr: "B Person",
+		},
+		{
+			// GitHub logins are case-insensitive, so these are one account.
+			name:    "a github login differing only in case",
+			next:    entry("C Person", "OctoCat", "cperson"),
+			wantIs:  mapping.ErrDuplicate,
+			wantErr: "A Person",
+		},
+		{
+			name: "an entry keeps its own addresses across an edit",
+			next: withEmails(entry("A Person", "octocat", "aperson"),
+				"a.person@example.com", "a.person@example.invalid"),
+			before: stored[0],
+		},
+		{
+			name:   "an entry may drop one of its own addresses",
+			next:   withEmails(entry("A Person", "octocat", "aperson"), "a.person@example.invalid"),
+			before: stored[0],
+		},
+		{
+			// Editing skips the entry against itself, and must not thereby
+			// skip the entry it is stealing an address from.
+			name: "an edit that adds another entry's address is still caught",
+			next: withEmails(entry("A Person", "octocat", "aperson"),
+				"a.person@example.com", "b.person@example.com"),
+			before:  stored[0],
+			wantIs:  mapping.ErrDuplicate,
+			wantErr: "B Person",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			err := mapping.CheckInvariants(tc.next, tc.before, stored)
+
+			if tc.wantIs == nil && tc.wantErr == "" {
+				require.NoError(t, err)
+
+				return
+			}
+
+			if tc.wantIs != nil {
+				require.ErrorIs(t, err, tc.wantIs)
+			}
+
+			if tc.wantErr != "" {
+				require.ErrorContains(t, err, tc.wantErr)
+			}
+		})
+	}
 }
 
 func TestSlug(t *testing.T) {

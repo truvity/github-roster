@@ -59,6 +59,10 @@ type Entry struct {
 	// spanning companies has several). The join matches on these FIRST
 	// and falls back to the name, so a directory spelling a name
 	// differently cannot silently detach a person from their liveness.
+	//
+	// Several addresses per person is normal; one address on two people
+	// is not, and [CheckInvariants] rejects it — every identity a person
+	// has must resolve to that one person, and to their namespace.
 	Emails []string `json:"emails,omitempty"`
 
 	// K8s is the abbreviation their `emp-<abbr>` namespace is named after.
@@ -193,6 +197,24 @@ func ValidateEntry(e Entry) error {
 	return nil
 }
 
+// sharedEmail returns the first address the two lists have in common,
+// compared case-insensitively.
+//
+// Nested loops rather than a set: an entry holds a handful of addresses and
+// the store a few dozen entries, so building a map would cost more than the
+// scan it replaces.
+func sharedEmail(a, b []string) (string, bool) {
+	for _, email := range a {
+		for _, other := range b {
+			if strings.EqualFold(email, other) {
+				return email, true
+			}
+		}
+	}
+
+	return "", false
+}
+
 // CheckInvariants validates a write against everything already stored: the
 // cross-entry rules that a single entry cannot express.
 //
@@ -224,6 +246,17 @@ func CheckInvariants(next, existing Entry, all []Entry) error {
 		// account makes the join ambiguous in a way no later check catches.
 		if strings.EqualFold(other.GitHub, next.GitHub) {
 			return fmt.Errorf("%w: github login %q belongs to %q", ErrDuplicate, next.GitHub, other.Name)
+		}
+
+		// An address on two entries is the same ambiguity one step earlier.
+		// Everything downstream reads these as an email → person → namespace
+		// map, so a shared address means whichever entry the reader happens
+		// to see last decides whose namespace that identity lands in.
+		// Compared case-insensitively for the same reason as the login:
+		// ValidateEntry already forces lowercase, and a stored entry written
+		// before that rule must not slip a duplicate past this one.
+		if email, clash := sharedEmail(next.Emails, other.Emails); clash {
+			return fmt.Errorf("%w: email %q belongs to %q", ErrDuplicate, email, other.Name)
 		}
 	}
 

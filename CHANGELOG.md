@@ -4,6 +4,12 @@ Reconstructed from release tags; one line per release. Full detail lives
 in the release notes and the git history.
 
 ## 0.15.x
+- **0.15.8** — identity uniqueness at the source: an email address now
+  belongs to exactly one entry, compared case-insensitively, alongside
+  the GitHub-login rule that already held. Downstream reads the store
+  as an email → person → namespace map, and a shared address makes it
+  ambiguous; the store is where that has to be impossible. Several
+  addresses per person stays normal, and no addresses is still allowed.
 - **0.15.7** — the live-only gate reaches the remaining no-team
   surfaces: the Sync-page banner and the save flash no longer name
   suspended people (0.15.6 fixed only the People-page badge).

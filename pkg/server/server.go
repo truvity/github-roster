@@ -81,6 +81,16 @@ const (
 	// bodyLimit bounds a request. The largest thing anyone posts here is a
 	// bulk mapping import pasted into a textarea.
 	bodyLimit = 4 << 20
+	// Display-freshness policy for the app's own directory caches: a page
+	// view whose snapshot is older than this kicks one background
+	// refresh, so the console's read views (and the "Last read" panel)
+	// stay honest on a quiet day instead of aging until the next pod
+	// rollout. Mutations never rely on this — the broker refreshes its
+	// sources synchronously at plan time.
+	directoryRenderTTL = 15 * time.Minute
+	// directoryRetryBackoff spaces attempts against a failing source, so
+	// a broken directory is retried on a clock, not on every render.
+	directoryRetryBackoff = time.Minute
 	// readBufferSize must hold the full request header block. The gateway
 	// forwards the OIDC session cookies plus a JWT access token with role
 	// assertions — together well past fasthttp's 4 KiB default, which
@@ -124,6 +134,20 @@ func NewApp(deps *Deps) *fiber.App {
 	// page someone forgets to wrap. There are no sign-in routes to exempt:
 	// the gateway runs the login and forwards a token with every request.
 	app.Use(deps.Auth.Middleware())
+
+	// Reads shown on a page may be TTL-stale, never frozen: an
+	// authenticated page view kicks a background refresh of any directory
+	// source past its display TTL. Rendering never waits — the page
+	// serves the snapshot it has, the next view sees the fresh one.
+	if deps.Directories != nil {
+		app.Use(func(c fiber.Ctx) error {
+			if c.Method() == fiber.MethodGet {
+				deps.Directories.RefreshIfStale(directoryRenderTTL, directoryRetryBackoff)
+			}
+
+			return c.Next()
+		})
+	}
 
 	// The console's scripts, embedded and served same-origin so the CSP
 	// carries no unsafe-inline for script-src.

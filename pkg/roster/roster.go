@@ -53,7 +53,11 @@ type Person struct {
 	K8s string `json:"k8s,omitempty"`
 	// Class is employee or bot.
 	Class mapping.Class `json:"class"`
-	// Live is whether this person still has an account somewhere.
+	// Live is whether this person still has an active account SOMEWHERE —
+	// the OR across directories. It answers "has this person left every
+	// company"; standing in one organization is the per-org
+	// [Membership.Live], which a suspension in that org's own company
+	// turns off on its own.
 	Live bool `json:"live"`
 	// Sources names the directories that know this person. Empty for a
 	// bot, which has no directory account by definition.
@@ -96,6 +100,14 @@ type DirectoryIdentity struct {
 
 // Membership is a person's standing in one organization.
 type Membership struct {
+	// Live is this person's liveness FOR THIS ORGANIZATION — the
+	// home-company rule. The identity in the org's own company governs
+	// when one exists: suspended there, the person is a leaver HERE,
+	// whatever their other accounts still say, and both sync modes
+	// remove them from this org alone. A person with no identity in the
+	// org's company (a partner) resolves from their home directory,
+	// which is exactly the person-level OR.
+	Live bool `json:"live"`
 	// Member is true when GitHub reports them a member OR they have a
 	// pending invitation. An invited person occupies a seat and must not
 	// be invited twice.
@@ -128,10 +140,12 @@ const (
 	// the mapping and not an exception. These are what an adoption cleanup
 	// is made of.
 	WarnUnknownMember WarningKind = "unknown-member"
-	// WarnNotLiveOwner is an organization owner who is no longer live.
-	// Owners are out of this service's hands by design, so this cannot be
-	// fixed by a sync — it needs a reviewed infrastructure change, and
-	// saying so is the only way it gets done.
+	// WarnNotLiveOwner is an organization owner who is no longer live
+	// FOR THAT ORGANIZATION — gone everywhere, or suspended in the org's
+	// own company while live elsewhere. Owners are out of this service's
+	// hands by design, so this cannot be fixed by a sync — it needs a
+	// reviewed infrastructure change, and saying so is the only way it
+	// gets done.
 	WarnNotLiveOwner WarningKind = "not-live-owner"
 	// WarnStaleSource is a directory whose last fetch failed. Its people
 	// are still shown, from the last known good read, but its removals
@@ -245,10 +259,14 @@ func Join(in Inputs) *Roster {
 // liveness is what the directories say about one person.
 type liveness struct {
 	// name is the display name the directories know this person under.
-	name    string
-	live    bool
-	email   string
-	sources []string
+	name string
+	live bool
+	// email is the display anchor, preferring a LIVE account's address —
+	// emailLive records whether the current pick is one, so a suspended
+	// account seen first cannot hold the slot.
+	email     string
+	emailLive bool
+	sources   []string
 	// directories is the per-source view: which address each directory
 	// knows this person under, and whether that account is live there.
 	directories map[string]DirectoryIdentity
@@ -261,10 +279,12 @@ type liveness struct {
 // both by display name and by every address the directories know.
 //
 // A person can exist in more than one directory — the design accepts that
-// explicitly — and they count as live if ANY directory still has them
-// active. Requiring every directory to agree would offboard people the day
-// one of their accounts is closed, which is the opposite of what the
-// suspension signal means.
+// explicitly — and they count as live (person-level) if ANY directory
+// still has them active. Requiring every directory to agree would offboard
+// people the day one of their accounts is closed, which is the opposite of
+// what the suspension signal means. Each ACCOUNT still carries its own
+// state: per-org standing (liveForOrg) and group grants read the account,
+// not the OR.
 func livenessIndexes(snapshots []*directory.Snapshot) (byNameIdx, byEmailIdx map[string]*liveness) {
 	byName := map[string]*liveness{}
 	byEmail := map[string]*liveness{}
@@ -305,12 +325,20 @@ func livenessIndexes(snapshots []*directory.Snapshot) (byNameIdx, byEmailIdx map
 			l.sources = appendUnique(l.sources, snap.Source)
 			l.directories[snap.Source] = DirectoryIdentity{Email: user.Email, Live: user.Live}
 
-			if l.email == "" {
+			if l.email == "" || (user.Live && !l.emailLive) {
 				l.email = user.Email
+				l.emailLive = user.Live
 			}
 
-			for group := range memberOf[strings.ToLower(user.Email)] {
-				l.groups[group] = true
+			// Groups fold per ACCOUNT, not per person: a suspended
+			// account's memberships grant nothing, however long the
+			// directory keeps listing it — group membership routinely
+			// outlives suspension. A live account's memberships still
+			// count, cross-company ones included.
+			if user.Live {
+				for group := range memberOf[strings.ToLower(user.Email)] {
+					l.groups[group] = true
+				}
 			}
 		}
 	}
@@ -383,7 +411,7 @@ func join(in Inputs, entry mapping.Entry, live, liveByEmail map[string]*liveness
 	for i := range in.Config.Orgs {
 		org := &in.Config.Orgs[i]
 
-		person.Orgs[org.Name] = membership(in, org, entry, resolved, person.Live)
+		person.Orgs[org.Name] = membership(in, org, entry, resolved, liveForOrg(org, resolved, person.Live))
 	}
 
 	person.NoTeam = true
@@ -461,8 +489,9 @@ func resolveLiveness(entry mapping.Entry, live, liveByEmail map[string]*liveness
 		merged.live = merged.live || l.live
 		merged.sources = append(merged.sources, l.sources...)
 
-		if merged.email == "" {
+		if merged.email == "" || (l.emailLive && !merged.emailLive) {
 			merged.email = l.email
+			merged.emailLive = l.emailLive
 		}
 
 		for src, id := range l.directories {
@@ -477,8 +506,27 @@ func resolveLiveness(entry mapping.Entry, live, liveByEmail map[string]*liveness
 	return merged, claimed
 }
 
+// liveForOrg is the home-company rule for one organization: the identity
+// in the org's own company governs a person's standing there. Suspended
+// in that company, they are a leaver FOR THAT ORG — their other accounts
+// keep only what those accounts justify. A person with no identity in
+// the org's company (a partner, or a bot with no directory record at
+// all) resolves from their home directory, which the person-level value
+// already is.
+func liveForOrg(org *config.Org, l *liveness, personLive bool) bool {
+	if l == nil {
+		return personLive
+	}
+
+	if id, ok := l.directories[org.Company]; ok {
+		return id.Live
+	}
+
+	return personLive
+}
+
 func membership(in Inputs, org *config.Org, entry mapping.Entry, l *liveness, isLive bool) Membership {
-	m := Membership{DesiredTeams: desiredTeams(org, entry, l, isLive)}
+	m := Membership{Live: isLive, DesiredTeams: desiredTeams(org, entry, l, isLive)}
 
 	state := in.Orgs[org.Name]
 	if state == nil {
@@ -517,10 +565,10 @@ func membership(in Inputs, org *config.Org, entry mapping.Entry, l *liveness, is
 // desiredTeams is what the configuration says this person should be in.
 //
 // A directory-mapped team draws from the union of its groups and its
-// explicit member list, and only for people who are live: a suspended
-// person is in no team, whatever the group or the list still says. A
-// pinned team draws from the mapping entry alone, because it has no group
-// to read.
+// explicit member list, and only for people who are live FOR THIS ORG: a
+// suspension in the org's own company empties their teams here, whatever
+// the group or the list still says. A pinned team draws from the mapping
+// entry alone, because it has no group to read.
 func desiredTeams(org *config.Org, entry mapping.Entry, l *liveness, isLive bool) []string {
 	var teams []string
 
@@ -531,8 +579,8 @@ func desiredTeams(org *config.Org, entry mapping.Entry, l *liveness, isLive bool
 				teams = append(teams, name)
 			}
 		case !isLive || l == nil:
-			// Not live, or no directory knows them: no membership can
-			// apply — an explicit list never resurrects a suspended
+			// Not live here, or no directory knows them: no membership
+			// can apply — an explicit list never resurrects a suspended
 			// person either.
 			continue
 		default:
@@ -548,7 +596,8 @@ func desiredTeams(org *config.Org, entry mapping.Entry, l *liveness, isLive bool
 }
 
 // matchesTeam reports whether a live person belongs to a directory-mapped
-// team, by group membership or by explicit member email.
+// team, by group membership or by explicit member email. Groups carry
+// only live accounts' memberships by construction (livenessIndexes).
 func matchesTeam(team config.Team, entry mapping.Entry, l *liveness) bool {
 	for _, group := range team.Groups {
 		if l.groups[strings.ToLower(group)] {
@@ -557,19 +606,45 @@ func matchesTeam(team config.Team, entry mapping.Entry, l *liveness) bool {
 	}
 
 	for _, member := range team.Members {
-		// Declared emails on the mapping entry, plus every address a
-		// directory actually knows this person under — a list entry works
-		// whether or not the operator re-declared the email.
-		for _, email := range entry.Emails {
-			if strings.EqualFold(email, member) {
-				return true
-			}
+		if matchesMember(member, entry, l) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// matchesMember reports whether one members: address is this person — by
+// a LIVE directory identity, or by a declared email no directory knows.
+// An address a directory reports suspended never matches, whoever else
+// still lists it: that is the per-account half of the rule on
+// [config.Team] Members — a static list never resurrects a suspended
+// account, even when its person is live elsewhere. A declared address
+// outside every directory still matches (the person-level live gate has
+// already passed), so a list can name a domain this instance does not
+// read.
+func matchesMember(member string, entry mapping.Entry, l *liveness) bool {
+	known := false
+
+	for _, identity := range l.directories {
+		if !strings.EqualFold(identity.Email, member) {
+			continue
 		}
 
-		for _, identity := range l.directories {
-			if strings.EqualFold(identity.Email, member) {
-				return true
-			}
+		if identity.Live {
+			return true
+		}
+
+		known = true
+	}
+
+	if known {
+		return false
+	}
+
+	for _, email := range entry.Emails {
+		if strings.EqualFold(email, member) {
+			return true
 		}
 	}
 
@@ -693,13 +768,15 @@ func membershipWarnings(in Inputs, people []Person) []Warning {
 
 			// An owner who has left cannot be fixed by a sync: owners are
 			// registry-pinned by design. Saying so is the only way it gets
-			// noticed at all.
-			if !person.Live && member.Role == orgstate.RoleAdmin {
+			// noticed at all. Per-org liveness, so an owner suspended in
+			// THIS org's company is reported even while another company
+			// keeps them live.
+			if !person.Orgs[org.Name].Live && member.Role == orgstate.RoleAdmin {
 				warnings = append(warnings, Warning{
 					Kind:    WarnNotLiveOwner,
 					Subject: member.Login,
 					Org:     org.Name,
-					Detail:  person.Name + " is no longer live but is an organization owner; owners change by reviewed infrastructure commit, not by sync",
+					Detail:  person.Name + " is no longer live for this organization but is an owner; owners change by reviewed infrastructure commit, not by sync",
 				})
 			}
 		}

@@ -174,7 +174,7 @@ func TestViewersCannotReachTheEditor(t *testing.T) {
 
 	e := newEditor(t, auth.RoleViewer)
 
-	for _, path := range []string{"/mapping", "/mapping/edit", "/mapping/import"} {
+	for _, path := range []string{"/mapping", "/mapping/edit"} {
 		req := httptest.NewRequest(http.MethodGet, path, http.NoBody)
 		req.Header.Set(fiber.HeaderAccept, fiber.MIMETextHTML)
 
@@ -183,64 +183,6 @@ func TestViewersCannotReachTheEditor(t *testing.T) {
 		require.Equal(t, fiber.StatusForbidden, resp.StatusCode, "GET %s as viewer", path)
 		_ = resp.Body.Close()
 	}
-}
-
-// The plan is shown, and nothing is written until it is confirmed.
-func TestImportPreviewWritesNothing(t *testing.T) {
-	t.Parallel()
-
-	e := newEditor(t, auth.RoleOperator)
-
-	csv := "name,github,k8s,class,pinned\nAda Lovelace,ada,ada,employee,\nAlan Turing,alan,alan,employee,\n"
-
-	resp := e.post("/mapping/import", url.Values{"csv": {csv}}, true)
-	require.Equal(t, fiber.StatusOK, resp.StatusCode)
-
-	page := body(t, resp)
-	require.Contains(t, page, "2 to create")
-
-	entries, err := e.store.List(context.Background())
-	require.NoError(t, err)
-	require.Empty(t, entries, "planning must not write")
-}
-
-func TestImportApplyWrites(t *testing.T) {
-	t.Parallel()
-
-	e := newEditor(t, auth.RoleOperator)
-
-	csv := "name,github,k8s,class,pinned\nAda Lovelace,ada,ada,employee,\nAlan Turing,alan,alan,employee,\n"
-
-	resp := e.post("/mapping/import/apply", url.Values{"csv": {csv}}, true)
-	require.Equal(t, fiber.StatusSeeOther, resp.StatusCode)
-	_ = resp.Body.Close()
-
-	entries, err := e.store.List(context.Background())
-	require.NoError(t, err)
-	require.Len(t, entries, 2)
-}
-
-// One bad line must not cost the operator the other sixty-nine.
-func TestImportAppliesGoodRowsAndSkipsRejects(t *testing.T) {
-	t.Parallel()
-
-	e := newEditor(t, auth.RoleOperator)
-
-	csv := "name,github,k8s,class,pinned\n" +
-		"Ada Lovelace,ada,ada,employee,\n" +
-		"Broken Person,bad,NOT_DNS,employee,\n" +
-		"Alan Turing,alan,alan,employee,\n"
-
-	resp := e.post("/mapping/import/apply", url.Values{"csv": {csv}}, true)
-	require.Equal(t, fiber.StatusSeeOther, resp.StatusCode)
-	_ = resp.Body.Close()
-
-	entries, err := e.store.List(context.Background())
-	require.NoError(t, err)
-	require.Len(t, entries, 2)
-
-	_, err = e.store.Get(context.Background(), "Broken Person")
-	require.ErrorIs(t, err, mapping.ErrNotFound)
 }
 
 func TestDeleteRemovesTheEntry(t *testing.T) {

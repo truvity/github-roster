@@ -79,7 +79,8 @@ const (
 	// leaving an operator unsure whether their click landed.
 	shutdownGrace = 20 * time.Second
 	// bodyLimit bounds a request. The largest thing anyone posts here is a
-	// bulk mapping import pasted into a textarea.
+	// mapping form or a sync confirmation — small, but a generous bound
+	// costs nothing.
 	bodyLimit = 4 << 20
 	// Display-freshness policy for the app's own directory caches: a page
 	// view whose snapshot is older than this kicks one background
@@ -194,10 +195,6 @@ func NewApp(deps *Deps) *fiber.App {
 	app.Get("/mapping/edit", requireOperator, deps.handleMappingForm)
 	app.Post("/mapping/save", requireOperator, sameOriginOnly, deps.handleMappingSave)
 	app.Post("/mapping/delete", requireOperator, sameOriginOnly, deps.handleMappingDelete)
-	app.Get("/mapping/import", requireOperator, deps.handleImportForm)
-	app.Post("/mapping/import", requireOperator, sameOriginOnly, deps.handleImportPreview)
-	app.Post("/mapping/import/apply", requireOperator, sameOriginOnly, deps.handleImportApply)
-
 	app.Get("/sync", requireOperator, deps.handleSync)
 	app.Post("/sync/preview", requireOperator, sameOriginOnly, deps.handleSyncPreview)
 	app.Post("/sync/apply", requireOperator, sameOriginOnly, deps.handleSyncApply)

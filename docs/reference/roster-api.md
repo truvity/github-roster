@@ -62,13 +62,17 @@ with a mapping entry. It is deliberately not "everyone in the directory":
 |---|---|
 | `live` | the person still has an unsuspended account in **at least one** directory. A `bot` is always live — it has no directory account, and reading that as "gone" would delete every bot on the first scheduled run |
 | `sources` | which directories know them. Someone can legitimately appear in several |
+| `orgs[].live` | liveness **for that organization** (the home-company rule): the identity in the org's own company governs when one exists — suspended there, the person is a leaver for that org alone, whatever their other accounts say. A person with no identity in the org's company (a partner) inherits person-level `live` |
 | `orgs[].member` | member **or** holder of a pending invitation — both occupy a seat |
 | `orgs[].invitationPending` | distinguishes the two, because they need different actions |
 | `orgs[].teams` | what GitHub says today |
 | `orgs[].desiredTeams` | what the configuration says. The difference is what an operator sync would change |
 
-`desiredTeams` is empty for anyone not live, whatever their directory
-groups still say — group membership routinely outlives suspension.
+`desiredTeams` is empty for anyone not live **for that org**, whatever
+their directory groups still say — group membership routinely outlives
+suspension. The gate is per account, too: a suspended account's group
+memberships and `members:` listings grant nothing even while the person
+stays live through another directory.
 
 ## Warnings
 
@@ -80,7 +84,7 @@ one person is unmapped would be useless precisely when it is needed.
 | `unmapped` | live person with no mapping entry | an operator, in the mapping editor |
 | `orphaned-mapping` | mapping entry no directory knows | an operator — usually a leaver whose entry outlived them, or a misspelled name |
 | `unknown-member` | GitHub member matching no entry and not an exception | an operator; this is what an adoption cleanup is made of |
-| `not-live-owner` | departed person who is an organization **owner** | **not a sync.** Owners are registry-pinned; this needs a reviewed infrastructure change |
+| `not-live-owner` | an organization **owner** no longer live for that org — gone everywhere, or suspended in the org's own company | **not a sync.** Owners are registry-pinned; this needs a reviewed infrastructure change |
 | `stale-source` | a directory's last fetch failed | nobody, immediately — but this source's removals must be skipped |
 
 ## Reading it safely

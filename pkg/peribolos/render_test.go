@@ -25,6 +25,9 @@ func orgConfig() *config.Org {
 	}
 }
 
+// person builds a fixture whose per-org liveness matches the person-level
+// value — the single-identity case. Dual-identity people, live overall
+// but suspended for this org, set Membership.Live separately.
 func person(name, login string, live bool, teams ...string) roster.Person {
 	return roster.Person{
 		Name:   name,
@@ -32,7 +35,7 @@ func person(name, login string, live bool, teams ...string) roster.Person {
 		Class:  mapping.ClassEmployee,
 		Live:   live,
 		Orgs: map[string]roster.Membership{
-			orgName: {Member: true, DesiredTeams: teams},
+			orgName: {Member: true, Live: live, DesiredTeams: teams},
 		},
 	}
 }
@@ -350,7 +353,7 @@ func TestMissingInputsAreRefused(t *testing.T) {
 // joinerWantingTeam is live, desired in a team, and not yet a member.
 func joinerWantingTeam(name, login string) roster.Person {
 	p := person(name, login, true, "engineers")
-	p.Orgs[orgName] = roster.Membership{Member: false, DesiredTeams: []string{"engineers"}}
+	p.Orgs[orgName] = roster.Membership{Member: false, Live: true, DesiredTeams: []string{"engineers"}}
 
 	return p
 }
@@ -429,4 +432,43 @@ func TestAbsentGroupKeepsCurrentButExplicitMembersStillAdd(t *testing.T) {
 	members := result.Document.Orgs[orgName].Teams["engineers"].Members
 	require.Contains(t, members, "ada", "the explicit addition must survive the absent-group fail-safe")
 	require.Contains(t, members, "veteran", "current members must be kept while the group is absent")
+}
+
+// A person suspended in THIS org's own company is a leaver here even
+// while another company keeps them live: the unattended run evicts them
+// from this org alone — person-level liveness no longer shields the
+// membership, the per-org value decides.
+func TestRemovalsOnlyEvictsPersonSuspendedForThisOrg(t *testing.T) {
+	t.Parallel()
+
+	half := person("Maks Ustinov", "maks", true)
+	half.Orgs[orgName] = roster.Membership{Member: true, Live: false}
+
+	result := render(t, peribolos.Inputs{
+		Mode:   peribolos.ModeRemovalsOnly,
+		Org:    orgConfig(),
+		Roster: &roster.Roster{People: []roster.Person{half}},
+		State:  state(member("maks")),
+	})
+
+	require.Equal(t, []string{"maks"}, result.Removing)
+}
+
+// The operator sync waives the same membership: live-elsewhere does not
+// keep a seat in the org whose own company suspended the person.
+func TestFullSyncEvictsPersonSuspendedForThisOrg(t *testing.T) {
+	t.Parallel()
+
+	half := person("Maks Ustinov", "maks", true)
+	half.Orgs[orgName] = roster.Membership{Member: true, Live: false}
+
+	result := render(t, peribolos.Inputs{
+		Mode:   peribolos.ModeFull,
+		Org:    orgConfig(),
+		Roster: &roster.Roster{People: []roster.Person{half}},
+		State:  state(member("maks")),
+	})
+
+	require.Empty(t, result.Adding)
+	require.Equal(t, []string{"maks"}, result.Removing)
 }

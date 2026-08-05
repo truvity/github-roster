@@ -199,6 +199,12 @@ type CompanyGitHub struct {
 type Org struct {
 	Name string `yaml:"name"`
 
+	// Company is the code of the company owning this organization — and
+	// therefore the name of the directory source that governs standing
+	// in it (the home-company rule): a person's identity in the org's
+	// own company decides their liveness here when one exists.
+	Company string `yaml:"-"`
+
 	// ConsoleAppSSM holds the read-only App credentials used by the web
 	// tier. ApplierAppSSM holds the write-capable App credentials, which
 	// are only ever mounted into a reconciler Job — never read by the web
@@ -355,6 +361,7 @@ func (c *Config) derive() {
 		if gh := company.GitHub; gh != nil {
 			c.Orgs = append(c.Orgs, Org{
 				Name:          gh.Org,
+				Company:       code,
 				ConsoleAppSSM: gh.ConsoleAppSSM,
 				ApplierAppSSM: gh.ApplierAppSSM,
 				ApplierSecret: gh.ApplierSecret,

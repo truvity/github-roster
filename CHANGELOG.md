@@ -3,6 +3,19 @@
 Reconstructed from release tags; one line per release. Full detail lives
 in the release notes and the git history.
 
+## 0.16.x
+- **0.16.0** — dual-identity liveness becomes per account and per org
+  (the home-company rule). A person suspended in one company while live
+  in another is a leaver for the suspended company's org alone: both
+  sync modes evict them there, their live identity keeps its own orgs.
+  A suspended account's group memberships and `members:` listings grant
+  nothing anywhere; `orgs[].live` is published on the roster; the
+  not-live-owner warning is per org; the display email prefers a live
+  account; the Add-a-person form offers and adopts live accounts only.
+  Bulk CSV import is REMOVED — it silently wiped email anchors on
+  update (its columns never carried emails), and per-identity liveness
+  makes hand-audited entry the only safe write path.
+
 ## 0.15.x
 - **0.15.9** — the console's directory view refreshes itself: a page
   view whose snapshot is older than 15 minutes kicks one background

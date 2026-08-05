@@ -475,3 +475,226 @@ func TestUnpinnedBotIsReportedAsNoTeam(t *testing.T) {
 	require.Len(t, found, 1)
 	require.Equal(t, "Stray Bot", found[0].Subject)
 }
+
+// ---- dual-identity cases: one person, an account in each of two ----
+// ---- companies, each company owning one organization             ----
+
+const dualDoc = `
+oidc: {disabled: true}
+companies:
+  corp:
+    directory:
+      ssmPrefix: /secrets/directory/corp
+      domains: [example.com]
+    github:
+      org: example-org
+      consoleAppSSM: /secrets/roster/console/example-org
+      applierAppSSM: /secrets/roster/applier/example-org
+      teams:
+        team-engineers:
+          groups: [team-engineers@example.com]
+  partner:
+    directory:
+      ssmPrefix: /secrets/directory/partner
+      domains: [partner.example]
+    github:
+      org: partner-org
+      consoleAppSSM: /secrets/roster/console/partner-org
+      applierAppSSM: /secrets/roster/applier/partner-org
+      teams:
+        team-wallet:
+          groups: [team-wallet@partner.example]
+        team-listed:
+          members: [maks@partner.example]
+`
+
+func dualCfg(t *testing.T) *config.Config {
+	t.Helper()
+
+	parsed, err := config.Parse([]byte(dualDoc))
+	require.NoError(t, err)
+
+	return parsed
+}
+
+// dualJoin joins one dual-identity person whose corp and partner
+// accounts carry the given liveness. The partner directory lists the
+// partner address in team-wallet's group either way — group membership
+// routinely outlives suspension.
+func dualJoin(t *testing.T, corpLive, partnerLive bool) *roster.Roster {
+	t.Helper()
+
+	return roster.Join(roster.Inputs{
+		Config: dualCfg(t),
+		Snapshots: []*directory.Snapshot{
+			{
+				Source:    "corp",
+				Users:     []directory.User{{Name: "Maks Ustinov", Email: "maks@example.com", Live: corpLive}},
+				Groups:    map[string][]string{"team-engineers@example.com": {"maks@example.com"}},
+				FetchedAt: time.Now(),
+			},
+			{
+				Source:    "partner",
+				Users:     []directory.User{{Name: "Maks Ustinov", Email: "maks@partner.example", Live: partnerLive}},
+				Groups:    map[string][]string{"team-wallet@partner.example": {"maks@partner.example"}},
+				FetchedAt: time.Now(),
+			},
+		},
+		SourceStatuses: []directory.Status{
+			{Source: "corp", Healthy: true, Ready: true},
+			{Source: "partner", Healthy: true, Ready: true},
+		},
+		Entries: []mapping.Entry{{
+			Name:   "Maks Ustinov",
+			GitHub: "maks",
+			K8s:    "musti",
+			Class:  mapping.ClassEmployee,
+			// Suspended-company address declared FIRST, so the email
+			// anchor test below proves ordering does not decide it.
+			Emails: []string{"maks@partner.example", "maks@example.com"},
+		}},
+		Orgs: map[string]*orgstate.State{},
+		Now:  time.Date(2026, 8, 5, 12, 0, 0, 0, time.UTC),
+	})
+}
+
+// The headline dual-identity case: live in corp, suspended in partner.
+// The suspension is a leaver event for the partner org alone — its
+// group AND its members: listing both name the suspended address, and
+// neither grants anything — while the corp side keeps everything.
+func TestDualIdentitySuspendedInOneCompany(t *testing.T) {
+	t.Parallel()
+
+	maks := person(t, dualJoin(t, true, false), "Maks Ustinov")
+
+	require.True(t, maks.Live, "one live account keeps the person")
+
+	corp := maks.Orgs["example-org"]
+	require.True(t, corp.Live)
+	require.Equal(t, []string{"team-engineers"}, corp.DesiredTeams)
+
+	partner := maks.Orgs["partner-org"]
+	require.False(t, partner.Live, "suspended in the org's own company is a leaver THERE")
+	require.Empty(t, partner.DesiredTeams,
+		"neither the suspended account's group nor a members: listing of its address may grant a team")
+}
+
+// Suspended everywhere is the plain leaver: nothing anywhere.
+func TestDualIdentityAllSuspended(t *testing.T) {
+	t.Parallel()
+
+	maks := person(t, dualJoin(t, false, false), "Maks Ustinov")
+
+	require.False(t, maks.Live)
+	require.False(t, maks.Orgs["example-org"].Live)
+	require.False(t, maks.Orgs["partner-org"].Live)
+	require.Empty(t, maks.DesiredAnywhere())
+}
+
+// Both accounts live: both identities grant, nothing is waived.
+func TestDualIdentityBothLive(t *testing.T) {
+	t.Parallel()
+
+	maks := person(t, dualJoin(t, true, true), "Maks Ustinov")
+
+	require.True(t, maks.Live)
+	require.True(t, maks.Orgs["example-org"].Live)
+	require.True(t, maks.Orgs["partner-org"].Live)
+	require.ElementsMatch(t,
+		[]string{"example-org/team-engineers", "partner-org/team-listed", "partner-org/team-wallet"},
+		maks.DesiredAnywhere())
+}
+
+// The display anchor prefers a live account's address whatever order the
+// operator declared the emails in — a suspended address as the visible
+// anchor misleads exactly the triage it exists for.
+func TestDualIdentityEmailAnchorPrefersLive(t *testing.T) {
+	t.Parallel()
+
+	maks := person(t, dualJoin(t, true, false), "Maks Ustinov")
+	require.Equal(t, "maks@example.com", maks.Email)
+}
+
+// The partner rail must survive the per-account gating: a corp person in
+// a partner group under their LIVE corp address has no partner identity
+// at all, so partner-org standing follows their home directory.
+func TestCrossCompanyMembershipFollowsHomeDirectory(t *testing.T) {
+	t.Parallel()
+
+	r := roster.Join(roster.Inputs{
+		Config: dualCfg(t),
+		Snapshots: []*directory.Snapshot{
+			{
+				Source:    "corp",
+				Users:     []directory.User{{Name: "Ada Lovelace", Email: "ada@example.com", Live: true}},
+				Groups:    map[string][]string{"team-engineers@example.com": {"ada@example.com"}},
+				FetchedAt: time.Now(),
+			},
+			{
+				Source:    "partner",
+				Users:     []directory.User{},
+				Groups:    map[string][]string{"team-wallet@partner.example": {"ada@example.com"}},
+				FetchedAt: time.Now(),
+			},
+		},
+		SourceStatuses: []directory.Status{
+			{Source: "corp", Healthy: true, Ready: true},
+			{Source: "partner", Healthy: true, Ready: true},
+		},
+		Entries: []mapping.Entry{{
+			Name: "Ada Lovelace", GitHub: "ada", Class: mapping.ClassEmployee,
+			Emails: []string{"ada@example.com"},
+		}},
+		Orgs: map[string]*orgstate.State{},
+		Now:  time.Date(2026, 8, 5, 12, 0, 0, 0, time.UTC),
+	})
+
+	ada := person(t, r, "Ada Lovelace")
+	require.True(t, ada.Orgs["partner-org"].Live, "no partner identity: home directory governs")
+	require.Contains(t, ada.Orgs["partner-org"].DesiredTeams, "team-wallet",
+		"a live account's cross-company group membership still grants")
+}
+
+// An owner suspended in THIS org's company is reported even while
+// another company keeps them live — and not reported where they are.
+func TestHalfSuspendedOwnerIsReportedPerOrg(t *testing.T) {
+	t.Parallel()
+
+	state := &orgstate.State{
+		Org:     "partner-org",
+		Members: []orgstate.Member{{Login: "maks", Role: orgstate.RoleAdmin}},
+	}
+
+	r := roster.Join(roster.Inputs{
+		Config: dualCfg(t),
+		Snapshots: []*directory.Snapshot{
+			{
+				Source:    "corp",
+				Users:     []directory.User{{Name: "Maks Ustinov", Email: "maks@example.com", Live: true}},
+				Groups:    map[string][]string{},
+				FetchedAt: time.Now(),
+			},
+			{
+				Source:    "partner",
+				Users:     []directory.User{{Name: "Maks Ustinov", Email: "maks@partner.example", Live: false}},
+				Groups:    map[string][]string{},
+				FetchedAt: time.Now(),
+			},
+		},
+		SourceStatuses: []directory.Status{
+			{Source: "corp", Healthy: true, Ready: true},
+			{Source: "partner", Healthy: true, Ready: true},
+		},
+		Entries: []mapping.Entry{{
+			Name: "Maks Ustinov", GitHub: "maks", Class: mapping.ClassEmployee,
+			Emails: []string{"maks@example.com", "maks@partner.example"},
+		}},
+		Orgs: map[string]*orgstate.State{"partner-org": state},
+		Now:  time.Date(2026, 8, 5, 12, 0, 0, 0, time.UTC),
+	})
+
+	found := warnings(r, roster.WarnNotLiveOwner)
+	require.Len(t, found, 1)
+	require.Equal(t, "maks", found[0].Subject)
+	require.Equal(t, "partner-org", found[0].Org)
+}

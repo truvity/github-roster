@@ -148,9 +148,11 @@ Keyed by team name, which must be lowercase alphanumeric with dashes.
 | Key | Meaning |
 |---|---|
 | `groups` | directory groups whose **union** is the team's membership |
+| `members` | explicit member emails, unioned with `groups`. A listed address must still belong to a **live** account in its directory — neither a list nor a group ever resurrects a suspended account, even one belonging to a person live elsewhere |
 | `pinned` | membership edited only in the operator UI |
 
-A team is one or the other, never both, and never neither.
+A team is directory-mapped (`groups` and/or `members`) or `pinned`,
+never both.
 
 Groups are read **flat**: a nested group is not expanded. A team whose
 membership you cannot determine by reading the configuration and one group

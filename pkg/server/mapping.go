@@ -145,6 +145,11 @@ func conventionalAbbrev(name string) string {
 
 // directorySuggestions lists everyone the cached snapshots know, so the
 // form can offer names and the save step can fetch emails by name.
+//
+// LIVE accounts only, per account: a suspended address must never be
+// offered or silently adopted as an identity anchor — it is how a dead
+// second account of a dual-identity person ends up granting access, and
+// a wholly suspended person is not someone the form should help map.
 func (d *Deps) directorySuggestions() []directorySuggestion {
 	if d.Directories == nil {
 		return nil
@@ -159,7 +164,7 @@ func (d *Deps) directorySuggestions() []directorySuggestion {
 		}
 
 		for _, user := range snapshot.Users {
-			if user.Name == "" || user.Email == "" {
+			if user.Name == "" || user.Email == "" || !user.Live {
 				continue
 			}
 
@@ -393,108 +398,6 @@ func (d *Deps) handleMappingDelete(c fiber.Ctx) error {
 	d.Logger.InfoContext(c.Context(), "mapping entry deleted", "name", name, "actor", identity.Subject)
 
 	return c.Redirect().To("/mapping?flash=deleted")
-}
-
-// importData drives the bulk import page and its confirmation.
-type importData struct {
-	// Input is the pasted text, preserved so a rejected paste can be
-	// corrected rather than retyped.
-	Input string
-	Plan  *mapping.Plan
-	// Counts, precomputed because a template cannot call a multi-value
-	// method.
-	Creates, Updates, Unchanged, Rejects int
-	Error                                string
-}
-
-func (d *Deps) handleImportForm(c fiber.Ctx) error {
-	return d.Renderer.Render(c, fiber.StatusOK, "mapping_import", ui.Page{
-		Title:  "Bulk import",
-		Nav:    "mapping",
-		AuthOn: d.Auth.Enabled(),
-		Data:   importData{},
-	})
-}
-
-// handleImportPreview parses and plans, but writes nothing.
-//
-// Seventy pasted lines are exactly the case where "apply and see" is
-// unacceptable, so planning and applying are separate requests with the
-// plan shown in between.
-func (d *Deps) handleImportPreview(c fiber.Ctx) error {
-	input := formValue(c, "csv")
-	data := importData{Input: input}
-
-	rows, err := mapping.ParseCSV(input)
-	if err != nil {
-		data.Error = err.Error()
-
-		return d.Renderer.Render(c, fiber.StatusUnprocessableEntity, "mapping_import", ui.Page{
-			Title: "Bulk import", Nav: "mapping", AuthOn: d.Auth.Enabled(), Data: data,
-		})
-	}
-
-	existing, err := d.Mapping.List(c.Context())
-	if err != nil {
-		return err
-	}
-
-	data.Plan = mapping.BuildPlan(rows, existing)
-	data.Creates, data.Updates, data.Unchanged, data.Rejects = data.Plan.Counts()
-
-	return d.Renderer.Render(c, fiber.StatusOK, "mapping_import", ui.Page{
-		Title: "Bulk import", Nav: "mapping", AuthOn: d.Auth.Enabled(), Data: data,
-	})
-}
-
-// handleImportApply re-parses and re-plans the same input rather than
-// trusting a plan round-tripped through the browser.
-//
-// The store can have changed between preview and confirm, and a plan
-// posted back from a form is attacker-controlled input. Re-planning costs
-// one read and removes both problems; rejected rows are skipped, so a file
-// with one bad line still applies the rest.
-func (d *Deps) handleImportApply(c fiber.Ctx) error {
-	store, ok := d.Mapping.(mapping.Store)
-	if !ok {
-		return fiber.NewError(fiber.StatusServiceUnavailable, "the mapping store is read-only in this deployment")
-	}
-
-	input := formValue(c, "csv")
-
-	rows, err := mapping.ParseCSV(input)
-	if err != nil {
-		return fiber.NewError(fiber.StatusUnprocessableEntity, err.Error())
-	}
-
-	existing, err := d.Mapping.List(c.Context())
-	if err != nil {
-		return err
-	}
-
-	plan := mapping.BuildPlan(rows, existing)
-	identity, _ := auth.From(c)
-
-	var applied int
-
-	for i := range plan.Rows {
-		row := plan.Rows[i]
-
-		if row.Action != mapping.ActionCreate && row.Action != mapping.ActionUpdate {
-			continue
-		}
-
-		if err := store.Put(c.Context(), row.Entry); err != nil {
-			return fmt.Errorf("line %d (%s): %w", row.Line, row.Entry.Name, err)
-		}
-
-		applied++
-	}
-
-	d.Logger.InfoContext(c.Context(), "bulk import applied",
-		"entries", applied, "rows", len(plan.Rows), "actor", identity.Subject)
-
-	return c.Redirect().To("/mapping?flash=imported")
 }
 
 // formValue reads a form field and COPIES it.

@@ -5,7 +5,8 @@
 // not of a command-line flag.**
 //
 // An unattended run renders current-GitHub-state minus people known not to
-// be live. Nobody who is not already a member can appear in that document,
+// be live for that organization (the home-company rule — see
+// roster.Membership.Live). Nobody who is not already a member can appear in that document,
 // so the only change it can produce is a removal — and that is true by
 // construction, visible in the YAML, and recorded in the audit trail. A
 // flag would be none of those things: it would be invisible in the record,
@@ -157,13 +158,16 @@ func Render(in Inputs) (*Result, error) {
 }
 
 // removalsOnlyMembers keeps every current member except those positively
-// known to be gone.
+// known to be gone — FROM THIS ORGANIZATION.
 //
 // "Positively known" is doing the work. Absence of evidence is not
 // evidence: someone the roster cannot identify at all stays, someone whose
 // only directory is unhealthy stays, and someone on the exception list
 // stays. The only people who leave are the ones a healthy directory says
-// are suspended.
+// are suspended. Liveness is the org's own (roster.Membership.Live, the
+// home-company rule): a person suspended in this org's company is a
+// leaver here even while another company keeps them — their live
+// identity keeps its own orgs, not this one.
 func removalsOnlyMembers(in Inputs, people map[string]roster.Person, current []string, result *Result) []string {
 	keep := make([]string, 0, len(current))
 
@@ -184,7 +188,7 @@ func removalsOnlyMembers(in Inputs, people map[string]roster.Person, current []s
 			continue
 		}
 
-		if person.Live {
+		if m, ok := person.Orgs[in.Org.Name]; !ok || m.Live {
 			keep = append(keep, login)
 
 			continue
@@ -235,9 +239,11 @@ func fullMembers(in Inputs, people map[string]roster.Person, current []string, r
 		}
 
 		switch {
-		case person.Live:
-			// A live person belongs if they are already a member or the
-			// configuration puts them in a team.
+		case membership.Live:
+			// A person live FOR THIS ORG belongs if they are already a
+			// member or the configuration puts them in a team. Suspended
+			// in this org's own company, they fall through to removal —
+			// the leaver path — however live their other identity is.
 			if membership.Member || len(membership.DesiredTeams) > 0 {
 				desired = append(desired, person.GitHub)
 			}

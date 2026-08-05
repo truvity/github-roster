@@ -10,6 +10,7 @@ require (
 	github.com/danielgtaylor/huma/v2 v2.39.1
 	github.com/gofiber/fiber/v3 v3.4.0
 	github.com/google/go-github/v89 v89.0.0
+	github.com/google/go-github/v90 v90.0.0
 	github.com/lestrrat-go/jwx/v4 v4.2.0
 	github.com/neilotoole/slogt/v2 v2.0.0
 	github.com/samber/slog-fiber v1.22.2

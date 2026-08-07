@@ -5,7 +5,7 @@ go 1.26.4
 require (
 	github.com/aws/aws-sdk-go-v2 v1.43.4
 	github.com/aws/aws-sdk-go-v2/config v1.32.35
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.106.5
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.107.0
 	github.com/aws/aws-sdk-go-v2/service/ssm v1.73.4
 	github.com/danielgtaylor/huma/v2 v2.39.1
 	github.com/gofiber/fiber/v3 v3.4.0

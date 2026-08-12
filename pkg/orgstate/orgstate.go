@@ -16,7 +16,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/go-github/v89/github"
+	"github.com/google/go-github/v90/github"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/truvity/github-roster/pkg/githubapp"

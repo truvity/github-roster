@@ -9,7 +9,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ssm v1.73.5
 	github.com/danielgtaylor/huma/v2 v2.39.1
 	github.com/gofiber/fiber/v3 v3.4.0
-	github.com/google/go-github/v89 v89.0.0
 	github.com/google/go-github/v90 v90.0.0
 	github.com/lestrrat-go/jwx/v4 v4.2.0
 	github.com/neilotoole/slogt/v2 v2.0.0
@@ -24,7 +23,6 @@ require (
 	k8s.io/api v0.36.3
 	k8s.io/apimachinery v0.36.3
 	k8s.io/client-go v0.36.3
-	k8s.io/utils v0.0.0-20260707023825-cf1189d6abe3
 )
 
 require (
@@ -105,6 +103,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/klog/v2 v2.140.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20260317180543-43fb72c5454a // indirect
+	k8s.io/utils v0.0.0-20260707023825-cf1189d6abe3 // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v6 v6.3.3 // indirect

@@ -1,3 +1,15 @@
+# Calls the shared workflow (truvity/ci-workflows), which runs each
+# Justfile recipe as its OWN parallel job. Previously all of them ran
+# serially inside one job, so a red result told you only that something
+# failed — and this file was one of five near-identical copies across the
+# public estate, which is how ten of them ended up silently broken on
+# 2026-08-15.
+#
+# Hosted runners: minutes are free on public repositories, so the fan-out
+# costs nothing.
+#
+# Pinned by COMMIT SHA, never a tag — tags move, and this code runs in
+# every repository of both organizations.
 name: CI
 
 on:
@@ -14,92 +26,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  recipes:
+    uses: truvity/ci-workflows/.github/workflows/check.yaml@063bd97ce15e860aa8b22a0d3757f609ae37631c
+    with:
+      recipes: '["build", "test", "lint", "chart-lint", "vuln"]'
+
+  # Stable name for branch protection: the matrix reports as
+  # "recipes / build" and so on, so a required context called "check"
+  # would never arrive and every PR would hang waiting for it.
   check:
+    needs: recipes
+    if: always()
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
-      - uses: DeterminateSystems/determinate-nix-action@61cbfe2efc2d4e7a8a6d56967c3c1058e846c858 # v3.21.9
-
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-          # devbox.lock in the key: the go-build cache holds artifacts
-          # linked against nix store paths — a toolchain bump with a stale
-          # restored cache yields "fork/exec ...: no such file" in go test.
-          key: go-${{ runner.os }}-${{ hashFiles('devbox.lock') }}-${{ hashFiles('go.sum') }}
-          restore-keys: go-${{ runner.os }}-${{ hashFiles('devbox.lock') }}-
-
-      - name: Install devbox
-        run: curl -fsSL https://get.jetify.com/devbox | bash -s -- -f
-
-      - run: devbox run -- just check
-
-  # Integration tests run against a REAL throwaway GitHub org plus localstack
-  # (SSM/S3). Public CI has no AWS reach by design, hence localstack; the
-  # GitHub side is genuinely real, because a mock cannot reproduce GitHub's
-  # invitation lifecycle — the exact semantics this service depends on.
-  #
-  # Fork pull requests get no secrets (that is what makes a public repo safe),
-  # so this job skips itself there and `check` remains the gate they must pass.
-  integration:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
-      - uses: DeterminateSystems/determinate-nix-action@61cbfe2efc2d4e7a8a6d56967c3c1058e846c858 # v3.21.9
-
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-          key: go-${{ runner.os }}-${{ hashFiles('devbox.lock') }}-${{ hashFiles('go.sum') }}
-          restore-keys: go-${{ runner.os }}-${{ hashFiles('devbox.lock') }}-
-
-      - name: Install devbox
-        run: curl -fsSL https://get.jetify.com/devbox | bash -s -- -f
-
-      - name: Start localstack (SSM + S3)
-        run: |
-          docker run -d --name localstack -p 4566:4566 \
-            -e SERVICES=ssm,s3 \
-            localstack/localstack:4
-          for _ in $(seq 1 60); do
-            if curl -sf http://localhost:4566/_localstack/health >/dev/null; then exit 0; fi
-            sleep 2
-          done
-          echo "localstack did not become healthy" >&2
-          docker logs localstack >&2
-          exit 1
-
-      - run: devbox run -- just integration
-        env:
-          # Namespaces every mutation this run makes in the sandbox org, so
-          # concurrent CI runs cannot collide and leftovers are attributable.
-          ROSTER_TEST_RUN_ID: gh-${{ github.run_id }}-${{ github.run_attempt }}
-          # Identifiers are VARIABLES, keys are SECRETS.
-          #
-          # Not laziness about secrecy: a secret is masked as *** wherever
-          # it appears, so carrying the org name and App ids as secrets
-          # turned every diagnostic line into `org "***"` — which is
-          # exactly the information you want when an integration test
-          # fails at 3am. None of these three identify anything sensitive:
-          # the org is a free, throwaway account created solely to be
-          # mutated by tests, and App ids are meaningless without the key.
-          ROSTER_TEST_ORG: ${{ vars.SANDBOX_ORG }}
-          ROSTER_TEST_CONSOLE_APP_ID: ${{ vars.SANDBOX_CONSOLE_APP_ID }}
-          ROSTER_TEST_CONSOLE_INSTALLATION_ID: ${{ vars.SANDBOX_CONSOLE_INSTALLATION_ID }}
-          ROSTER_TEST_CONSOLE_PRIVATE_KEY: ${{ secrets.SANDBOX_CONSOLE_PRIVATE_KEY }}
-          ROSTER_TEST_APPLIER_APP_ID: ${{ vars.SANDBOX_APPLIER_APP_ID }}
-          ROSTER_TEST_APPLIER_INSTALLATION_ID: ${{ vars.SANDBOX_APPLIER_INSTALLATION_ID }}
-          ROSTER_TEST_APPLIER_PRIVATE_KEY: ${{ secrets.SANDBOX_APPLIER_PRIVATE_KEY }}
-          AWS_ENDPOINT_URL: http://localhost:4566
-          AWS_REGION: eu-west-1
-          AWS_ACCESS_KEY_ID: test
-          AWS_SECRET_ACCESS_KEY: test
+      - run: '[ "${{ needs.recipes.result }}" = "success" ]'

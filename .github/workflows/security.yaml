@@ -14,8 +14,7 @@ permissions:
 
 jobs:
   govulncheck:
-    runs-on: ubuntu-lates
-    timeout-minutes: 30t
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -28,8 +27,7 @@ jobs:
       - run: devbox run -- govulncheck ./...
 
   trivy:
-    runs-on: ubuntu-lates
-    timeout-minutes: 30t
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7

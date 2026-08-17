@@ -14,7 +14,7 @@ require (
 	github.com/neilotoole/slogt/v2 v2.0.0
 	github.com/samber/slog-fiber v1.22.2
 	github.com/stretchr/testify v1.11.1
-	github.com/urfave/cli/v3 v3.10.1
+	github.com/urfave/cli/v3 v3.11.0
 	github.com/valyala/fasthttp v1.73.0
 	go.yaml.in/yaml/v3 v3.0.5
 	golang.org/x/oauth2 v0.36.0

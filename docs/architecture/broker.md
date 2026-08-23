@@ -3,6 +3,11 @@
 Status: accepted 2026-08-01. Replaces the per-run reconciler Job as the
 holder of the write credential.
 
+> **Note:** the plan/hash/apply API below is the current design. A proposed
+> redesign replaces it with a continuous reconcile loop (the broker computes
+> and applies desired state on a schedule, no plan hash) — see
+> [reconciliation.md](reconciliation.md).
+
 ## Why a service instead of a Job
 
 The Job model (v0.3.x) sealed the write credential away from the web tier,

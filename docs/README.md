@@ -4,6 +4,7 @@
 |---|---|
 | [architecture/overview.md](architecture/overview.md) | What the service is, the three sources it joins, the two asymmetries, and the write boundary |
 | [architecture/broker.md](architecture/broker.md) | The applier broker: intent-only API, hash-confirmed applies, security properties |
+| [architecture/reconciliation.md](architecture/reconciliation.md) | **Proposed:** one decision (the mapping entry) and a continuous reconcile loop; ConnectRPC config/directory/audit; the target for the 0.17 line |
 | [operations/runbook.md](operations/runbook.md) | On-call knowledge: restart semantics, failure signatures, recovery |
 | [reference/configuration.md](reference/configuration.md) | Every configuration key, and what belongs in the environment instead |
 | [reference/roster-api.md](reference/roster-api.md) | `GET /api/roster` — the cross-repository contract, and how to read it safely |

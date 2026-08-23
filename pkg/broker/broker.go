@@ -15,6 +15,7 @@ import (
 	"log/slog"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -54,6 +55,13 @@ type Deps struct {
 	// Control holds per-org runtime flags (pause). Nil-safe: a nil store
 	// means never paused.
 	Control configstore.ControlStore
+	// DirStore lists operator-added directories; merged over git at each
+	// reconcile pass so a new directory takes effect without a restart.
+	DirStore configstore.DirectoryStore
+	// GitSources are the directory sources built from git config at
+	// startup, retained so a reload keeps their live clients + caches and
+	// only adds/removes store-backed ones.
+	GitSources []directory.Source
 
 	plans *planStore
 	runs  *runRegistry
@@ -66,6 +74,11 @@ type Deps struct {
 	// it and the next tick refills it.
 	reconcileMu     sync.Mutex
 	reconcileStatus map[string]ReconcileStatus
+
+	// cfgEff holds the effective config (git ∪ store directories),
+	// swapped by reloadDirectories and read by effectiveConfig. nil until
+	// the first reload; effectiveConfig then falls back to Config.
+	cfgEff atomic.Pointer[config.Config]
 }
 
 // PlanResponse is what the console renders. Content flows OUT of the
@@ -312,7 +325,7 @@ func (d *Deps) compute(ctx context.Context, name string, org *Org) (*stored, err
 	}
 
 	in := roster.Inputs{
-		Config:  d.Config,
+		Config:  d.effectiveConfig(),
 		Entries: entries,
 		Orgs:    map[string]*orgstate.State{name: state},
 		Now:     time.Now(),

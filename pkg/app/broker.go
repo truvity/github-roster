@@ -141,6 +141,8 @@ func buildBrokerDeps(ctx context.Context, logger *slog.Logger, cfg *config.Confi
 		Orgs:        orgs,
 		Audit:       sink,
 		Control:     configstore.NewSSMControl(ssmClient, cfg.Mapping.SSMPrefix),
+		DirStore:    configstore.NewSSM(ssmClient, cfg.Mapping.SSMPrefix),
+		GitSources:  sources,
 	}, nil
 }
 

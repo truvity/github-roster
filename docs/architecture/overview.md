@@ -1,5 +1,11 @@
 # Architecture
 
+> **Note:** the plan/apply flow and the two asymmetries below describe what
+> runs today. A proposed redesign — one decision (the mapping entry) and a
+> continuous reconcile loop — is in
+> [reconciliation.md](reconciliation.md), which supersedes this document's
+> §"The two asymmetries" when it ships.
+
 ## The problem
 
 Below GitHub Enterprise there is no SAML and no SCIM, so an organization on

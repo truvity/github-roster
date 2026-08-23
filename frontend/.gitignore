@@ -1,0 +1,5 @@
+node_modules/
+*.tsbuildinfo
+# dist/ is ignored repo-wide but we COMMIT the built SPA (CI/image have no
+# Node) — re-include it here.
+!dist/

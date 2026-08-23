@@ -19,6 +19,7 @@
   <thead>
     <tr>
       <th>Name</th><th>GitHub</th><th>Declared emails</th><th>Namespace</th><th>Class</th>
+      <th>State</th>
       <th>Teams</th>
       {{range .Data.SourceNames}}<th>{{.}}</th>{{end}}
       {{range .Data.OrgNames}}<th>{{.}}</th>{{end}}
@@ -34,6 +35,18 @@
       <td>{{if .Emails}}{{range $i, $e := .Emails}}{{if $i}}<br>{{end}}{{$e}}{{end}}{{else}}—{{end}}</td>
       <td>{{if .K8s}}emp-{{.K8s}}{{else}}—{{end}}</td>
       <td>{{.Class}}</td>
+      <td>
+        {{- /* The overall reconcile lifecycle for this person, folded
+             from their per-organization states (roster.PersonState). */ -}}
+        {{$st := printf "%s" $p.State}}
+        {{if eq $st "synced"}}<span class="badge ok">synced</span>
+        {{else if eq $st "leaving"}}<span class="badge danger">leaving</span>
+        {{else if eq $st "left"}}<span class="muted">left</span>
+        {{else if eq $st "invited"}}<span class="badge warn">invited</span>
+        {{else if eq $st "pending"}}<span class="badge warn">pending</span>
+        {{else if eq $st "bot"}}<span class="muted">bot</span>
+        {{else}}<span class="muted">—</span>{{end}}
+      </td>
       <td>
         {{- /* The teams the configuration resolves this person to. A
              LIVE person no team claims will be silently absent from

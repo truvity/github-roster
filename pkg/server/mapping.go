@@ -32,6 +32,12 @@ type mappingListData struct {
 	People      map[string]roster.Person
 	SourceNames []string
 	OrgNames    []string
+	// New are live directory people with no mapping entry — the join's
+	// unmapped warnings, the primary "Needs me" worklist. Unknown are
+	// GitHub members no entry identifies. Both are people to act on that a
+	// list of mapped entries alone would never show.
+	New     []roster.Warning
+	Unknown []roster.Warning
 }
 
 func (d *Deps) handleMapping(c fiber.Ctx) error {
@@ -52,6 +58,15 @@ func (d *Deps) handleMapping(c fiber.Ctx) error {
 		data.People = make(map[string]roster.Person, len(joined.People))
 		for i := range joined.People {
 			data.People[joined.People[i].Name] = joined.People[i]
+		}
+
+		for i := range joined.Warnings {
+			switch joined.Warnings[i].Kind {
+			case roster.WarnUnmapped:
+				data.New = append(data.New, joined.Warnings[i])
+			case roster.WarnUnknownMember:
+				data.Unknown = append(data.Unknown, joined.Warnings[i])
+			}
 		}
 	}
 

@@ -9,6 +9,40 @@
 
 {{if .Data.Flash}}<div class="banner">{{.Data.Flash}}</div>{{end}}
 
+{{if or .Data.New .Data.Unknown}}
+<section class="card">
+  <h2>Needs attention</h2>
+  {{if .Data.New}}
+  <p class="muted">Live in a directory and in a team group, but not yet mapped — they get nothing until an operator maps them.</p>
+  <table>
+    <tbody>
+    {{range .Data.New}}
+      <tr>
+        <td><a href="/person?name={{.Subject}}">{{.Subject}}</a></td>
+        <td class="muted">{{.Detail}}</td>
+        <td><a href="/mapping/edit?name={{.Subject}}">Add</a></td>
+      </tr>
+    {{end}}
+    </tbody>
+  </table>
+  {{end}}
+  {{if .Data.Unknown}}
+  <p class="muted">In a GitHub organization with no mapping entry — added by hand, and this service will leave them alone until one exists.</p>
+  <table>
+    <tbody>
+    {{range .Data.Unknown}}
+      <tr>
+        <td>{{.Subject}}</td>
+        <td class="muted">{{.Detail}}{{if .Org}} <span class="muted">({{.Org}})</span>{{end}}</td>
+        <td><a href="/mapping/edit?name={{.Subject}}">Add</a></td>
+      </tr>
+    {{end}}
+    </tbody>
+  </table>
+  {{end}}
+</section>
+{{end}}
+
 <p>
   <a href="/mapping/edit">Add a person</a>
 </p>

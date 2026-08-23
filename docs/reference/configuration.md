@@ -222,3 +222,18 @@ directory. Shortening it shortens the SLA and costs a little API quota.
 `maxRemovalFraction` is the guard against a directory returning nonsense
 convincingly. It is a circuit breaker, not a policy: when it trips, an
 operator looks at why rather than raising the number.
+
+## `reconcile`
+
+The continuous reconcile loop (the 0.17 model — see
+[reconciliation.md](../architecture/reconciliation.md)) that supersedes the
+removals-only `schedule`.
+
+| Key | Default | Meaning |
+|---|---|---|
+| `interval` | `15m` | how often each *enabled* organization is reconciled; the loop also runs on demand (an operator edit, or Sync now); `0` uses the default |
+
+Per-organization enablement is `orgs[].reconcileEnabled` (set as
+`companies.<code>.github.reconcileEnabled`), **born false** — the day-0 gate:
+nothing runs unattended until an operator turns it on after a supervised first
+sync. While it is false the loop still computes and shows what it *would* do.

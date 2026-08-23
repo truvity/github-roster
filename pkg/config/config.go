@@ -48,6 +48,7 @@ type Config struct {
 	Audit      Audit      `yaml:"audit"`
 	Schedule   Schedule   `yaml:"schedule"`
 	Reconciler Reconciler `yaml:"reconciler"`
+	Reconcile  Reconcile  `yaml:"reconcile"`
 	Broker     Broker     `yaml:"broker"`
 }
 
@@ -193,6 +194,13 @@ type CompanyGitHub struct {
 	// Organizations differ: a guard sized for one refuses every plan for
 	// a smaller one. 0 means the global value.
 	MinAdmins int `yaml:"minAdmins"`
+
+	// ReconcileEnabled turns the continuous loop on for this organization.
+	// Born false — the day-0 gate: nothing runs unattended until an
+	// operator flips it after a supervised first sync (the postmortem
+	// rule, as configuration). While false the loop still computes and
+	// shows what it would do.
+	ReconcileEnabled bool `yaml:"reconcileEnabled"`
 }
 
 // Org is one GitHub organization under management.
@@ -228,6 +236,10 @@ type Org struct {
 	// MinAdmins is this organization's owner-guard override; 0 means the
 	// global reconciler value.
 	MinAdmins int `yaml:"minAdmins"`
+
+	// ReconcileEnabled turns the continuous loop on for this organization
+	// (the day-0 gate; born false). See CompanyGitHub.ReconcileEnabled.
+	ReconcileEnabled bool `yaml:"reconcileEnabled"`
 }
 
 // Team is directory-mapped (groups and/or explicit members) or pinned,
@@ -271,6 +283,17 @@ type Audit struct {
 	PrefixPerOrg bool `yaml:"prefixPerOrg"`
 }
 
+// Reconcile configures the continuous reconcile loop (the 0.17 model that
+// supersedes the removals-only Schedule — see
+// docs/architecture/reconciliation.md). Per-organization enablement is the
+// day-0 gate and lives on each company's GitHub org (born disabled).
+type Reconcile struct {
+	// Interval is how often each enabled organization is reconciled. The
+	// loop also runs on demand (an operator edit, or Sync now). 0 falls
+	// back to the default.
+	Interval time.Duration `yaml:"interval"`
+}
+
 // Schedule controls the unattended, removals-only runs.
 type Schedule struct {
 	// RemovalsInterval is the service's contribution to the revocation SLA:
@@ -301,6 +324,9 @@ func Defaults() Config {
 		Reconciler: Reconciler{
 			MinAdmins: 1,
 			Timeout:   10 * time.Minute,
+		},
+		Reconcile: Reconcile{
+			Interval: 15 * time.Minute,
 		},
 	}
 }
@@ -360,14 +386,15 @@ func (c *Config) derive() {
 
 		if gh := company.GitHub; gh != nil {
 			c.Orgs = append(c.Orgs, Org{
-				Name:          gh.Org,
-				Company:       code,
-				ConsoleAppSSM: gh.ConsoleAppSSM,
-				ApplierAppSSM: gh.ApplierAppSSM,
-				ApplierSecret: gh.ApplierSecret,
-				Exceptions:    gh.Exceptions,
-				Teams:         gh.Teams,
-				MinAdmins:     gh.MinAdmins,
+				Name:             gh.Org,
+				Company:          code,
+				ConsoleAppSSM:    gh.ConsoleAppSSM,
+				ApplierAppSSM:    gh.ApplierAppSSM,
+				ApplierSecret:    gh.ApplierSecret,
+				Exceptions:       gh.Exceptions,
+				Teams:            gh.Teams,
+				MinAdmins:        gh.MinAdmins,
+				ReconcileEnabled: gh.ReconcileEnabled,
 			})
 		}
 	}
@@ -430,6 +457,10 @@ func (c *Config) Validate() error {
 
 	if c.Schedule.MaxRemovalFraction < 0 || c.Schedule.MaxRemovalFraction > 1 {
 		return fmt.Errorf("schedule.maxRemovalFraction must be within [0,1], got %v", c.Schedule.MaxRemovalFraction)
+	}
+
+	if c.Reconcile.Interval < 0 {
+		return fmt.Errorf("reconcile.interval must be zero (default) or positive, got %s", c.Reconcile.Interval)
 	}
 
 	if c.Reconciler.Timeout <= 0 {

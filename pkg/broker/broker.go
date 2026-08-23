@@ -57,7 +57,7 @@ type Deps struct {
 	Control configstore.ControlStore
 	// DirStore lists operator-added directories; merged over git at each
 	// reconcile pass so a new directory takes effect without a restart.
-	DirStore configstore.DirectoryStore
+	DirStore configstore.DirectoryReader
 	// GitSources are the directory sources built from git config at
 	// startup, retained so a reload keeps their live clients + caches and
 	// only adds/removes store-backed ones.

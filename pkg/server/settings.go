@@ -1,7 +1,10 @@
 package server
 
 import (
+	"context"
+	"net/url"
 	"sort"
+	"strings"
 
 	"github.com/gofiber/fiber/v3"
 
@@ -15,7 +18,11 @@ import (
 // manifest flow) are the follow-on slices of this stream.
 type settingsData struct {
 	Sources []config.Source `json:"sources"`
-	Orgs    []settingsOrg   `json:"orgs"`
+	// StoreSources are operator-added directories (editable/deletable here),
+	// distinct from the git-declared Sources above.
+	StoreSources []config.Source `json:"storeSources,omitempty"`
+	Orgs         []settingsOrg   `json:"orgs"`
+	Flash        string          `json:"-"`
 }
 
 type settingsOrg struct {
@@ -38,14 +45,37 @@ func (d *Deps) handleSettings(c fiber.Ctx) error {
 		Title:  "Settings",
 		Nav:    "settings",
 		AuthOn: d.Auth.Enabled(),
-		Data:   d.buildSettings(),
+		Data:   d.settingsWithFlash(c),
 	})
 }
 
 // buildSettings assembles the directories, organizations and teams view
 // from the configuration — shared by the SSR page and the JSON API.
-func (d *Deps) buildSettings() settingsData {
+func (d *Deps) buildSettings(ctx context.Context) settingsData {
 	data := settingsData{Sources: d.Config.Sources}
+
+	// Operator-added directories, shown separately and editable. Filter
+	// them out of the git list so a directory that survived into cfg via a
+	// prior restart is not shown twice.
+	if d.DirStore != nil {
+		if stored, err := d.DirStore.List(ctx); err == nil && len(stored) > 0 {
+			data.StoreSources = stored
+
+			storeName := make(map[string]bool, len(stored))
+			for i := range stored {
+				storeName[stored[i].Name] = true
+			}
+
+			var git []config.Source
+			for i := range d.Config.Sources {
+				if !storeName[d.Config.Sources[i].Name] {
+					git = append(git, d.Config.Sources[i])
+				}
+			}
+
+			data.Sources = git
+		}
+	}
 
 	for i := range d.Config.Orgs {
 		o := &d.Config.Orgs[i]
@@ -75,6 +105,64 @@ func (d *Deps) buildSettings() settingsData {
 
 		data.Orgs = append(data.Orgs, so)
 	}
+
+	return data
+}
+
+// handleSettingsAddDirectory writes an operator-added resolver-backed
+// directory to the config store. The broker's reconcile loop picks it up on
+// its next pass; it takes effect there without a restart.
+func (d *Deps) handleSettingsAddDirectory(c fiber.Ctx) error {
+	if d.DirStore == nil {
+		return fiber.NewError(fiber.StatusServiceUnavailable, "no config store configured")
+	}
+
+	name := strings.TrimSpace(formValue(c, "name"))
+	endpoint := strings.TrimSpace(formValue(c, "endpoint"))
+	probeGroup := strings.TrimSpace(formValue(c, "probeGroup"))
+
+	var domains []string
+	for _, dm := range strings.Split(formValue(c, "domains"), ",") {
+		if t := strings.TrimSpace(dm); t != "" {
+			domains = append(domains, t)
+		}
+	}
+
+	if name == "" || endpoint == "" || len(domains) == 0 {
+		return c.Redirect().To("/settings?flash=" + url.QueryEscape("a name, an endpoint and at least one domain are required"))
+	}
+
+	src := config.Source{Name: name, Endpoint: endpoint, Domains: domains, ProbeGroup: probeGroup}
+	if err := d.DirStore.Put(c.Context(), src); err != nil {
+		return c.Redirect().To("/settings?flash=" + url.QueryEscape("could not add directory: "+err.Error()))
+	}
+
+	return c.Redirect().To("/settings?flash=" + url.QueryEscape("added directory "+name+" — the reconcile loop will use it on its next pass"))
+}
+
+// handleSettingsDeleteDirectory removes an operator-added directory.
+func (d *Deps) handleSettingsDeleteDirectory(c fiber.Ctx) error {
+	if d.DirStore == nil {
+		return fiber.NewError(fiber.StatusServiceUnavailable, "no config store configured")
+	}
+
+	name := strings.TrimSpace(formValue(c, "name"))
+	if name == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "name is required")
+	}
+
+	if err := d.DirStore.Delete(c.Context(), name); err != nil {
+		return c.Redirect().To("/settings?flash=" + url.QueryEscape("could not delete directory: "+err.Error()))
+	}
+
+	return c.Redirect().To("/settings?flash=deleted directory " + url.QueryEscape(name))
+}
+
+// settingsWithFlash renders the settings view with a one-shot flash from
+// the query string (post-redirect-get).
+func (d *Deps) settingsWithFlash(c fiber.Ctx) settingsData {
+	data := d.buildSettings(c.Context())
+	data.Flash = c.Query("flash")
 
 	return data
 }

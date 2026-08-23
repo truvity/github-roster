@@ -1,5 +1,7 @@
 {{define "content"}}
 <h1>Settings</h1>
+
+{{if .Data.Flash}}<div class="banner">{{.Data.Flash}}</div>{{end}}
 <p class="lede">
   Directories, organizations and teams. Today these come from the
   git-delivered configuration and render read-only — <span class="badge">managed in git</span>.
@@ -26,6 +28,42 @@
 {{else}}
 <p class="lede">No directories configured.</p>
 {{end}}
+</section>
+
+<h2>Added here</h2>
+<p class="lede">Operator-added directories, stored outside git. The reconcile loop uses them on its next pass. Resolver-backed only (an endpoint, no credential).</p>
+<section class="card">
+{{if .Data.StoreSources}}
+<table>
+  <thead><tr><th>Name</th><th>Domains</th><th>Endpoint</th><th>Probe group</th><th></th></tr></thead>
+  <tbody>
+  {{range .Data.StoreSources}}
+    <tr>
+      <td>{{.Name}}</td>
+      <td class="muted">{{range $i, $d := .Domains}}{{if $i}}, {{end}}{{$d}}{{end}}</td>
+      <td class="muted">{{.Endpoint}}</td>
+      <td class="muted">{{if .ProbeGroup}}{{.ProbeGroup}}{{else}}—{{end}}</td>
+      <td>
+        <form method="post" action="/settings/directory/delete" style="margin:0">
+          <input type="hidden" name="name" value="{{.Name}}">
+          <button type="submit" style="background:var(--danger)">Delete</button>
+        </form>
+      </td>
+    </tr>
+  {{end}}
+  </tbody>
+</table>
+{{else}}
+<p class="lede">None yet.</p>
+{{end}}
+
+<form method="post" action="/settings/directory" style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+  <label>Name<br><input type="text" name="name" required></label>
+  <label>Domains (comma-separated)<br><input type="text" name="domains" required style="width:260px"></label>
+  <label>DirectoryService endpoint<br><input type="url" name="endpoint" required style="width:280px" placeholder="http://google-group-sync:8090"></label>
+  <label>Probe group (optional)<br><input type="text" name="probeGroup"></label>
+  <button type="submit">Add directory</button>
+</form>
 </section>
 
 <h2>Organizations</h2>

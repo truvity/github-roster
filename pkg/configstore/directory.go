@@ -6,12 +6,14 @@ package configstore
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
+	"github.com/aws/aws-sdk-go-v2/service/ssm/types"
 
 	"github.com/truvity/github-roster/pkg/config"
 )
@@ -26,8 +28,19 @@ const (
 // DirectoryStore lists operator-added directories. Only resolver-backed
 // directories are storable here (an endpoint, no in-process credential), so
 // the store never holds a directory secret.
-type DirectoryStore interface {
+type DirectoryReader interface {
 	List(ctx context.Context) ([]config.Source, error)
+}
+
+// DirectoryStore adds the write half, used by the operator-facing editor.
+type DirectoryStore interface {
+	DirectoryReader
+	// Put creates or replaces an operator-added directory. Resolver-backed
+	// only: an endpoint and at least one domain are required, and no
+	// credential is stored.
+	Put(ctx context.Context, src config.Source) error
+	// Delete removes an operator-added directory.
+	Delete(ctx context.Context, name string) error
 }
 
 // SSM reads directories under <prefix>directories/<abbr>/.
@@ -154,4 +167,54 @@ func MergeDirectories(iac, store []config.Source) []config.Source {
 	}
 
 	return out
+}
+
+// dirPath is the parameter path for one field of a directory.
+func (s *SSM) dirPath(name, field string) string { return s.prefix + name + "/" + field }
+
+// Put writes a resolver-backed directory (endpoint, domains, probeGroup).
+func (s *SSM) Put(ctx context.Context, src config.Source) error {
+	if src.Name == "" {
+		return fmt.Errorf("directory name is required")
+	}
+
+	if src.Endpoint == "" || len(src.Domains) == 0 {
+		return fmt.Errorf("directory %q: an endpoint and at least one domain are required", src.Name)
+	}
+
+	fields := map[string]string{
+		fieldEndpoint:   src.Endpoint,
+		fieldDomains:    strings.Join(src.Domains, ","),
+		fieldProbeGroup: src.ProbeGroup,
+	}
+
+	for field, value := range fields {
+		if _, err := s.client.PutParameter(ctx, &ssm.PutParameterInput{
+			Name:      aws.String(s.dirPath(src.Name, field)),
+			Value:     aws.String(value),
+			Type:      types.ParameterTypeString,
+			Overwrite: aws.Bool(true),
+		}); err != nil {
+			return fmt.Errorf("write directory %q %s: %w", src.Name, field, err)
+		}
+	}
+
+	return nil
+}
+
+// Delete removes a directory's parameters. A missing parameter is not an
+// error — the caller wanted it gone.
+func (s *SSM) Delete(ctx context.Context, name string) error {
+	for _, field := range []string{fieldEndpoint, fieldDomains, fieldProbeGroup} {
+		_, err := s.client.DeleteParameter(ctx, &ssm.DeleteParameterInput{
+			Name: aws.String(s.dirPath(name, field)),
+		})
+
+		var notFound *types.ParameterNotFound
+		if err != nil && !errors.As(err, &notFound) {
+			return fmt.Errorf("delete directory %q %s: %w", name, field, err)
+		}
+	}
+
+	return nil
 }

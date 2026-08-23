@@ -40,6 +40,8 @@ type readLayers struct {
 	Orgs map[string]server.OrgReader
 	// Audit records every run.
 	Audit audit.Sink
+	// DirStore holds operator-added directories.
+	DirStore configstore.DirectoryStore
 }
 
 // buildReadLayers constructs the read side from configuration.
@@ -81,8 +83,9 @@ func buildReadLayers(ctx context.Context, logger *slog.Logger, cfg *config.Confi
 	}
 
 	layers := &readLayers{
-		Mapping: store,
-		Orgs:    make(map[string]server.OrgReader, len(cfg.Orgs)),
+		Mapping:  store,
+		DirStore: configstore.NewSSM(ssmClient, cfg.Mapping.SSMPrefix),
+		Orgs:     make(map[string]server.OrgReader, len(cfg.Orgs)),
 	}
 
 	// Operator-added directories from the config store, merged under the

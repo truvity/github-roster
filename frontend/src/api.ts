@@ -108,7 +108,7 @@ export function flattenAudit(records: AuditRecord[]): Change[] {
 export interface SettingsTeam { name: string; groups?: string[]; members?: string[]; pinned?: boolean }
 export interface SettingsOrg { name: string; company: string; minAdmins: number; reconcileEnabled: boolean; teams?: SettingsTeam[] }
 export interface SettingsSource { name: string; domains?: string[]; endpoint?: string; probeGroup?: string }
-export interface Settings { sources?: SettingsSource[]; orgs?: SettingsOrg[] }
+export interface Settings { sources?: SettingsSource[]; storeSources?: SettingsSource[]; orgs?: SettingsOrg[] }
 
 export async function fetchSettings(signal?: AbortSignal): Promise<Settings> {
   const resp = await fetch("/api/settings", { headers: { Accept: "application/json" }, signal });

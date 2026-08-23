@@ -46,15 +46,15 @@
 <section class="card">
 <table>
   <thead>
-    <tr><th>Organization</th><th>Loop</th><th>Pending changes</th><th>Last run</th><th>Outcome</th></tr>
+    <tr><th>Organization</th><th>Loop</th><th>Pending changes</th><th>Last run</th><th>Outcome</th><th></th></tr>
   </thead>
   <tbody>
   {{range .Data.Statuses}}
     <tr>
       <td>{{.Org}}</td>
       <td>
-        {{if .Enabled}}<span class="badge ok">enabled</span>
-        {{else}}<span class="badge warn">disabled</span> <span class="muted">day-0 gate</span>{{end}}
+        {{if .Enabled}}<span class="badge ok">enabled</span>{{else}}<span class="badge warn">disabled</span> <span class="muted">day-0 gate</span>{{end}}
+        {{if .Paused}} <span class="badge danger">paused</span>{{end}}
       </td>
       <td>
         {{if .Actions}}{{.Actions}}{{else}}<span class="muted">none</span>{{end}}
@@ -67,6 +67,18 @@
         {{else if not .Enabled}}{{if .Actions}}<span class="badge warn">would change {{.Actions}}</span>{{else}}<span class="badge ok">in sync</span>{{end}}
         {{else if .Actions}}<span class="muted">pending next tick</span>
         {{else}}<span class="badge ok">in sync</span>{{end}}
+      </td>
+      <td>
+        <form method="post" action="/status/control" style="margin:0">
+          <input type="hidden" name="org" value="{{.Org}}">
+          {{if .Paused}}
+          <input type="hidden" name="action" value="resume">
+          <button type="submit">Resume</button>
+          {{else}}
+          <input type="hidden" name="action" value="pause">
+          <button type="submit">Pause</button>
+          {{end}}
+        </form>
       </td>
     </tr>
   {{end}}

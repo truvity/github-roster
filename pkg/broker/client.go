@@ -99,6 +99,10 @@ func (c *Client) call(ctx context.Context, method, path, token string, out any) 
 	}
 
 	if resp.StatusCode == http.StatusOK {
+		if out == nil {
+			return nil // caller does not want the body
+		}
+
 		if err := json.Unmarshal(body, out); err != nil {
 			return fmt.Errorf("decode broker response: %w", err)
 		}
@@ -186,4 +190,13 @@ func (c *Client) ReconcileStatus(ctx context.Context, token string) ([]Reconcile
 func (c *Client) RunReconcile(ctx context.Context, token string) error {
 	var out []ReconcileStatus
 	return c.call(ctx, http.MethodPost, "/v1/reconcile", token, &out)
+}
+
+// SetPaused pauses or resumes an organization's reconcile loop.
+func (c *Client) SetPaused(ctx context.Context, org string, paused bool, token string) error {
+	verb := "unpause"
+	if paused {
+		verb = "pause"
+	}
+	return c.call(ctx, http.MethodPost, fmt.Sprintf("/v1/orgs/%s/%s", org, verb), token, nil)
 }

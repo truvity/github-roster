@@ -204,6 +204,7 @@ func NewApp(deps *Deps) *fiber.App {
 	app.Get("/status", requireOperator, deps.handleStatus)
 	app.Post("/status/sync", requireOperator, sameOriginOnly, deps.handleStatusSync)
 	app.Get("/history", requireOperator, deps.handleHistory)
+	app.Get("/settings", requireOperator, deps.handleSettings)
 
 	app.Get("/audit", requireOperator, deps.handleAudit)
 

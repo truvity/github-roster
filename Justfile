@@ -7,6 +7,11 @@ export GOWORK := "off"
 fmt:
     golangci-lint fmt ./...
 
+# Rebuild the embedded TypeScript UI (frontend/dist). Run after changing
+# anything under frontend/src; dist/ is committed so CI needs no Node.
+build-ui:
+    cd frontend && npm ci && npm run build
+
 # Build the binary
 build: fmt
     go build -o bin/github-roster ./cmd/github-roster/

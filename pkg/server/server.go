@@ -166,6 +166,13 @@ func NewApp(deps *Deps) *fiber.App {
 		return c.Send(data)
 	})
 
+	// The TypeScript UI (Vite/React), embedded and served under /app.
+	// Hashed assets under /app/assets/* are served from the build; any
+	// other /app path falls back to index.html so client-side routing
+	// works (a single-page app). Same-origin, so the strict CSP covers it.
+	app.Get("/app", serveAppIndex)
+	app.Get("/app/*", deps.handleApp)
+
 	app.Get("/", deps.handleOverview)
 	app.Get("/structure", deps.handleStructure)
 

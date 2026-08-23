@@ -108,9 +108,18 @@ One corporate directory each.
 | Key | Required | Meaning |
 |---|---|---|
 | `name` | yes | unique; appears in the UI and in audit records |
-| `ssmPrefix` | yes | holds the directory credentials (service-account key, admin subject) |
+| `ssmPrefix` | when in-process | holds the directory credentials (service-account key, admin subject); not needed when `endpoint` is set |
+| `endpoint` | no | a DirectoryService URL (google-group-sync over ConnectRPC); when set, this source reads through it and holds **no** directory credential |
 | `domains` | yes | the email domains this source is responsible for |
 | `probeGroup` | no | health canary: a group that always exists (the directory's `all@`, typically) |
+
+`endpoint` moves the Google credential out of this service: instead of a
+service-account key under `ssmPrefix`, the source calls a DirectoryService
+(google-group-sync) that owns the credential — one shared directory
+installation several services can consume. Its snapshot is scoped to the
+mapped groups' members (the model only needs people in a team-backing
+group), and names come through only when that resolver has the user-read
+scope. Set either `ssmPrefix` (in-process reader) or `endpoint` (resolver).
 
 `domains` is required rather than defaulted to "all". A directory may serve
 domains this instance has no business managing, and reading them would

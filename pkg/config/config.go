@@ -145,6 +145,9 @@ type Source struct {
 	Domains []string `yaml:"domains"`
 	// ProbeGroup is the source's health canary — see Directory.ProbeGroup.
 	ProbeGroup string `yaml:"probeGroup,omitempty"`
+	// Endpoint, when set, uses a DirectoryService instead of the
+	// in-process Google reader — see Directory.Endpoint.
+	Endpoint string `yaml:"endpoint,omitempty"`
 }
 
 // Company is one company: a directory, and optionally the GitHub
@@ -169,6 +172,11 @@ type Directory struct {
 	// may serve several domains while this instance is only responsible
 	// for some of them.
 	Domains []string `yaml:"domains"`
+	// Endpoint, when set, points this directory at a DirectoryService
+	// (google-group-sync over ConnectRPC) instead of reading the directory
+	// in-process. The service then holds no directory credential for this
+	// source — only the endpoint. Empty keeps the in-process Google reader.
+	Endpoint string `yaml:"endpoint,omitempty"`
 	// ProbeGroup is the health canary: a group that always exists (the
 	// directory's all@, typically). When set, the source is healthy as
 	// long as users and the probe read — and a mapped group answering
@@ -382,6 +390,7 @@ func (c *Config) derive() {
 			SSMPrefix:  company.Directory.SSMPrefix,
 			Domains:    company.Directory.Domains,
 			ProbeGroup: company.Directory.ProbeGroup,
+			Endpoint:   company.Directory.Endpoint,
 		})
 
 		if gh := company.GitHub; gh != nil {

@@ -192,6 +192,12 @@ func (d *Deps) Reconcile(ctx context.Context) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
+	// An initial pass so the Status page is populated right after a
+	// rollout instead of blank until the first tick.
+	if err := d.RunReconcile(ctx); err != nil && !errors.Is(err, ErrSweepInProgress) {
+		d.Logger.ErrorContext(ctx, "initial reconcile pass failed", "error", err)
+	}
+
 	for {
 		select {
 		case <-ctx.Done():

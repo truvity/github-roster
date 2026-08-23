@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"net/url"
 
 	"github.com/gofiber/fiber/v3"
@@ -70,4 +71,24 @@ func (d *Deps) handleStatusSync(c fiber.Ctx) error {
 	}
 
 	return c.Redirect().To("/status?flash=" + url.QueryEscape("reconcile pass complete"))
+}
+
+// reconcileAfterEdit fires a best-effort reconcile pass after an operator
+// mapping edit so the change takes effect promptly rather than at the next
+// tick — the design's "the loop also runs on an operator edit". Non-blocking
+// (the save has already succeeded) and detached from the request context so
+// it is not canceled when the response returns; failures are logged only.
+func (d *Deps) reconcileAfterEdit(c fiber.Ctx) {
+	if d.Broker == nil {
+		return
+	}
+
+	token := c.Get(fiber.HeaderAuthorization)
+	ctx := context.WithoutCancel(c.Context())
+
+	go func() {
+		if err := d.Broker.RunReconcile(ctx, token); err != nil {
+			d.Logger.ErrorContext(ctx, "reconcile after mapping edit failed", "error", err)
+		}
+	}()
 }

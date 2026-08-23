@@ -31,6 +31,20 @@ const (
 	TriggerSchedule Trigger = "schedule"
 )
 
+// Change is one membership change within a run — the per-change unit the
+// History view renders.
+type Change struct {
+	// Verb is added | removed | role | team-added | team-removed |
+	// invite-canceled.
+	Verb string `json:"verb"`
+	// Subject is the GitHub login the change concerns.
+	Subject string `json:"subject"`
+	// Team is set for team-level changes.
+	Team string `json:"team,omitempty"`
+	// Detail is a short human note (e.g. the target role).
+	Detail string `json:"detail,omitempty"`
+}
+
 // Kind classifies the write path that produced a record.
 type Kind string
 
@@ -76,9 +90,18 @@ type Record struct {
 	// Confirmed distinguishes a real run from a preview.
 	Confirmed bool `json:"confirmed"`
 
-	// Adding and Removing are the computed diff.
+	// Adding and Removing are the computed diff at organization-membership
+	// level — kept for back-compat and the shrink summary.
 	Adding   []string `json:"adding,omitempty"`
 	Removing []string `json:"removing,omitempty"`
+
+	// Changes is the per-change detail: one entry per action the run
+	// planned (org membership, role, and team moves), each with its
+	// subject. Richer than Adding/Removing — it carries team and role
+	// changes those two cannot — and is what the History view prefers.
+	// Additive: records written before this field fall back to
+	// Adding/Removing.
+	Changes []Change `json:"changes,omitempty"`
 
 	// Config is the rendered document, exactly as the Job received it.
 	// Stored in full: the diff says what changed, and this says on what

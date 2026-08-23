@@ -363,6 +363,48 @@ func teamNames(org *config.Org) []string {
 
 // record writes the audit record. A failure never fails the run it
 // records; it is returned for the response and logged loudly.
+// changesFromPlan turns a reconciler plan's actions into per-change audit
+// entries — org membership, role and team moves, each with its subject.
+func changesFromPlan(plan *reconciler.Plan) []audit.Change {
+	if plan == nil {
+		return nil
+	}
+
+	out := make([]audit.Change, 0, len(plan.Actions))
+
+	for _, a := range plan.Actions {
+		ch := audit.Change{Subject: a.Login, Team: a.Team}
+
+		switch a.Kind {
+		case reconciler.ActionAddMember:
+			ch.Verb = "added"
+		case reconciler.ActionAddAdmin:
+			ch.Verb, ch.Detail = "added", "owner"
+		case reconciler.ActionRemoveMember:
+			ch.Verb = "removed"
+		case reconciler.ActionSetRole:
+			ch.Verb = "role"
+			if a.Admin {
+				ch.Detail = "owner"
+			} else {
+				ch.Detail = "member"
+			}
+		case reconciler.ActionCancelInvite:
+			ch.Verb = "invite-canceled"
+		case reconciler.ActionTeamAdd:
+			ch.Verb = "team-added"
+		case reconciler.ActionTeamRemove:
+			ch.Verb = "team-removed"
+		default:
+			ch.Verb = string(a.Kind)
+		}
+
+		out = append(out, ch)
+	}
+
+	return out
+}
+
 // classifyKind labels a run by its write path. Operator applies are
 // operator-sync; scheduled runs are the reconcile loop when the reconciler
 // wrote them, otherwise the removals-only sweep.
@@ -403,6 +445,7 @@ func (d *Deps) record(ctx context.Context, trigger audit.Trigger, actor audit.Ac
 
 	record := audit.FromRun(trigger, actor, entry.Result, run, sources, runErr)
 	record.Kind = classifyKind(trigger, actor)
+	record.Changes = changesFromPlan(entry.Plan)
 
 	if err := d.Audit.Write(ctx, record); err != nil {
 		d.Logger.ErrorContext(ctx, "AUDIT RECORD LOST: the run happened but could not be recorded",

@@ -50,8 +50,14 @@
       </td>
       <td>
         {{if eq .Verb "added"}}<span class="badge ok">added</span>
+        {{else if eq .Verb "team-added"}}<span class="badge ok">team +</span>
         {{else if eq .Verb "removed"}}<span class="badge danger">removed</span>
-        {{else}}<span class="badge danger">failed</span>{{end}}
+        {{else if eq .Verb "team-removed"}}<span class="badge warn">team −</span>
+        {{else if eq .Verb "role"}}<span class="badge">role</span>
+        {{else if eq .Verb "invite-canceled"}}<span class="badge warn">invite ✕</span>
+        {{else if eq .Verb "failed"}}<span class="badge danger">failed</span>
+        {{else}}<span class="badge">{{.Verb}}</span>{{end}}
+        {{if .Detail}}<span class="muted">{{.Detail}}</span>{{end}}
       </td>
       <td>{{if .Subject}}<a href="/person?name={{.Subject}}">{{.Subject}}</a>{{else}}<span class="muted">{{.Detail}}</span>{{end}}</td>
       <td class="muted">{{.Actor}}</td>

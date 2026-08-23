@@ -97,12 +97,25 @@ func flattenChanges(records []audit.Record, kind, q string) []change {
 		at := r.At.Format("2006-01-02 15:04Z")
 		actor := actorOf(r)
 
-		for _, login := range r.Adding {
-			out = append(out, change{At: at, Org: r.Org, Kind: r.Kind, Verb: "added", Subject: login, Actor: actor})
-		}
+		// Prefer the richer per-change detail; fall back to the org-level
+		// Adding/Removing for records written before Changes existed.
+		if len(r.Changes) > 0 {
+			for j := range r.Changes {
+				ch := r.Changes[j]
+				detail := ch.Detail
+				if ch.Team != "" {
+					detail = strings.TrimSpace(ch.Team + " " + detail)
+				}
+				out = append(out, change{At: at, Org: r.Org, Kind: r.Kind, Verb: ch.Verb, Subject: ch.Subject, Actor: actor, Detail: detail})
+			}
+		} else {
+			for _, login := range r.Adding {
+				out = append(out, change{At: at, Org: r.Org, Kind: r.Kind, Verb: "added", Subject: login, Actor: actor})
+			}
 
-		for _, login := range r.Removing {
-			out = append(out, change{At: at, Org: r.Org, Kind: r.Kind, Verb: "removed", Subject: login, Actor: actor})
+			for _, login := range r.Removing {
+				out = append(out, change{At: at, Org: r.Org, Kind: r.Kind, Verb: "removed", Subject: login, Actor: actor})
+			}
 		}
 
 		if r.Error != "" {

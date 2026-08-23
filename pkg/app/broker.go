@@ -63,6 +63,12 @@ func RunBroker(ctx context.Context, info version.Info, configPath, listen string
 	// its own schedule and its own reads.
 	go deps.Schedule(ctx)
 
+	// The continuous reconcile loop (0.17): computes full desired state per
+	// org every interval and applies it where the org is enabled. Orgs are
+	// born disabled (the day-0 gate), so this is compute-and-report until an
+	// operator turns one on. See docs/architecture/reconciliation.md.
+	go deps.Reconcile(ctx)
+
 	errs := make(chan error, 1)
 
 	go func() {

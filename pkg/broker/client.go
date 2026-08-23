@@ -170,3 +170,14 @@ func (c *Client) StreamRun(ctx context.Context, org, id, token string) (*http.Re
 
 	return resp, nil
 }
+
+// ReconcileStatus fetches the broker's per-organization reconcile status
+// for the console's Status page.
+func (c *Client) ReconcileStatus(ctx context.Context, token string) ([]ReconcileStatus, error) {
+	var out []ReconcileStatus
+	if err := c.call(ctx, http.MethodGet, "/v1/reconcile/status", token, &out); err != nil {
+		return nil, err
+	}
+
+	return out, nil
+}

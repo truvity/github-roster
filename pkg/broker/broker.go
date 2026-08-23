@@ -362,6 +362,21 @@ func teamNames(org *config.Org) []string {
 
 // record writes the audit record. A failure never fails the run it
 // records; it is returned for the response and logged loudly.
+// classifyKind labels a run by its write path. Operator applies are
+// operator-sync; scheduled runs are the reconcile loop when the reconciler
+// wrote them, otherwise the removals-only sweep.
+func classifyKind(trigger audit.Trigger, actor audit.Actor) audit.Kind {
+	if trigger == audit.TriggerOperator {
+		return audit.KindOperatorSync
+	}
+
+	if actor.Subject == "reconciler" {
+		return audit.KindReconcile
+	}
+
+	return audit.KindRemovals
+}
+
 func (d *Deps) record(ctx context.Context, trigger audit.Trigger, actor audit.Actor,
 	entry *stored, report string, runErr error,
 ) string {
@@ -386,6 +401,7 @@ func (d *Deps) record(ctx context.Context, trigger audit.Trigger, actor audit.Ac
 	}
 
 	record := audit.FromRun(trigger, actor, entry.Result, run, sources, runErr)
+	record.Kind = classifyKind(trigger, actor)
 
 	if err := d.Audit.Write(ctx, record); err != nil {
 		d.Logger.ErrorContext(ctx, "AUDIT RECORD LOST: the run happened but could not be recorded",

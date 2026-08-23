@@ -17,13 +17,20 @@
 {{if .Data.Records}}
 <table>
   <thead>
-    <tr><th>When</th><th>Org</th><th>Who</th><th>Outcome</th><th>Job</th></tr>
+    <tr><th>When</th><th>Org</th><th>Kind</th><th>Who</th><th>Outcome</th><th>Job</th></tr>
   </thead>
   <tbody>
   {{range .Data.Records}}
     <tr>
       <td>{{.At.Format "2006-01-02 15:04:05Z"}}</td>
       <td>{{.Org}}</td>
+      <td>
+        {{$k := printf "%s" .Kind}}
+        {{if eq $k "reconcile"}}<span class="badge ok">reconcile</span>
+        {{else if eq $k "removals"}}<span class="badge warn">removals</span>
+        {{else if eq $k "operator-sync"}}<span class="badge">sync</span>
+        {{else}}<span class="muted">—</span>{{end}}
+      </td>
       <td>
         {{if eq (printf "%s" .Trigger) "schedule"}}<span class="badge warn">schedule</span>
         {{else if .ActorEmail}}{{.ActorEmail}}{{if .ActorName}} <span class="muted">{{.ActorName}}</span>{{end}}<div class="muted">{{.Actor}}</div>
@@ -37,7 +44,7 @@
     {{if or .Removing .Adding .Error}}
     <tr>
       <td></td>
-      <td colspan="4" class="muted">
+      <td colspan="5" class="muted">
         {{if .Adding}}added: {{range $i, $l := .Adding}}{{if $i}}, {{end}}{{$l}}{{end}}. {{end}}
         {{if .Removing}}removed: {{range $i, $l := .Removing}}{{if $i}}, {{end}}{{$l}}{{end}}. {{end}}
         {{if .Error}}{{.Error}}{{end}}

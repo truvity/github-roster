@@ -31,6 +31,18 @@ const (
 	TriggerSchedule Trigger = "schedule"
 )
 
+// Kind classifies the write path that produced a record.
+type Kind string
+
+const (
+	// KindOperatorSync is an operator-confirmed apply.
+	KindOperatorSync Kind = "operator-sync"
+	// KindRemovals is the unattended removals-only sweep.
+	KindRemovals Kind = "removals"
+	// KindReconcile is the continuous reconcile loop.
+	KindReconcile Kind = "reconcile"
+)
+
 // Record is one run, start to finish.
 //
 // Dry runs are recorded too. A preview that an operator looked at and did
@@ -46,6 +58,12 @@ type Record struct {
 	Org string `json:"org"`
 	// Trigger is what caused it.
 	Trigger Trigger `json:"trigger"`
+	// Kind is which unattended/attended path wrote this record — an
+	// operator sync, the removals-only sweep, or the continuous reconcile
+	// loop. Trigger alone cannot tell reconcile from removals (both are
+	// scheduled); Kind does, so the trail and the History view can label
+	// them. Empty on records written before this field existed.
+	Kind Kind `json:"kind,omitempty"`
 	// Actor is the operator's subject, or empty for a scheduled run.
 	Actor string `json:"actor,omitempty"`
 	// ActorEmail and ActorName identify the human behind the subject —

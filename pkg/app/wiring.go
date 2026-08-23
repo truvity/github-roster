@@ -100,6 +100,25 @@ func buildSources(ctx context.Context, reader *secrets.Reader, cfg *config.Confi
 	for i := range cfg.Sources {
 		src := &cfg.Sources[i]
 
+		// A source with an endpoint reads through a DirectoryService
+		// (google-group-sync) and needs no directory credential of its own.
+		if src.Endpoint != "" {
+			source, err := directory.NewResolver(directory.ResolverConfig{
+				Name:       src.Name,
+				Endpoint:   src.Endpoint,
+				Domains:    src.Domains,
+				Groups:     cfg.MappedGroupsForDomains(src.Domains),
+				ProbeGroup: src.ProbeGroup,
+			})
+			if err != nil {
+				return nil, err
+			}
+
+			sources = append(sources, source)
+
+			continue
+		}
+
 		values, err := reader.ReadAll(ctx, src.SSMPrefix, fieldServiceAccountKey, fieldAdminEmail)
 		if err != nil {
 			return nil, fmt.Errorf("source %q: %w", src.Name, err)

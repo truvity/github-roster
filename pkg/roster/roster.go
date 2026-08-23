@@ -123,6 +123,68 @@ type Membership struct {
 	// The difference between this and Teams is what an operator sync would
 	// change.
 	DesiredTeams []string `json:"desiredTeams,omitempty"`
+	// State is the reconcile lifecycle of this person in this organization,
+	// derived from the fields above (see [MembershipState]). It is computed
+	// on every join, never stored — the People page reads it directly.
+	State MembershipState `json:"state,omitempty"`
+}
+
+// MembershipState is where a person sits in the reconcile lifecycle for one
+// organization. Derived from current directory + GitHub state; the
+// continuous loop drives PENDING/LEAVING toward SYNCED. NEW and UNKNOWN are
+// person-level (an unmapped directory account, or a GitHub member with no
+// entry) and surface as warnings rather than here.
+type MembershipState string
+
+const (
+	// StateNone: not a member and the configuration desires no membership
+	// here (or the person is not live) — nothing to do.
+	StateNone MembershipState = ""
+	// StatePending: a change is owed — an invite for a desired non-member,
+	// or a team alignment for a member whose teams differ from desired.
+	StatePending MembershipState = "pending"
+	// StateInvited: an organization invitation is outstanding.
+	StateInvited MembershipState = "invited"
+	// StateSynced: member, live, and teams match desired.
+	StateSynced MembershipState = "synced"
+	// StateLeaving: suspended for this org but still a member — the loop
+	// (or an operator sync) will remove them.
+	StateLeaving MembershipState = "leaving"
+)
+
+// membershipState derives the lifecycle state from a resolved Membership.
+func membershipState(m Membership) MembershipState {
+	switch {
+	case m.InvitationPending:
+		return StateInvited
+	case m.Member && !m.Live:
+		return StateLeaving
+	case m.Member && teamsEqual(m.Teams, m.DesiredTeams):
+		return StateSynced
+	case m.Member:
+		return StatePending
+	case m.Live && len(m.DesiredTeams) > 0:
+		// Desired here but not yet a member — an invite is owed.
+		return StatePending
+	default:
+		return StateNone
+	}
+}
+
+// teamsEqual reports whether two team lists hold the same set. Both are
+// kept sorted by the join, so a length + positional check suffices.
+func teamsEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+
+	return true
 }
 
 // WarningKind classifies something an operator should look at.
@@ -532,6 +594,7 @@ func membership(in Inputs, org *config.Org, entry mapping.Entry, l *liveness, is
 	if state == nil {
 		// No GitHub read for this org — the desired side is still useful,
 		// and pretending they are absent would propose inviting everyone.
+		// Leave State at its zero value: membership is unknown without a read.
 		return m
 	}
 

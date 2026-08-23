@@ -322,3 +322,36 @@ companies:
 		t.Errorf("pt groups = %v, want only team-ext@partner.example", got)
 	}
 }
+
+func TestReconcileConfig(t *testing.T) {
+	t.Parallel()
+
+	t.Run("default interval is 15m", func(t *testing.T) {
+		cfg, err := config.Parse([]byte(minimal))
+		require.NoError(t, err)
+		require.Equal(t, 15*time.Minute, cfg.Reconcile.Interval)
+	})
+
+	t.Run("per-org enablement is born false and derives onto Org", func(t *testing.T) {
+		cfg, err := config.Parse([]byte(minimal))
+		require.NoError(t, err)
+		require.Len(t, cfg.Orgs, 1)
+		require.False(t, cfg.Orgs[0].ReconcileEnabled, "org must be born disabled (day-0 gate)")
+	})
+
+	t.Run("reconcileEnabled derives onto Org", func(t *testing.T) {
+		doc := strings.Replace(minimal,
+			"      org: example\n",
+			"      org: example\n      reconcileEnabled: true\n", 1)
+		cfg, err := config.Parse([]byte(doc))
+		require.NoError(t, err)
+		require.Len(t, cfg.Orgs, 1)
+		require.True(t, cfg.Orgs[0].ReconcileEnabled)
+	})
+
+	t.Run("negative interval is rejected", func(t *testing.T) {
+		doc := minimal + "reconcile:\n  interval: -1s\n"
+		_, err := config.Parse([]byte(doc))
+		require.Error(t, err)
+	})
+}

@@ -15,6 +15,15 @@ func TestFlattenChanges(t *testing.T) {
 		{Org: "beta", At: now.Add(-2 * time.Hour), Confirmed: false, Kind: audit.KindOperatorSync, Adding: []string{"ignored-preview"}},
 	}
 
+	// A record with per-change detail is preferred over Adding/Removing.
+	rich := []audit.Record{{Org: "acme", At: now, Confirmed: true, Kind: audit.KindReconcile,
+		Adding:  []string{"ignored-when-changes-present"},
+		Changes: []audit.Change{{Verb: "team-added", Subject: "dana", Team: "team-eng"}}}}
+	rc := flattenChanges(rich, "", "")
+	if len(rc) != 1 || rc[0].Verb != "team-added" || rc[0].Subject != "dana" {
+		t.Fatalf("Changes should be preferred: %+v", rc)
+	}
+
 	all := flattenChanges(records, "", "")
 	if len(all) != 2 {
 		t.Fatalf("expected 2 changes (preview excluded), got %d: %+v", len(all), all)

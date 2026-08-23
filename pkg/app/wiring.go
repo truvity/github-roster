@@ -55,8 +55,32 @@ func buildReadLayers(ctx context.Context, logger *slog.Logger, cfg *config.Confi
 	ssmClient := ssm.NewFromConfig(awsCfg)
 	reader := secrets.NewReader(ssmClient)
 
+	var store mapping.Store = mapping.NewSSM(ssmClient, cfg.Mapping.SSMPrefix)
+
+	// IaC people: merge git-declared entries read-only over the store.
+	if len(cfg.People) > 0 {
+		iac := make([]mapping.Entry, 0, len(cfg.People))
+		for _, p := range cfg.People {
+			iac = append(iac, mapping.Entry{
+				Name:   p.Name,
+				GitHub: p.GitHub,
+				Emails: p.Emails,
+				K8s:    p.K8s,
+				Class:  mapping.Class(p.Class),
+				Pinned: p.Pinned,
+			})
+		}
+
+		overlay, err := mapping.NewOverlay(store, iac)
+		if err != nil {
+			return nil, err
+		}
+
+		store = overlay
+	}
+
 	layers := &readLayers{
-		Mapping: mapping.NewSSM(ssmClient, cfg.Mapping.SSMPrefix),
+		Mapping: store,
 		Orgs:    make(map[string]server.OrgReader, len(cfg.Orgs)),
 	}
 

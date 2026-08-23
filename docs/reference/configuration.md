@@ -171,6 +171,26 @@ listing is not a team anyone can review.
 are organization owners. Both are structure, they change rarely, and they
 belong in a reviewed infrastructure commit.
 
+## `people`
+
+Optional. Mapping entries declared in the config document itself, merged
+**read-only** over the operator-edited store — the git layer wins by name,
+and the console refuses edits/deletes of a git-declared entry (it shows as
+managed in git). For an installation that wants the mapping, or part of it,
+under reviewed pull requests instead of the UI.
+
+| Key | Meaning |
+|---|---|
+| `name` | the join key, "First Last" |
+| `github` | GitHub login |
+| `emails` | directory email anchors |
+| `k8s` | namespace abbreviation |
+| `class` | `employee` or `bot` |
+| `pinned` | pinned `<org>/<team>` memberships |
+
+Entries not named here are unaffected and stay fully operator-editable.
+Omit the section entirely and the store is the sole source, as before.
+
 ## `mapping`
 
 | Key | Default | Meaning |

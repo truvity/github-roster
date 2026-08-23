@@ -1,0 +1,70 @@
+{{define "content"}}
+<h1>History</h1>
+<p class="lede">
+  One row per change: who was added or removed, in which organization, by
+  which path — an operator sync, the removals sweep, or the reconcile loop.
+  Flattened from the durable audit records.
+</p>
+
+{{if .Data.Error}}<div class="banner">{{.Data.Error}}</div>{{end}}
+
+<section class="card">
+<form method="get" action="/history" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+  <label>Organization<br>
+    <select name="org">
+      <option value="">any</option>
+      {{range .Data.Orgs}}<option value="{{.}}" {{if eq . $.Data.Org}}selected{{end}}>{{.}}</option>{{end}}
+    </select>
+  </label>
+  <label>Kind<br>
+    <select name="kind">
+      <option value="">any</option>
+      {{range .Data.Kinds}}<option value="{{.}}" {{if eq (printf "%s" .) $.Data.Kind}}selected{{end}}>{{.}}</option>{{end}}
+    </select>
+  </label>
+  <label>Person<br>
+    <input type="text" name="q" value="{{.Data.Q}}" placeholder="login or actor">
+  </label>
+  <button type="submit">Filter</button>
+  {{if or .Data.Org .Data.Kind .Data.Q}}<a href="/history" style="align-self:center">reset</a>{{end}}
+</form>
+</section>
+
+{{if .Data.Changes}}
+<section class="card">
+<table>
+  <thead>
+    <tr><th>When</th><th>Org</th><th>Kind</th><th>Change</th><th>Who</th><th>By</th></tr>
+  </thead>
+  <tbody>
+  {{range .Data.Changes}}
+    <tr>
+      <td class="muted">{{.At}}</td>
+      <td>{{.Org}}</td>
+      <td>
+        {{$k := printf "%s" .Kind}}
+        {{if eq $k "reconcile"}}<span class="badge ok">reconcile</span>
+        {{else if eq $k "removals"}}<span class="badge warn">removals</span>
+        {{else if eq $k "operator-sync"}}<span class="badge">sync</span>
+        {{else}}<span class="muted">—</span>{{end}}
+      </td>
+      <td>
+        {{if eq .Verb "added"}}<span class="badge ok">added</span>
+        {{else if eq .Verb "removed"}}<span class="badge danger">removed</span>
+        {{else}}<span class="badge danger">failed</span>{{end}}
+      </td>
+      <td>{{if .Subject}}<a href="/person?name={{.Subject}}">{{.Subject}}</a>{{else}}<span class="muted">{{.Detail}}</span>{{end}}</td>
+      <td class="muted">{{.Actor}}</td>
+    </tr>
+  {{end}}
+  </tbody>
+</table>
+</section>
+<p class="muted">
+  Cause linkage (which decision authorized each change) arrives with the
+  per-change record model; today each row is flattened from its run.
+</p>
+{{else if not .Data.Error}}
+<p class="lede">No changes match this filter.</p>
+{{end}}
+{{end}}

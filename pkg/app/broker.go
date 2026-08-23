@@ -15,6 +15,7 @@ import (
 	"github.com/truvity/github-roster/pkg/audit"
 	"github.com/truvity/github-roster/pkg/broker"
 	"github.com/truvity/github-roster/pkg/config"
+	"github.com/truvity/github-roster/pkg/configstore"
 	"github.com/truvity/github-roster/pkg/directory"
 	"github.com/truvity/github-roster/pkg/githubapp"
 	"github.com/truvity/github-roster/pkg/mapping"
@@ -139,6 +140,7 @@ func buildBrokerDeps(ctx context.Context, logger *slog.Logger, cfg *config.Confi
 		Directories: directories,
 		Orgs:        orgs,
 		Audit:       sink,
+		Control:     configstore.NewSSMControl(ssmClient, cfg.Mapping.SSMPrefix),
 	}, nil
 }
 

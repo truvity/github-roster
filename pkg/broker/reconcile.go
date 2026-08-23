@@ -19,6 +19,10 @@ type ReconcileStatus struct {
 	// Enabled is the per-org day-0 gate (config). When false the loop
 	// computes and reports but never applies.
 	Enabled bool `json:"enabled"`
+	// Paused is the operator's runtime switch (config-independent): a
+	// paused org is computed and reported but never applied, even if
+	// enabled. Distinct from the day-0 Enabled gate.
+	Paused bool `json:"paused,omitempty"`
 	// At is when this pass ran; Next is the expected next tick.
 	At   time.Time `json:"at"`
 	Next time.Time `json:"next"`
@@ -132,9 +136,18 @@ func (d *Deps) reconcileOrg(ctx context.Context, cfgOrg *config.Org, next time.T
 
 	st.Actions = len(entry.Plan.Actions)
 
-	// Disabled, or nothing to do: report and stop. A dry pass writes no
-	// audit record — the trail records actions, not heartbeats.
-	if !cfgOrg.ReconcileEnabled || st.Actions == 0 {
+	if d.Control != nil {
+		if paused, perr := d.Control.Paused(ctx, cfgOrg.Name); perr != nil {
+			d.Logger.WarnContext(ctx, "reconcile: pause flag unreadable; assuming not paused",
+				"org", cfgOrg.Name, "error", perr)
+		} else {
+			st.Paused = paused
+		}
+	}
+
+	// Disabled, paused, or nothing to do: report and stop. A dry pass
+	// writes no audit record — the trail records actions, not heartbeats.
+	if !cfgOrg.ReconcileEnabled || st.Paused || st.Actions == 0 {
 		d.setReconcileStatus(st)
 
 		return
@@ -232,3 +245,26 @@ func (d *Deps) handleRunReconcile(c fiber.Ctx) error {
 		return c.JSON(d.ReconcileStatuses())
 	}
 }
+
+func (d *Deps) setPaused(c fiber.Ctx, paused bool) error {
+	if d.Control == nil {
+		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{"error": "no control store configured"})
+	}
+
+	org := c.Params("org")
+	if _, ok := d.Config.Org(org); !ok {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "unknown organization"})
+	}
+
+	if err := d.Control.SetPaused(c.Context(), org, paused); err != nil {
+		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.JSON(fiber.Map{"org": org, "paused": paused})
+}
+
+// handlePause pauses an organization's reconcile loop.
+func (d *Deps) handlePause(c fiber.Ctx) error { return d.setPaused(c, true) }
+
+// handleUnpause resumes it.
+func (d *Deps) handleUnpause(c fiber.Ctx) error { return d.setPaused(c, false) }

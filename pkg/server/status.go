@@ -92,3 +92,24 @@ func (d *Deps) reconcileAfterEdit(c fiber.Ctx) {
 		}
 	}()
 }
+
+// handleStatusControl pauses or resumes one organization's reconcile loop.
+func (d *Deps) handleStatusControl(c fiber.Ctx) error {
+	if d.Broker == nil {
+		return c.Redirect().To("/status")
+	}
+
+	org := c.FormValue("org")
+	paused := c.FormValue("action") == "pause"
+
+	if err := d.Broker.SetPaused(c.Context(), org, paused, c.Get(fiber.HeaderAuthorization)); err != nil {
+		return c.Redirect().To("/status?flash=" + url.QueryEscape("could not change pause state: "+err.Error()))
+	}
+
+	verb := "resumed"
+	if paused {
+		verb = "paused"
+	}
+
+	return c.Redirect().To("/status?flash=" + url.QueryEscape(org+" "+verb))
+}

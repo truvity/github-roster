@@ -22,6 +22,7 @@ import (
 	"github.com/truvity/github-roster/pkg/audit"
 	"github.com/truvity/github-roster/pkg/auth"
 	"github.com/truvity/github-roster/pkg/config"
+	"github.com/truvity/github-roster/pkg/configstore"
 	"github.com/truvity/github-roster/pkg/directory"
 	"github.com/truvity/github-roster/pkg/githubapp"
 	"github.com/truvity/github-roster/pkg/mapping"
@@ -50,6 +51,9 @@ type Deps struct {
 	Directories *directory.Set
 	Orgs        map[string]*Org
 	Audit       audit.Sink
+	// Control holds per-org runtime flags (pause). Nil-safe: a nil store
+	// means never paused.
+	Control configstore.ControlStore
 
 	plans *planStore
 	runs  *runRegistry
@@ -108,6 +112,8 @@ func (d *Deps) Routes(app *fiber.App) {
 	v1 := app.Group("/v1", d.Auth.Middleware(), d.requireOperator)
 	v1.Get("/reconcile/status", d.handleReconcileStatus)
 	v1.Post("/reconcile", d.handleRunReconcile)
+	v1.Post("/orgs/:org/pause", d.handlePause)
+	v1.Post("/orgs/:org/unpause", d.handleUnpause)
 	v1.Post("/orgs/:org/plans", d.handlePlan)
 	v1.Get("/orgs/:org/plans/:hash", d.handleGetPlan)
 	v1.Post("/orgs/:org/plans/:hash/apply", d.handleApply)

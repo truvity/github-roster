@@ -282,6 +282,35 @@ func registerAPI(deps *Deps, app *fiber.App) {
 
 		return &auditResponse{Body: records}, nil
 	})
+
+	// Reconcile status as JSON — what the Status page shows, for the SPA
+	// and tooling. Operator-gated at the broker; the caller's token is
+	// forwarded.
+	huma.Register(api, huma.Operation{
+		OperationID: "get-reconcile-status",
+		Method:      http.MethodGet,
+		Path:        "/api/status",
+		Summary:     "Per-organization reconcile status",
+	}, func(ctx context.Context, in *statusRequest) (*statusResponse, error) {
+		if deps.Broker == nil {
+			return nil, huma.Error503ServiceUnavailable("no applier broker is configured")
+		}
+
+		statuses, err := deps.Broker.ReconcileStatus(ctx, in.Auth)
+		if err != nil {
+			return nil, huma.Error502BadGateway("could not read reconcile status: " + err.Error())
+		}
+
+		return &statusResponse{Body: statuses}, nil
+	})
+}
+
+type statusRequest struct {
+	Auth string `header:"Authorization"`
+}
+
+type statusResponse struct {
+	Body []broker.ReconcileStatus
 }
 
 type auditRequest struct {

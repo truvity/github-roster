@@ -22,3 +22,5 @@ th { color:var(--muted); font-size:13px; }
 .badge.danger { color:var(--danger); background:var(--dangerbg); }
 .badge.muted { color:var(--muted); }
 .banner { background:var(--dangerbg); color:var(--danger); border-radius:6px; padding:10px 14px; margin-bottom:14px; }
+nav a { cursor: pointer; margin-right: 16px; color: var(--muted); }
+nav a.cur { color: var(--fg); }

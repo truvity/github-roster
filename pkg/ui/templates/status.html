@@ -1,5 +1,13 @@
 {{define "content"}}
 <h1>Status</h1>
+
+{{if .Data.Flash}}<div class="banner">{{.Data.Flash}}</div>{{end}}
+
+<form method="post" action="/status/sync" style="margin:0 0 16px">
+  <button type="submit">Sync now</button>
+  <span class="muted">run one reconcile pass across every organization</span>
+</form>
+
 <p class="lede">
   The reconcile loop, organization by organization: whether it is enabled,
   what it sees to do, and whether it acted. A disabled organization is

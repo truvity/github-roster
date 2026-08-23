@@ -1,6 +1,8 @@
 package server
 
 import (
+	"net/url"
+
 	"github.com/gofiber/fiber/v3"
 
 	"github.com/truvity/github-roster/pkg/broker"
@@ -11,6 +13,7 @@ import (
 // view — is it enabled, what does it see, did it act, is anything held.
 type statusData struct {
 	Statuses []broker.ReconcileStatus
+	Flash    string
 	Error    string
 }
 
@@ -43,4 +46,19 @@ func (d *Deps) handleStatus(c fiber.Ctx) error {
 	data.Statuses = statuses
 
 	return render()
+}
+
+// handleStatusSync triggers an on-demand reconcile pass and returns to the
+// Status page. Disabled orgs only recompute; nothing is applied unattended
+// by this beyond what an enabled org's loop would already do.
+func (d *Deps) handleStatusSync(c fiber.Ctx) error {
+	if d.Broker == nil {
+		return c.Redirect().To("/status")
+	}
+
+	if err := d.Broker.RunReconcile(c.Context(), c.Get(fiber.HeaderAuthorization)); err != nil {
+		return c.Redirect().To("/status?flash=" + url.QueryEscape("reconcile could not run: "+err.Error()))
+	}
+
+	return c.Redirect().To("/status?flash=" + url.QueryEscape("reconcile pass complete"))
 }

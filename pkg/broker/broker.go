@@ -107,6 +107,7 @@ func (d *Deps) Routes(app *fiber.App) {
 
 	v1 := app.Group("/v1", d.Auth.Middleware(), d.requireOperator)
 	v1.Get("/reconcile/status", d.handleReconcileStatus)
+	v1.Post("/reconcile", d.handleRunReconcile)
 	v1.Post("/orgs/:org/plans", d.handlePlan)
 	v1.Get("/orgs/:org/plans/:hash", d.handleGetPlan)
 	v1.Post("/orgs/:org/plans/:hash/apply", d.handleApply)

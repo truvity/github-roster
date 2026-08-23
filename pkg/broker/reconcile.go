@@ -209,3 +209,20 @@ func (d *Deps) Reconcile(ctx context.Context) {
 func (d *Deps) handleReconcileStatus(c fiber.Ctx) error {
 	return c.JSON(d.ReconcileStatuses())
 }
+
+// handleRunReconcile triggers one reconcile pass on demand (the Status
+// page's "Sync now"). Disabled orgs only recompute their status; enabled
+// orgs apply — the same guarantees as the scheduled loop. A pass already
+// running answers 409, not a queue.
+func (d *Deps) handleRunReconcile(c fiber.Ctx) error {
+	err := d.RunReconcile(c.Context())
+
+	switch {
+	case errors.Is(err, ErrSweepInProgress):
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": err.Error()})
+	case err != nil:
+		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{"error": err.Error()})
+	default:
+		return c.JSON(d.ReconcileStatuses())
+	}
+}

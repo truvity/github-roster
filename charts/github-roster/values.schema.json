@@ -1,0 +1,166 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "github-roster Helm values",
+  "description": "Values for the github-roster chart. Strict on the chart's own keys (typos fail the render); permissive on the free-form service config document and Kubernetes pass-through blocks.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "replicaCount": { "type": "integer", "minimum": 1 },
+    "podDisruptionBudget": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "minAvailable": { "type": ["integer", "string"] }
+      }
+    },
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "repository": { "type": "string", "minLength": 1 },
+        "tag": { "type": "string" },
+        "pullPolicy": { "type": "string", "enum": ["Always", "IfNotPresent", "Never"] }
+      }
+    },
+    "testImage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "repository": { "type": "string", "minLength": 1 },
+        "tag": { "type": "string" }
+      }
+    },
+    "test": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mutating": { "type": "boolean" },
+        "executionID": { "type": "string" }
+      }
+    },
+    "serviceAccount": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "create": { "type": "boolean" },
+        "name": { "type": "string" },
+        "annotations": { "type": "object", "additionalProperties": { "type": "string" } }
+      }
+    },
+    "service": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": { "type": "string", "enum": ["ClusterIP", "NodePort", "LoadBalancer"] },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 }
+      }
+    },
+    "healthPort": { "type": "integer", "minimum": 1, "maximum": 65535 },
+    "resources": { "$ref": "#/definitions/resources" },
+    "env": { "type": "object", "additionalProperties": { "type": "string" } },
+    "envFrom": { "type": "array", "items": { "type": "object" } },
+    "config": {
+      "description": "The service configuration document, rendered verbatim into a ConfigMap. Free-form here; see docs/reference/configuration.md.",
+      "type": "object"
+    },
+    "exposure": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "hostname": { "type": "string" },
+        "issuer": { "type": "string" },
+        "jwksURI": { "type": "string" },
+        "gateway": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "name": { "type": "string" },
+            "namespace": { "type": "string" },
+            "sectionName": { "type": "string" }
+          }
+        },
+        "oidcApp": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "create": { "type": "boolean" },
+            "name": { "type": "string" },
+            "projectRef": { "type": "string" }
+          }
+        },
+        "deniedResponseHTML": { "type": "string" }
+      }
+    },
+    "networkPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "extraIngress": { "type": "array", "items": { "type": "object" } }
+      }
+    },
+    "broker": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "serviceAccount": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "annotations": { "type": "object", "additionalProperties": { "type": "string" } }
+          }
+        },
+        "resources": { "$ref": "#/definitions/resources" }
+      }
+    },
+    "insuranceCronJob": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "schedule": { "type": "string", "minLength": 1 },
+        "image": { "type": "string", "minLength": 1 }
+      }
+    },
+    "audit": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "bucket": { "type": "string" },
+        "createBucket": { "type": "boolean" },
+        "encryption": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "algorithm": { "type": "string", "enum": ["AES256", "aws:kms"] },
+            "kmsKeyID": { "type": "string" }
+          }
+        },
+        "retentionDays": {
+          "description": "Days to keep records; empty string keeps them for ever.",
+          "type": ["integer", "string"]
+        }
+      }
+    },
+    "podAnnotations": { "type": "object", "additionalProperties": { "type": "string" } },
+    "podSecurityContext": { "type": "object" },
+    "securityContext": { "type": "object" },
+    "nodeSelector": { "type": "object", "additionalProperties": { "type": "string" } },
+    "tolerations": { "type": "array", "items": { "type": "object" } },
+    "affinity": { "type": "object" },
+    "topologySpreadConstraints": { "type": "array", "items": { "type": "object" } }
+  },
+  "definitions": {
+    "resources": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "requests": { "type": "object", "additionalProperties": { "type": ["string", "integer"] } },
+        "limits": { "type": "object", "additionalProperties": { "type": ["string", "integer"] } }
+      }
+    }
+  }
+}

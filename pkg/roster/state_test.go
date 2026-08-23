@@ -68,3 +68,55 @@ func TestTeamsEqual(t *testing.T) {
 		t.Fatal("both empty must compare equal")
 	}
 }
+
+func TestPersonState(t *testing.T) {
+	tests := []struct {
+		name string
+		p    Person
+		want PersonState
+	}{
+		{
+			name: "bot short-circuits",
+			p:    Person{Class: "bot", Live: true, Orgs: map[string]Membership{"o": {State: StateSynced}}},
+			want: PersonBot,
+		},
+		{
+			name: "leaving beats everything",
+			p:    Person{Live: true, Orgs: map[string]Membership{"a": {State: StateLeaving}, "b": {State: StateSynced}}},
+			want: PersonLeaving,
+		},
+		{
+			name: "not live anywhere and no leaving org: left",
+			p:    Person{Live: false, Orgs: map[string]Membership{"a": {State: StateNone}}},
+			want: PersonLeft,
+		},
+		{
+			name: "pending beats invited/synced",
+			p:    Person{Live: true, Orgs: map[string]Membership{"a": {State: StatePending}, "b": {State: StateSynced}}},
+			want: PersonPending,
+		},
+		{
+			name: "invited beats synced",
+			p:    Person{Live: true, Orgs: map[string]Membership{"a": {State: StateInvited}, "b": {State: StateSynced}}},
+			want: PersonInvited,
+		},
+		{
+			name: "all synced",
+			p:    Person{Live: true, Orgs: map[string]Membership{"a": {State: StateSynced}}},
+			want: PersonSynced,
+		},
+		{
+			name: "mapped, live, desired nowhere",
+			p:    Person{Live: true, Orgs: map[string]Membership{"a": {State: StateNone}}},
+			want: PersonNone,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := personState(&tc.p); got != tc.want {
+				t.Fatalf("personState(%+v) = %q, want %q", tc.p, got, tc.want)
+			}
+		})
+	}
+}

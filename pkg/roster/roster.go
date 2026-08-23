@@ -84,6 +84,11 @@ type Person struct {
 	// include them. The 2026-08-03 incident: a freshly mapped person
 	// produced hash-identical plans and everyone read it as a sync bug.
 	NoTeam bool `json:"noTeam,omitempty"`
+	// State is this person's overall reconcile lifecycle — the worst of
+	// their per-organization [Membership.State]s, plus the person-level
+	// cases a single org cannot express (a bot, or a leaver suspended
+	// everywhere). Derived on every join; the People page reads it.
+	State PersonState `json:"state,omitempty"`
 	// Groups are the directory group addresses this person belongs to,
 	// lowercased and sorted, across every source that knows them. The
 	// explore filters pivot on these.
@@ -151,6 +156,72 @@ const (
 	// (or an operator sync) will remove them.
 	StateLeaving MembershipState = "leaving"
 )
+
+// PersonState is a person's overall reconcile lifecycle, folded from their
+// per-organization states. NEW (a live directory account with no mapping
+// entry) and UNKNOWN (a GitHub member with no entry) are not Persons — they
+// surface as warnings — so they do not appear here.
+type PersonState string
+
+const (
+	// PersonBot: a pinned, liveness-free machine account.
+	PersonBot PersonState = "bot"
+	// PersonLeft: a mapped person suspended in every directory that knows
+	// them (the plain leaver) — gone everywhere, nothing left to sync.
+	PersonLeft PersonState = "left"
+	// PersonLeaving: at least one org still shows them a member while
+	// suspended there.
+	PersonLeaving PersonState = "leaving"
+	// PersonPending: a change is owed in at least one org.
+	PersonPending PersonState = "pending"
+	// PersonInvited: an invitation is outstanding and nothing more urgent.
+	PersonInvited PersonState = "invited"
+	// PersonSynced: every org matches desired.
+	PersonSynced PersonState = "synced"
+	// PersonNone: mapped but desired nowhere and not otherwise notable.
+	PersonNone PersonState = ""
+)
+
+// personState folds a person's org memberships into one overall state.
+// Order of precedence: leaving > (left) > pending > invited > synced.
+func personState(p *Person) PersonState {
+	if p.Class == mapping.ClassBot {
+		return PersonBot
+	}
+
+	var sawLeaving, sawPending, sawInvited, sawSynced bool
+
+	for _, m := range p.Orgs {
+		switch m.State {
+		case StateLeaving:
+			sawLeaving = true
+		case StatePending:
+			sawPending = true
+		case StateInvited:
+			sawInvited = true
+		case StateSynced:
+			sawSynced = true
+		case StateNone:
+		}
+	}
+
+	switch {
+	case sawLeaving:
+		return PersonLeaving
+	case !p.Live:
+		// Suspended in every directory and not held as a member anywhere:
+		// the plain leaver, already gone.
+		return PersonLeft
+	case sawPending:
+		return PersonPending
+	case sawInvited:
+		return PersonInvited
+	case sawSynced:
+		return PersonSynced
+	default:
+		return PersonNone
+	}
+}
 
 // membershipState derives the lifecycle state from a resolved Membership.
 func membershipState(m Membership) MembershipState {
@@ -301,6 +372,7 @@ func Join(in Inputs) *Roster {
 
 	for i := range in.Entries {
 		person, claimed := join(in, in.Entries[i], live, liveByEmail)
+		person.State = personState(&person)
 		r.People = append(r.People, person)
 		covered[in.Entries[i].Name] = true
 

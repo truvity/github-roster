@@ -181,3 +181,9 @@ func (c *Client) ReconcileStatus(ctx context.Context, token string) ([]Reconcile
 
 	return out, nil
 }
+
+// RunReconcile triggers one reconcile pass (the Status page's "Sync now").
+func (c *Client) RunReconcile(ctx context.Context, token string) error {
+	var out []ReconcileStatus
+	return c.call(ctx, http.MethodPost, "/v1/reconcile", token, &out)
+}

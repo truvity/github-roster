@@ -12,6 +12,7 @@ import (
 
 	"github.com/truvity/github-roster/pkg/audit"
 	"github.com/truvity/github-roster/pkg/config"
+	"github.com/truvity/github-roster/pkg/configstore"
 	"github.com/truvity/github-roster/pkg/directory"
 	"github.com/truvity/github-roster/pkg/githubapp"
 	"github.com/truvity/github-roster/pkg/mapping"
@@ -82,6 +83,16 @@ func buildReadLayers(ctx context.Context, logger *slog.Logger, cfg *config.Confi
 	layers := &readLayers{
 		Mapping: store,
 		Orgs:    make(map[string]server.OrgReader, len(cfg.Orgs)),
+	}
+
+	// Operator-added directories from the config store, merged under the
+	// git-declared ones (git wins by name). Resolver-backed only, so no
+	// secret lives here. A read failure is non-fatal: the git config still
+	// stands.
+	if stored, err := configstore.NewSSM(ssmClient, cfg.Mapping.SSMPrefix).List(ctx); err != nil {
+		logger.WarnContext(ctx, "config store: listing directories failed; using git config only", "error", err)
+	} else if len(stored) > 0 {
+		cfg.Sources = configstore.MergeDirectories(cfg.Sources, stored)
 	}
 
 	sources, err := buildSources(ctx, reader, cfg)

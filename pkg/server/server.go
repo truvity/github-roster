@@ -303,6 +303,17 @@ func registerAPI(deps *Deps, app *fiber.App) {
 
 		return &statusResponse{Body: statuses}, nil
 	})
+
+	// Settings (directories/orgs/teams) as JSON for the SPA — the same
+	// read-only view the Settings page shows.
+	huma.Register(api, huma.Operation{
+		OperationID: "get-settings",
+		Method:      http.MethodGet,
+		Path:        "/api/settings",
+		Summary:     "Directories, organizations and teams",
+	}, func(_ context.Context, _ *struct{}) (*settingsResponse, error) {
+		return &settingsResponse{Body: deps.buildSettings()}, nil
+	})
 }
 
 type statusRequest struct {
@@ -311,6 +322,10 @@ type statusRequest struct {
 
 type statusResponse struct {
 	Body []broker.ReconcileStatus
+}
+
+type settingsResponse struct {
+	Body settingsData
 }
 
 type auditRequest struct {

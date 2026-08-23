@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   fetchRoster, fetchStatus, fetchAudit, flattenAudit,
-  type Person, type ReconcileStatus, type Change,
+  fetchSettings,
+  type Person, type ReconcileStatus, type Change, type Settings,
 } from "./api";
 
-type Tab = "people" | "status" | "history";
+type Tab = "people" | "status" | "history" | "settings";
 
 function badge(state?: string): { label: string; cls: string } {
   switch (state) {
@@ -161,9 +162,53 @@ function HistoryView() {
   );
 }
 
+function SettingsView() {
+  const { data, error } = useAsync<Settings>(fetchSettings);
+  if (error) return <div className="banner">{error}</div>;
+  if (data === null) return <p className="muted">Loading…</p>;
+  return (
+    <>
+      <p className="muted">From the git-delivered configuration — <span className="badge muted">managed in git</span>.</p>
+      <h2>Directories</h2>
+      <table>
+        <thead><tr><th>Name</th><th>Domains</th><th>Reads via</th><th>Probe group</th></tr></thead>
+        <tbody>
+          {(data.sources ?? []).map((s) => (
+            <tr key={s.name}>
+              <td>{s.name}</td>
+              <td className="muted">{(s.domains ?? []).join(", ")}</td>
+              <td>{s.endpoint ? <span className="muted">DirectoryService</span> : <span className="muted">in-process Google</span>}</td>
+              <td className="muted">{s.probeGroup || "—"}</td>
+            </tr>
+          ))}
+          {(data.sources ?? []).length === 0 && <tr><td colSpan={4} className="muted">No directories.</td></tr>}
+        </tbody>
+      </table>
+      <h2>Organizations</h2>
+      {(data.orgs ?? []).map((o) => (
+        <section key={o.name} style={{ marginTop: 16 }}>
+          <h3>{o.name} <span className="badge muted">home: {o.company}</span> {o.reconcileEnabled ? <span className="badge ok">loop enabled</span> : <span className="badge warn">loop disabled</span>}</h3>
+          <table>
+            <thead><tr><th>Team</th><th>Membership from</th></tr></thead>
+            <tbody>
+              {(o.teams ?? []).map((t) => (
+                <tr key={t.name}>
+                  <td>{t.name}</td>
+                  <td className="muted">{t.pinned ? "pinned (operator-edited)" : [...(t.groups ?? []), ...(t.members ?? []).map((m) => `+${m}`)].join(", ")}</td>
+                </tr>
+              ))}
+              {(o.teams ?? []).length === 0 && <tr><td colSpan={2} className="muted">No teams.</td></tr>}
+            </tbody>
+          </table>
+        </section>
+      ))}
+    </>
+  );
+}
+
 export function App() {
   const [tab, setTab] = useState<Tab>("people");
-  const tabs: [Tab, string][] = [["people", "People"], ["status", "Status"], ["history", "History"]];
+  const tabs: [Tab, string][] = [["people", "People"], ["status", "Status"], ["history", "History"], ["settings", "Settings"]];
   return (
     <main>
       <header>
@@ -174,6 +219,7 @@ export function App() {
       {tab === "people" && <PeopleView />}
       {tab === "status" && <StatusView />}
       {tab === "history" && <HistoryView />}
+      {tab === "settings" && <SettingsView />}
     </main>
   );
 }

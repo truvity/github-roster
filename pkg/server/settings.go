@@ -14,26 +14,37 @@ import (
 // they render as managed-in-git. The store + editing (and the GitHub App
 // manifest flow) are the follow-on slices of this stream.
 type settingsData struct {
-	Sources []config.Source
-	Orgs    []settingsOrg
+	Sources []config.Source `json:"sources"`
+	Orgs    []settingsOrg   `json:"orgs"`
 }
 
 type settingsOrg struct {
-	Name             string
-	Company          string
-	MinAdmins        int
-	ReconcileEnabled bool
-	Teams            []settingsTeam
+	Name             string         `json:"name"`
+	Company          string         `json:"company"`
+	MinAdmins        int            `json:"minAdmins"`
+	ReconcileEnabled bool           `json:"reconcileEnabled"`
+	Teams            []settingsTeam `json:"teams"`
 }
 
 type settingsTeam struct {
-	Name    string
-	Groups  []string
-	Members []string
-	Pinned  bool
+	Name    string   `json:"name"`
+	Groups  []string `json:"groups,omitempty"`
+	Members []string `json:"members,omitempty"`
+	Pinned  bool     `json:"pinned,omitempty"`
 }
 
 func (d *Deps) handleSettings(c fiber.Ctx) error {
+	return d.Renderer.Render(c, fiber.StatusOK, "settings", ui.Page{
+		Title:  "Settings",
+		Nav:    "settings",
+		AuthOn: d.Auth.Enabled(),
+		Data:   d.buildSettings(),
+	})
+}
+
+// buildSettings assembles the directories, organizations and teams view
+// from the configuration — shared by the SSR page and the JSON API.
+func (d *Deps) buildSettings() settingsData {
 	data := settingsData{Sources: d.Config.Sources}
 
 	for i := range d.Config.Orgs {
@@ -65,10 +76,5 @@ func (d *Deps) handleSettings(c fiber.Ctx) error {
 		data.Orgs = append(data.Orgs, so)
 	}
 
-	return d.Renderer.Render(c, fiber.StatusOK, "settings", ui.Page{
-		Title:  "Settings",
-		Nav:    "settings",
-		AuthOn: d.Auth.Enabled(),
-		Data:   data,
-	})
+	return data
 }

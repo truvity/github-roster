@@ -56,6 +56,12 @@ type Deps struct {
 	// applyMu serializes applies. A mutex rather than a distributed lock
 	// because the broker is single-replica by design.
 	applyMu sync.Mutex
+
+	// reconcileStatus holds the last reconcile outcome per organization,
+	// for the console's Status page. Derived, in-memory: a restart loses
+	// it and the next tick refills it.
+	reconcileMu     sync.Mutex
+	reconcileStatus map[string]ReconcileStatus
 }
 
 // PlanResponse is what the console renders. Content flows OUT of the
@@ -100,6 +106,7 @@ func (d *Deps) Routes(app *fiber.App) {
 	app.Post("/internal/sweep", d.handleSweep)
 
 	v1 := app.Group("/v1", d.Auth.Middleware(), d.requireOperator)
+	v1.Get("/reconcile/status", d.handleReconcileStatus)
 	v1.Post("/orgs/:org/plans", d.handlePlan)
 	v1.Get("/orgs/:org/plans/:hash", d.handleGetPlan)
 	v1.Post("/orgs/:org/plans/:hash/apply", d.handleApply)

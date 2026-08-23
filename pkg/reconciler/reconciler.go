@@ -20,6 +20,7 @@ package reconciler
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -27,6 +28,15 @@ import (
 	"github.com/truvity/github-roster/pkg/orgstate"
 	"github.com/truvity/github-roster/pkg/peribolos"
 )
+
+// ErrGuard marks a plan the reconciler refuses on a safety guard — the
+// owner minimum or the removal circuit breaker — as opposed to a read or
+// write failure. Callers (the reconcile loop) treat a guard refusal as a
+// HELD action to retry and surface, not an error to alarm on.
+var ErrGuard = errors.New("guard refused the plan")
+
+// IsGuardError reports whether err is a guard refusal (see [ErrGuard]).
+func IsGuardError(err error) bool { return errors.Is(err, ErrGuard) }
 
 // Options are one run's guards.
 type Options struct {
@@ -97,8 +107,8 @@ func BuildPlan(doc *peribolos.Document, org string, state *orgstate.State, opts 
 	}
 
 	if len(cfg.Admins) < opts.MinAdmins {
-		return nil, fmt.Errorf("document names %d owners for %q, below the minimum of %d",
-			len(cfg.Admins), org, opts.MinAdmins)
+		return nil, fmt.Errorf("%w: document names %d owners for %q, below the minimum of %d",
+			ErrGuard, len(cfg.Admins), org, opts.MinAdmins)
 	}
 
 	plan := &Plan{Org: org}
@@ -282,8 +292,8 @@ func checkInvariants(plan *Plan, memberCount int, opts Options) error {
 	if opts.MaxRemovalFraction > 0 && memberCount > 0 {
 		fraction := float64(removals) / float64(memberCount)
 		if fraction > opts.MaxRemovalFraction {
-			return fmt.Errorf("plan removes %d of %d members (%.0f%%), above the %.0f%% circuit breaker",
-				removals, memberCount, fraction*100, opts.MaxRemovalFraction*100)
+			return fmt.Errorf("%w: plan removes %d of %d members (%.0f%%), above the %.0f%% circuit breaker",
+				ErrGuard, removals, memberCount, fraction*100, opts.MaxRemovalFraction*100)
 		}
 	}
 

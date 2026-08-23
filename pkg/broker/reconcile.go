@@ -81,6 +81,10 @@ func (d *Deps) RunReconcile(ctx context.Context) error {
 	}
 	defer d.applyMu.Unlock()
 
+	// Pick up operator-added directories before reading liveness, so a new
+	// directory is fetched in this same pass.
+	d.reloadDirectories(ctx)
+
 	// Fresh liveness first; failures are non-fatal (last-known-good + the
 	// render's fail-safes carry it).
 	if d.Directories != nil {

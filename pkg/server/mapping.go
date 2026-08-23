@@ -318,6 +318,8 @@ func (d *Deps) handleMappingSave(c fiber.Ctx) error {
 		flash += url.QueryEscape(" — WARNING: matches no team; no sync will include them until a group, members: entry or pin does")
 	}
 
+	d.reconcileAfterEdit(c)
+
 	return c.Redirect().To("/mapping?flash=" + flash)
 }
 
@@ -396,6 +398,8 @@ func (d *Deps) handleMappingDelete(c fiber.Ctx) error {
 
 	identity, _ := auth.From(c)
 	d.Logger.InfoContext(c.Context(), "mapping entry deleted", "name", name, "actor", identity.Subject)
+
+	d.reconcileAfterEdit(c)
 
 	return c.Redirect().To("/mapping?flash=deleted")
 }

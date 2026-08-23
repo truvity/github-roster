@@ -3,6 +3,7 @@ package broker
 import (
 	"testing"
 
+	"github.com/truvity/github-roster/pkg/audit"
 	"github.com/truvity/github-roster/pkg/config"
 )
 
@@ -28,5 +29,22 @@ func TestReconcileStatusesSnapshot(t *testing.T) {
 	}
 	if !got[0].Held || got[0].Reason == "" {
 		t.Fatalf("acme should be held with a reason, got %+v", got[0])
+	}
+}
+
+func TestClassifyKind(t *testing.T) {
+	cases := []struct {
+		trigger audit.Trigger
+		subject string
+		want    audit.Kind
+	}{
+		{audit.TriggerOperator, "u@x", audit.KindOperatorSync},
+		{audit.TriggerSchedule, "reconciler", audit.KindReconcile},
+		{audit.TriggerSchedule, "schedule", audit.KindRemovals},
+	}
+	for _, c := range cases {
+		if got := classifyKind(c.trigger, audit.Actor{Subject: c.subject}); got != c.want {
+			t.Fatalf("classifyKind(%q,%q)=%q want %q", c.trigger, c.subject, got, c.want)
+		}
 	}
 }

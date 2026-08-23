@@ -1,0 +1,60 @@
+{{define "content"}}
+<h1>Settings</h1>
+<p class="lede">
+  Directories, organizations and teams. Today these come from the
+  git-delivered configuration and render read-only — <span class="badge">managed in git</span>.
+  Operator editing, the store, and creating a GitHub App from here are the
+  next steps of this page.
+</p>
+
+<h2>Directories</h2>
+<section class="card">
+{{if .Data.Sources}}
+<table>
+  <thead><tr><th>Name</th><th>Domains</th><th>Reads via</th><th>Probe group</th></tr></thead>
+  <tbody>
+  {{range .Data.Sources}}
+    <tr>
+      <td>{{.Name}} <span class="badge">managed in git</span></td>
+      <td class="muted">{{range $i, $d := .Domains}}{{if $i}}, {{end}}{{$d}}{{end}}</td>
+      <td>{{if .Endpoint}}<span class="muted">DirectoryService</span> {{.Endpoint}}{{else}}<span class="muted">in-process Google</span>{{end}}</td>
+      <td class="muted">{{if .ProbeGroup}}{{.ProbeGroup}}{{else}}—{{end}}</td>
+    </tr>
+  {{end}}
+  </tbody>
+</table>
+{{else}}
+<p class="lede">No directories configured.</p>
+{{end}}
+</section>
+
+<h2>Organizations</h2>
+{{range .Data.Orgs}}
+<section class="card">
+<h3>{{.Name}} <span class="badge">managed in git</span></h3>
+<div class="kv" style="display:grid;grid-template-columns:160px 1fr;gap:4px 12px;margin-bottom:12px">
+  <b class="muted">Home directory</b><span>{{.Company}}</span>
+  <b class="muted">Minimum owners</b><span>{{.MinAdmins}}</span>
+  <b class="muted">Reconcile loop</b><span>{{if .ReconcileEnabled}}<span class="badge ok">enabled</span>{{else}}<span class="badge warn">disabled</span> <span class="muted">day-0 gate</span>{{end}}</span>
+</div>
+{{if .Teams}}
+<table>
+  <thead><tr><th>Team</th><th>Membership from</th></tr></thead>
+  <tbody>
+  {{range .Teams}}
+    <tr>
+      <td>{{.Name}}</td>
+      <td>
+        {{if .Pinned}}<span class="badge warn">pinned</span> <span class="muted">operator-edited, never touched by a run</span>
+        {{else}}{{range $i, $g := .Groups}}{{if $i}}, {{end}}{{$g}}{{end}}{{if .Members}}<div class="muted">+ explicit: {{range $i, $m := .Members}}{{if $i}}, {{end}}{{$m}}{{end}}</div>{{end}}{{end}}
+      </td>
+    </tr>
+  {{end}}
+  </tbody>
+</table>
+{{else}}
+<p class="lede">No teams configured.</p>
+{{end}}
+</section>
+{{end}}
+{{end}}

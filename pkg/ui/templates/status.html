@@ -8,6 +8,32 @@
 
 {{if .Data.Error}}<div class="banner">{{.Data.Error}}</div>{{end}}
 
+<h2>Directory sources</h2>
+<p class="lede">Where liveness comes from. A stale source keeps its last-known-good answer and has its removals suppressed until it recovers.</p>
+<section class="card">
+{{if .Data.Sources}}
+<table>
+  <thead><tr><th>Source</th><th>State</th><th>Last read</th></tr></thead>
+  <tbody>
+  {{range .Data.Sources}}
+    <tr>
+      <td>{{.Source}}</td>
+      <td>
+        {{if .Healthy}}<span class="badge ok">healthy</span>
+        {{else if .Ready}}<span class="badge warn">stale</span> <span class="muted">{{.Error}}</span>
+        {{else}}<span class="badge danger">never read</span>{{if .Error}} <span class="muted">{{.Error}}</span>{{end}}{{end}}
+      </td>
+      <td>{{if .FetchedAt.IsZero}}—{{else}}{{.Age}} ago{{end}}</td>
+    </tr>
+  {{end}}
+  </tbody>
+</table>
+{{else}}
+<p class="lede">No directory sources configured.</p>
+{{end}}
+</section>
+
+<h2>Reconcile loop</h2>
 {{if .Data.Statuses}}
 <section class="card">
 <table>

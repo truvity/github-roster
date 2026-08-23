@@ -44,6 +44,13 @@ type Config struct {
 	Sources []Source `yaml:"-"`
 	Orgs    []Org    `yaml:"-"`
 
+	// People, when present, are mapping entries declared in the IaC config
+	// document — merged read-only over the operator-edited store (the git
+	// layer wins by name). For installations that want the mapping, or
+	// part of it, under reviewed pull requests. Empty leaves the store as
+	// the sole source.
+	People []Person `yaml:"people,omitempty"`
+
 	Mapping    Mapping    `yaml:"mapping"`
 	Audit      Audit      `yaml:"audit"`
 	Schedule   Schedule   `yaml:"schedule"`
@@ -269,6 +276,17 @@ type Team struct {
 	// Pinned teams are edited only in the operator UI and stored with the
 	// mapping. Scheduled runs never touch them.
 	Pinned bool `yaml:"pinned"`
+}
+
+// Person is a mapping entry declared in the IaC config document. Its fields
+// mirror the store's entry; it is converted to a mapping.Entry at wiring.
+type Person struct {
+	Name   string   `yaml:"name"`
+	GitHub string   `yaml:"github"`
+	Emails []string `yaml:"emails,omitempty"`
+	K8s    string   `yaml:"k8s,omitempty"`
+	Class  string   `yaml:"class,omitempty"`
+	Pinned []string `yaml:"pinned,omitempty"`
 }
 
 // Mapping locates the person → handle store.

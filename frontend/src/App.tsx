@@ -181,9 +181,18 @@ function SettingsView() {
               <td className="muted">{s.probeGroup || "—"}</td>
             </tr>
           ))}
-          {(data.sources ?? []).length === 0 && <tr><td colSpan={4} className="muted">No directories.</td></tr>}
+          {(data.storeSources ?? []).map((s) => (
+            <tr key={`store-${s.name}`}>
+              <td>{s.name} <span className="badge muted">added here</span></td>
+              <td className="muted">{(s.domains ?? []).join(", ")}</td>
+              <td><span className="muted">DirectoryService</span></td>
+              <td className="muted">{s.probeGroup || "—"}</td>
+            </tr>
+          ))}
+          {(data.sources ?? []).length === 0 && (data.storeSources ?? []).length === 0 && <tr><td colSpan={4} className="muted">No directories.</td></tr>}
         </tbody>
       </table>
+      <p className="muted">Add or remove directories on the classic Settings page; the loop uses them on its next pass.</p>
       <h2>Organizations</h2>
       {(data.orgs ?? []).map((o) => (
         <section key={o.name} style={{ marginTop: 16 }}>

@@ -20,6 +20,7 @@ import (
 	"github.com/truvity/github-roster/pkg/auth"
 	"github.com/truvity/github-roster/pkg/broker"
 	"github.com/truvity/github-roster/pkg/config"
+	"github.com/truvity/github-roster/pkg/configstore"
 	"github.com/truvity/github-roster/pkg/directory"
 	"github.com/truvity/github-roster/pkg/mapping"
 	"github.com/truvity/github-roster/pkg/orgstate"
@@ -47,6 +48,9 @@ type Deps struct {
 	Broker *broker.Client
 	// Audit records every run, durably.
 	Audit audit.Sink
+	// DirStore holds operator-added directories (Settings writes; the
+	// broker's reconcile loop reads and applies them). Nil-safe.
+	DirStore configstore.DirectoryStore
 }
 
 // OrgReader reads one organization's current GitHub state.
@@ -213,6 +217,8 @@ func NewApp(deps *Deps) *fiber.App {
 	app.Post("/status/control", requireOperator, sameOriginOnly, deps.handleStatusControl)
 	app.Get("/history", requireOperator, deps.handleHistory)
 	app.Get("/settings", requireOperator, deps.handleSettings)
+	app.Post("/settings/directory", requireOperator, sameOriginOnly, deps.handleSettingsAddDirectory)
+	app.Post("/settings/directory/delete", requireOperator, sameOriginOnly, deps.handleSettingsDeleteDirectory)
 
 	app.Get("/audit", requireOperator, deps.handleAudit)
 
@@ -311,8 +317,8 @@ func registerAPI(deps *Deps, app *fiber.App) {
 		Method:      http.MethodGet,
 		Path:        "/api/settings",
 		Summary:     "Directories, organizations and teams",
-	}, func(_ context.Context, _ *struct{}) (*settingsResponse, error) {
-		return &settingsResponse{Body: deps.buildSettings()}, nil
+	}, func(ctx context.Context, _ *struct{}) (*settingsResponse, error) {
+		return &settingsResponse{Body: deps.buildSettings(ctx)}, nil
 	})
 }
 

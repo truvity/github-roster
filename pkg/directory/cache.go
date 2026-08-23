@@ -165,7 +165,12 @@ func (c *Cache) staleAt(now time.Time, ttl, retryBackoff time.Duration) bool {
 const refreshTimeout = 2 * time.Minute
 
 // Set is the group of caches the service reads, one per configured source.
+// The cache list can be reconciled at runtime (Reconcile) as directories
+// are added or removed, so every access goes through mu.
 type Set struct {
+	logger *slog.Logger
+
+	mu     sync.RWMutex
 	caches []*Cache
 
 	// refreshing is the single-flight guard for RefreshIfStale: many
@@ -175,7 +180,7 @@ type Set struct {
 
 // NewSet builds a set from sources.
 func NewSet(logger *slog.Logger, sources ...Source) *Set {
-	set := &Set{caches: make([]*Cache, 0, len(sources))}
+	set := &Set{logger: logger, caches: make([]*Cache, 0, len(sources))}
 	for _, source := range sources {
 		set.caches = append(set.caches, NewCache(logger, source))
 	}
@@ -183,8 +188,63 @@ func NewSet(logger *slog.Logger, sources ...Source) *Set {
 	return set
 }
 
+// snapshot returns the current caches under the read lock, so a concurrent
+// Reconcile cannot tear the slice a caller is ranging.
+func (s *Set) snapshot() []*Cache {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	out := make([]*Cache, len(s.caches))
+	copy(out, s.caches)
+
+	return out
+}
+
+// Reconcile brings the cache list in line with sources: a source already
+// present keeps its cache (and its last-known-good snapshot); a new source
+// gets a fresh cache; a source no longer listed is dropped. Reports whether
+// anything changed. Sources are matched by name.
+func (s *Set) Reconcile(sources []Source) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	existing := make(map[string]*Cache, len(s.caches))
+	for _, c := range s.caches {
+		existing[c.Name()] = c
+	}
+
+	next := make([]*Cache, 0, len(sources))
+	wanted := make(map[string]bool, len(sources))
+	changed := false
+
+	for _, source := range sources {
+		wanted[source.Name()] = true
+
+		if c, ok := existing[source.Name()]; ok {
+			next = append(next, c)
+
+			continue
+		}
+
+		next = append(next, NewCache(s.logger, source))
+		changed = true
+	}
+
+	for name := range existing {
+		if !wanted[name] {
+			changed = true // a source was dropped
+		}
+	}
+
+	if changed {
+		s.caches = next
+	}
+
+	return changed
+}
+
 // Caches exposes the individual caches.
-func (s *Set) Caches() []*Cache { return s.caches }
+func (s *Set) Caches() []*Cache { return s.snapshot() }
 
 // Refresh refreshes every source, and does not stop at the first failure:
 // one broken directory must not prevent the others being read. It returns
@@ -192,7 +252,7 @@ func (s *Set) Caches() []*Cache { return s.caches }
 func (s *Set) Refresh(ctx context.Context) map[string]error {
 	errs := map[string]error{}
 
-	for _, cache := range s.caches {
+	for _, cache := range s.snapshot() {
 		if err := cache.Refresh(ctx); err != nil {
 			errs[cache.Name()] = err
 		}
@@ -218,7 +278,7 @@ func (s *Set) RefreshIfStale(ttl, retryBackoff time.Duration) bool {
 
 	var stale []*Cache
 
-	for _, cache := range s.caches {
+	for _, cache := range s.snapshot() {
 		if cache.staleAt(now, ttl, retryBackoff) {
 			stale = append(stale, cache)
 		}
@@ -251,8 +311,9 @@ func (s *Set) RefreshIfStale(ttl, retryBackoff time.Duration) bool {
 
 // Statuses reports every source's health.
 func (s *Set) Statuses() []Status {
-	statuses := make([]Status, 0, len(s.caches))
-	for _, cache := range s.caches {
+	caches := s.snapshot()
+	statuses := make([]Status, 0, len(caches))
+	for _, cache := range caches {
 		statuses = append(statuses, cache.Status())
 	}
 
@@ -267,7 +328,7 @@ func (s *Set) Statuses() []Status {
 func (s *Set) Unhealthy() []string {
 	var names []string
 
-	for _, cache := range s.caches {
+	for _, cache := range s.snapshot() {
 		if status := cache.Status(); !status.Healthy {
 			names = append(names, status.Source)
 		}

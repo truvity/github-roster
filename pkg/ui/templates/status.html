@@ -1,0 +1,52 @@
+{{define "content"}}
+<h1>Status</h1>
+<p class="lede">
+  The reconcile loop, organization by organization: whether it is enabled,
+  what it sees to do, and whether it acted. A disabled organization is
+  computed and reported but never changed — the day-0 gate.
+</p>
+
+{{if .Data.Error}}<div class="banner">{{.Data.Error}}</div>{{end}}
+
+{{if .Data.Statuses}}
+<section class="card">
+<table>
+  <thead>
+    <tr><th>Organization</th><th>Loop</th><th>Pending changes</th><th>Last run</th><th>Outcome</th></tr>
+  </thead>
+  <tbody>
+  {{range .Data.Statuses}}
+    <tr>
+      <td>{{.Org}}</td>
+      <td>
+        {{if .Enabled}}<span class="badge ok">enabled</span>
+        {{else}}<span class="badge warn">disabled</span> <span class="muted">day-0 gate</span>{{end}}
+      </td>
+      <td>
+        {{if .Actions}}{{.Actions}}{{else}}<span class="muted">none</span>{{end}}
+      </td>
+      <td>{{if .At.IsZero}}<span class="muted">not yet run</span>{{else}}{{.At.Format "01-02 15:04Z"}}{{end}}</td>
+      <td>
+        {{if .Error}}<span class="badge danger">failed</span> <span class="muted">{{.Error}}</span>
+        {{else if .Held}}<span class="badge warn">held</span> <span class="muted">{{.Reason}}</span>
+        {{else if .Applied}}<span class="badge ok">applied</span>
+        {{else if not .Enabled}}{{if .Actions}}<span class="badge warn">would change {{.Actions}}</span>{{else}}<span class="badge ok">in sync</span>{{end}}
+        {{else if .Actions}}<span class="muted">pending next tick</span>
+        {{else}}<span class="badge ok">in sync</span>{{end}}
+      </td>
+    </tr>
+  {{end}}
+  </tbody>
+</table>
+</section>
+
+<p class="muted">
+  A <strong>disabled</strong> organization that shows "would change N" is the
+  loop's dry-run preview: nothing is applied until an operator enables it. A
+  <strong>held</strong> row is a guard refusing the plan (shrink breaker,
+  owner minimum) — the loop retries every tick, so fixing the cause clears it.
+</p>
+{{else if not .Data.Error}}
+<p class="lede">No reconcile status yet — the loop has not completed a pass.</p>
+{{end}}
+{{end}}

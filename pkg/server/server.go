@@ -201,6 +201,8 @@ func NewApp(deps *Deps) *fiber.App {
 	app.Get("/sync/run", requireOperator, deps.handleSyncRun)
 	app.Get("/sync/run/stream", requireOperator, deps.handleSyncRunStream)
 
+	app.Get("/status", requireOperator, deps.handleStatus)
+
 	app.Get("/audit", requireOperator, deps.handleAudit)
 
 	registerAPI(deps, app)

@@ -98,7 +98,7 @@
 {{if .Data.StoreOrgs}}
 {{range .Data.StoreOrgs}}
 <section class="card">
-<h3>{{.Name}} <span class="badge warn">added here (staged)</span></h3>
+<h3>{{.Name}} <span class="badge warn">{{if eq .Provenance "roster"}}created by roster{{else}}added manually{{end}} (staged)</span></h3>
 <div class="kv" style="display:grid;grid-template-columns:160px 1fr;gap:4px 12px;margin-bottom:12px">
   <b class="muted">Home directory</b><span>{{.Company}}</span>
   <b class="muted">Minimum owners</b><span>{{.MinAdmins}}</span>

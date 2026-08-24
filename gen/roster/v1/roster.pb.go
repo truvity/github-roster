@@ -302,8 +302,11 @@ type Org struct {
 	MinAdmins        int32                  `protobuf:"varint,3,opt,name=min_admins,json=minAdmins,proto3" json:"min_admins,omitempty"`
 	ReconcileEnabled bool                   `protobuf:"varint,4,opt,name=reconcile_enabled,json=reconcileEnabled,proto3" json:"reconcile_enabled,omitempty"`
 	Teams            []*Team                `protobuf:"bytes,5,rep,name=teams,proto3" json:"teams,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// How the org's App came to be: "manual" (adopted) or "roster" (created via
+	// the manifest flow); empty for git-declared orgs.
+	Provenance    string `protobuf:"bytes,6,opt,name=provenance,proto3" json:"provenance,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Org) Reset() {
@@ -369,6 +372,13 @@ func (x *Org) GetTeams() []*Team {
 		return x.Teams
 	}
 	return nil
+}
+
+func (x *Org) GetProvenance() string {
+	if x != nil {
+		return x.Provenance
+	}
+	return ""
 }
 
 type Team struct {
@@ -1152,14 +1162,17 @@ const file_roster_v1_roster_proto_rawDesc = "" +
 	"\adomains\x18\x02 \x03(\tR\adomains\x12\x1a\n" +
 	"\bendpoint\x18\x03 \x01(\tR\bendpoint\x12\x1f\n" +
 	"\vprobe_group\x18\x04 \x01(\tR\n" +
-	"probeGroup\"\xa6\x01\n" +
+	"probeGroup\"\xc6\x01\n" +
 	"\x03Org\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
 	"\acompany\x18\x02 \x01(\tR\acompany\x12\x1d\n" +
 	"\n" +
 	"min_admins\x18\x03 \x01(\x05R\tminAdmins\x12+\n" +
 	"\x11reconcile_enabled\x18\x04 \x01(\bR\x10reconcileEnabled\x12%\n" +
-	"\x05teams\x18\x05 \x03(\v2\x0f.roster.v1.TeamR\x05teams\"d\n" +
+	"\x05teams\x18\x05 \x03(\v2\x0f.roster.v1.TeamR\x05teams\x12\x1e\n" +
+	"\n" +
+	"provenance\x18\x06 \x01(\tR\n" +
+	"provenance\"d\n" +
 	"\x04Team\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x16\n" +
 	"\x06groups\x18\x02 \x03(\tR\x06groups\x12\x18\n" +

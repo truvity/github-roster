@@ -30,11 +30,13 @@ type settingsData struct {
 }
 
 type settingsOrg struct {
-	Name             string         `json:"name"`
-	Company          string         `json:"company"`
-	MinAdmins        int            `json:"minAdmins"`
-	ReconcileEnabled bool           `json:"reconcileEnabled"`
-	Teams            []settingsTeam `json:"teams"`
+	Name             string `json:"name"`
+	Company          string `json:"company"`
+	MinAdmins        int    `json:"minAdmins"`
+	ReconcileEnabled bool   `json:"reconcileEnabled"`
+	// Provenance is set for store orgs ("manual"|"roster"); empty for git.
+	Provenance string         `json:"provenance,omitempty"`
+	Teams      []settingsTeam `json:"teams"`
 }
 
 type settingsTeam struct {
@@ -120,6 +122,7 @@ func toSettingsOrgs(orgs []config.Org) []settingsOrg {
 			Company:          o.Company,
 			MinAdmins:        o.MinAdmins,
 			ReconcileEnabled: o.ReconcileEnabled,
+			Provenance:       o.Provenance,
 		}
 
 		names := make([]string, 0, len(o.Teams))

@@ -249,7 +249,7 @@ function VersionBadge() {
 function UserBadge() {
   const { data } = useAsync(fetchMe);
   if (!data) return null;
-  const who = data.name || data.email;
+  const who = data.name && data.email ? `${data.name} <${data.email}>` : (data.name || data.email);
   return (
     <span className="user muted">
       {who && <>{who} </>}

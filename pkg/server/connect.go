@@ -240,15 +240,24 @@ func (s *rosterConnect) GetAudit(
 // forwarded groups with the same operator-wins rule as token verification.
 // When auth is disabled (local dev) every caller is the local operator.
 func (s *rosterConnect) GetMe(
-	_ context.Context,
+	ctx context.Context,
 	req *connect.Request[rosterv1.GetMeRequest],
 ) (*connect.Response[rosterv1.GetMeResponse], error) {
-	if !s.deps.Auth.Enabled() {
+	// The auth middleware already resolved the caller to a full Identity —
+	// display name and email from the token (with userinfo fallback), role
+	// from the groups claim — and exposed it on the request context. Prefer
+	// it: the X-Auth-Request-User header is the provider's opaque subject id,
+	// not a name.
+	if id, ok := auth.FromContext(ctx); ok {
 		return connect.NewResponse(&rosterv1.GetMeResponse{
-			Name: "local operator", Role: string(auth.RoleOperator),
+			Name:  id.Name,
+			Email: id.Email,
+			Role:  string(id.Role),
 		}), nil
 	}
 
+	// Fallback (identity not on the context): derive role from the forwarded
+	// groups header. Email is real; the user header is the subject id.
 	h := req.Header()
 	role := auth.RoleFromGroups(auth.SplitGroups(h.Get("X-Auth-Request-Groups")), s.deps.Config.OIDC.Roles)
 

@@ -128,8 +128,33 @@ export interface SettingsOrg { name: string; company: string; minAdmins: number;
 export interface SettingsSource { name: string; domains?: string[]; endpoint?: string; probeGroup?: string }
 export interface Settings { sources?: SettingsSource[]; storeSources?: SettingsSource[]; orgs?: SettingsOrg[] }
 
+// fetchSettings now reads over ConnectRPC (was GET /api/settings), mapping the
+// typed response onto the view's Settings shape. Empty scalars become undefined
+// to match the previous omitempty JSON the view was written against.
 export async function fetchSettings(signal?: AbortSignal): Promise<Settings> {
-  const resp = await fetch("/api/settings", { headers: { Accept: "application/json" }, signal });
-  if (!resp.ok) throw new Error(`GET /api/settings: ${resp.status}`);
-  return (await resp.json()) as Settings;
+  const resp = await rosterClient.getSettings({}, { signal });
+
+  const source = (s: { name: string; domains: string[]; endpoint: string; probeGroup: string }): SettingsSource => ({
+    name: s.name,
+    domains: s.domains.length ? s.domains : undefined,
+    endpoint: s.endpoint || undefined,
+    probeGroup: s.probeGroup || undefined,
+  });
+
+  return {
+    sources: resp.sources.map(source),
+    storeSources: resp.storeSources.map(source),
+    orgs: resp.orgs.map((o) => ({
+      name: o.name,
+      company: o.company,
+      minAdmins: o.minAdmins,
+      reconcileEnabled: o.reconcileEnabled,
+      teams: o.teams.map((t) => ({
+        name: t.name,
+        groups: t.groups.length ? t.groups : undefined,
+        members: t.members.length ? t.members : undefined,
+        pinned: t.pinned || undefined,
+      })),
+    })),
+  };
 }

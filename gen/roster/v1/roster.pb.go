@@ -117,6 +117,318 @@ func (x *GetVersionResponse) GetCommit() string {
 	return ""
 }
 
+type GetSettingsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetSettingsRequest) Reset() {
+	*x = GetSettingsRequest{}
+	mi := &file_roster_v1_roster_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetSettingsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetSettingsRequest) ProtoMessage() {}
+
+func (x *GetSettingsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_roster_v1_roster_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetSettingsRequest.ProtoReflect.Descriptor instead.
+func (*GetSettingsRequest) Descriptor() ([]byte, []int) {
+	return file_roster_v1_roster_proto_rawDescGZIP(), []int{2}
+}
+
+type GetSettingsResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Git-declared directory sources.
+	Sources []*DirectorySource `protobuf:"bytes,1,rep,name=sources,proto3" json:"sources,omitempty"`
+	// Operator-added directories from the config store (editable in Settings).
+	StoreSources []*DirectorySource `protobuf:"bytes,2,rep,name=store_sources,json=storeSources,proto3" json:"store_sources,omitempty"`
+	// Managed organizations and their teams.
+	Orgs          []*Org `protobuf:"bytes,3,rep,name=orgs,proto3" json:"orgs,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetSettingsResponse) Reset() {
+	*x = GetSettingsResponse{}
+	mi := &file_roster_v1_roster_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetSettingsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetSettingsResponse) ProtoMessage() {}
+
+func (x *GetSettingsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_roster_v1_roster_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetSettingsResponse.ProtoReflect.Descriptor instead.
+func (*GetSettingsResponse) Descriptor() ([]byte, []int) {
+	return file_roster_v1_roster_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *GetSettingsResponse) GetSources() []*DirectorySource {
+	if x != nil {
+		return x.Sources
+	}
+	return nil
+}
+
+func (x *GetSettingsResponse) GetStoreSources() []*DirectorySource {
+	if x != nil {
+		return x.StoreSources
+	}
+	return nil
+}
+
+func (x *GetSettingsResponse) GetOrgs() []*Org {
+	if x != nil {
+		return x.Orgs
+	}
+	return nil
+}
+
+type DirectorySource struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Name    string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Domains []string               `protobuf:"bytes,2,rep,name=domains,proto3" json:"domains,omitempty"`
+	// Set when the source reads through a DirectoryService (google-group-sync).
+	Endpoint      string `protobuf:"bytes,3,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
+	ProbeGroup    string `protobuf:"bytes,4,opt,name=probe_group,json=probeGroup,proto3" json:"probe_group,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DirectorySource) Reset() {
+	*x = DirectorySource{}
+	mi := &file_roster_v1_roster_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DirectorySource) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DirectorySource) ProtoMessage() {}
+
+func (x *DirectorySource) ProtoReflect() protoreflect.Message {
+	mi := &file_roster_v1_roster_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DirectorySource.ProtoReflect.Descriptor instead.
+func (*DirectorySource) Descriptor() ([]byte, []int) {
+	return file_roster_v1_roster_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *DirectorySource) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *DirectorySource) GetDomains() []string {
+	if x != nil {
+		return x.Domains
+	}
+	return nil
+}
+
+func (x *DirectorySource) GetEndpoint() string {
+	if x != nil {
+		return x.Endpoint
+	}
+	return ""
+}
+
+func (x *DirectorySource) GetProbeGroup() string {
+	if x != nil {
+		return x.ProbeGroup
+	}
+	return ""
+}
+
+type Org struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Name             string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Company          string                 `protobuf:"bytes,2,opt,name=company,proto3" json:"company,omitempty"`
+	MinAdmins        int32                  `protobuf:"varint,3,opt,name=min_admins,json=minAdmins,proto3" json:"min_admins,omitempty"`
+	ReconcileEnabled bool                   `protobuf:"varint,4,opt,name=reconcile_enabled,json=reconcileEnabled,proto3" json:"reconcile_enabled,omitempty"`
+	Teams            []*Team                `protobuf:"bytes,5,rep,name=teams,proto3" json:"teams,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *Org) Reset() {
+	*x = Org{}
+	mi := &file_roster_v1_roster_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Org) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Org) ProtoMessage() {}
+
+func (x *Org) ProtoReflect() protoreflect.Message {
+	mi := &file_roster_v1_roster_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Org.ProtoReflect.Descriptor instead.
+func (*Org) Descriptor() ([]byte, []int) {
+	return file_roster_v1_roster_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *Org) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *Org) GetCompany() string {
+	if x != nil {
+		return x.Company
+	}
+	return ""
+}
+
+func (x *Org) GetMinAdmins() int32 {
+	if x != nil {
+		return x.MinAdmins
+	}
+	return 0
+}
+
+func (x *Org) GetReconcileEnabled() bool {
+	if x != nil {
+		return x.ReconcileEnabled
+	}
+	return false
+}
+
+func (x *Org) GetTeams() []*Team {
+	if x != nil {
+		return x.Teams
+	}
+	return nil
+}
+
+type Team struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Groups        []string               `protobuf:"bytes,2,rep,name=groups,proto3" json:"groups,omitempty"`
+	Members       []string               `protobuf:"bytes,3,rep,name=members,proto3" json:"members,omitempty"`
+	Pinned        bool                   `protobuf:"varint,4,opt,name=pinned,proto3" json:"pinned,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Team) Reset() {
+	*x = Team{}
+	mi := &file_roster_v1_roster_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Team) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Team) ProtoMessage() {}
+
+func (x *Team) ProtoReflect() protoreflect.Message {
+	mi := &file_roster_v1_roster_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Team.ProtoReflect.Descriptor instead.
+func (*Team) Descriptor() ([]byte, []int) {
+	return file_roster_v1_roster_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *Team) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *Team) GetGroups() []string {
+	if x != nil {
+		return x.Groups
+	}
+	return nil
+}
+
+func (x *Team) GetMembers() []string {
+	if x != nil {
+		return x.Members
+	}
+	return nil
+}
+
+func (x *Team) GetPinned() bool {
+	if x != nil {
+		return x.Pinned
+	}
+	return false
+}
+
 var File_roster_v1_roster_proto protoreflect.FileDescriptor
 
 const file_roster_v1_roster_proto_rawDesc = "" +
@@ -125,10 +437,34 @@ const file_roster_v1_roster_proto_rawDesc = "" +
 	"\x11GetVersionRequest\"F\n" +
 	"\x12GetVersionResponse\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\tR\aversion\x12\x16\n" +
-	"\x06commit\x18\x02 \x01(\tR\x06commit2Z\n" +
+	"\x06commit\x18\x02 \x01(\tR\x06commit\"\x14\n" +
+	"\x12GetSettingsRequest\"\xb0\x01\n" +
+	"\x13GetSettingsResponse\x124\n" +
+	"\asources\x18\x01 \x03(\v2\x1a.roster.v1.DirectorySourceR\asources\x12?\n" +
+	"\rstore_sources\x18\x02 \x03(\v2\x1a.roster.v1.DirectorySourceR\fstoreSources\x12\"\n" +
+	"\x04orgs\x18\x03 \x03(\v2\x0e.roster.v1.OrgR\x04orgs\"|\n" +
+	"\x0fDirectorySource\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
+	"\adomains\x18\x02 \x03(\tR\adomains\x12\x1a\n" +
+	"\bendpoint\x18\x03 \x01(\tR\bendpoint\x12\x1f\n" +
+	"\vprobe_group\x18\x04 \x01(\tR\n" +
+	"probeGroup\"\xa6\x01\n" +
+	"\x03Org\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
+	"\acompany\x18\x02 \x01(\tR\acompany\x12\x1d\n" +
+	"\n" +
+	"min_admins\x18\x03 \x01(\x05R\tminAdmins\x12+\n" +
+	"\x11reconcile_enabled\x18\x04 \x01(\bR\x10reconcileEnabled\x12%\n" +
+	"\x05teams\x18\x05 \x03(\v2\x0f.roster.v1.TeamR\x05teams\"d\n" +
+	"\x04Team\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x16\n" +
+	"\x06groups\x18\x02 \x03(\tR\x06groups\x12\x18\n" +
+	"\amembers\x18\x03 \x03(\tR\amembers\x12\x16\n" +
+	"\x06pinned\x18\x04 \x01(\bR\x06pinned2\xa8\x01\n" +
 	"\rRosterService\x12I\n" +
 	"\n" +
-	"GetVersion\x12\x1c.roster.v1.GetVersionRequest\x1a\x1d.roster.v1.GetVersionResponseB\x9a\x01\n" +
+	"GetVersion\x12\x1c.roster.v1.GetVersionRequest\x1a\x1d.roster.v1.GetVersionResponse\x12L\n" +
+	"\vGetSettings\x12\x1d.roster.v1.GetSettingsRequest\x1a\x1e.roster.v1.GetSettingsResponseB\x9a\x01\n" +
 	"\rcom.roster.v1B\vRosterProtoP\x01Z7github.com/truvity/github-roster/gen/roster/v1;rosterv1\xa2\x02\x03RXX\xaa\x02\tRoster.V1\xca\x02\tRoster\\V1\xe2\x02\x15Roster\\V1\\GPBMetadata\xea\x02\n" +
 	"Roster::V1b\x06proto3"
 
@@ -144,19 +480,30 @@ func file_roster_v1_roster_proto_rawDescGZIP() []byte {
 	return file_roster_v1_roster_proto_rawDescData
 }
 
-var file_roster_v1_roster_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_roster_v1_roster_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_roster_v1_roster_proto_goTypes = []any{
-	(*GetVersionRequest)(nil),  // 0: roster.v1.GetVersionRequest
-	(*GetVersionResponse)(nil), // 1: roster.v1.GetVersionResponse
+	(*GetVersionRequest)(nil),   // 0: roster.v1.GetVersionRequest
+	(*GetVersionResponse)(nil),  // 1: roster.v1.GetVersionResponse
+	(*GetSettingsRequest)(nil),  // 2: roster.v1.GetSettingsRequest
+	(*GetSettingsResponse)(nil), // 3: roster.v1.GetSettingsResponse
+	(*DirectorySource)(nil),     // 4: roster.v1.DirectorySource
+	(*Org)(nil),                 // 5: roster.v1.Org
+	(*Team)(nil),                // 6: roster.v1.Team
 }
 var file_roster_v1_roster_proto_depIdxs = []int32{
-	0, // 0: roster.v1.RosterService.GetVersion:input_type -> roster.v1.GetVersionRequest
-	1, // 1: roster.v1.RosterService.GetVersion:output_type -> roster.v1.GetVersionResponse
-	1, // [1:2] is the sub-list for method output_type
-	0, // [0:1] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	4, // 0: roster.v1.GetSettingsResponse.sources:type_name -> roster.v1.DirectorySource
+	4, // 1: roster.v1.GetSettingsResponse.store_sources:type_name -> roster.v1.DirectorySource
+	5, // 2: roster.v1.GetSettingsResponse.orgs:type_name -> roster.v1.Org
+	6, // 3: roster.v1.Org.teams:type_name -> roster.v1.Team
+	0, // 4: roster.v1.RosterService.GetVersion:input_type -> roster.v1.GetVersionRequest
+	2, // 5: roster.v1.RosterService.GetSettings:input_type -> roster.v1.GetSettingsRequest
+	1, // 6: roster.v1.RosterService.GetVersion:output_type -> roster.v1.GetVersionResponse
+	3, // 7: roster.v1.RosterService.GetSettings:output_type -> roster.v1.GetSettingsResponse
+	6, // [6:8] is the sub-list for method output_type
+	4, // [4:6] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_roster_v1_roster_proto_init() }
@@ -170,7 +517,7 @@ func file_roster_v1_roster_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_roster_v1_roster_proto_rawDesc), len(file_roster_v1_roster_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

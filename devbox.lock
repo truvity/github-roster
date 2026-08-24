@@ -1,6 +1,44 @@
 {
   "lockfile_version": "1",
   "packages": {
+    "buf@latest": {
+      "last_modified": "2026-08-12T11:28:58Z",
+      "resolved": "github:NixOS/nixpkgs/044bfe75bfe4c7bbe043dc17b5e42ea823b84a09#buf",
+      "source": "devbox-search",
+      "version": "1.72.0",
+      "systems": {
+        "aarch64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/a4n4x8pycrnvgsx2ibhar7w2v5hx8mkc-buf-1.72.0",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/a4n4x8pycrnvgsx2ibhar7w2v5hx8mkc-buf-1.72.0"
+        },
+        "aarch64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/8wg03l4hkzdpzykabhxlnzvnn0fk16c0-buf-1.72.0",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/8wg03l4hkzdpzykabhxlnzvnn0fk16c0-buf-1.72.0"
+        },
+        "x86_64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/habzcgcqw7b556zmmqa20banyhqp4p2q-buf-1.72.0",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/habzcgcqw7b556zmmqa20banyhqp4p2q-buf-1.72.0"
+        }
+      }
+    },
     "github:NixOS/nixpkgs/nixpkgs-unstable": {
       "last_modified": "2026-08-22T02:12:10Z",
       "resolved": "github:NixOS/nixpkgs/a831408e6378bc02ebf8cc09b52c96ca86f6bab4?lastModified=1787364730"

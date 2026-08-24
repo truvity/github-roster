@@ -20,6 +20,18 @@ service RosterService {
   // view shows (git-declared sources plus operator-added store directories),
   // previously fetched from GET /api/settings.
   rpc GetSettings(GetSettingsRequest) returns (GetSettingsResponse);
+
+  // GetRoster returns the joined roster the People view shows. NOTE: the JSON
+  // GET /api/roster stays — it is a cross-repo contract (the gitops puller
+  // commits it); this is the SPA's typed view of the same data.
+  rpc GetRoster(GetRosterRequest) returns (GetRosterResponse);
+
+  // GetStatus returns per-organization reconcile status (Status view). The
+  // caller's bearer token is forwarded to the broker, which authorizes.
+  rpc GetStatus(GetStatusRequest) returns (GetStatusResponse);
+
+  // GetAudit returns audit records, newest first (History view).
+  rpc GetAudit(GetAuditRequest) returns (GetAuditResponse);
 }
 
 message GetVersionRequest {}
@@ -63,4 +75,72 @@ message Team {
   repeated string groups = 2;
   repeated string members = 3;
   bool pinned = 4;
+}
+
+message GetRosterRequest {}
+
+message GetRosterResponse {
+  repeated Person people = 1;
+}
+
+message Person {
+  string name = 1;
+  string github = 2;
+  string class = 3;
+  bool live = 4;
+  string state = 5;
+  map<string, Membership> orgs = 6;
+}
+
+message Membership {
+  bool member = 1;
+  bool invitation_pending = 2;
+  string role = 3;
+}
+
+message GetStatusRequest {}
+
+message GetStatusResponse {
+  repeated ReconcileStatus statuses = 1;
+}
+
+message ReconcileStatus {
+  string org = 1;
+  bool enabled = 2;
+  bool paused = 3;
+  string at = 4; // RFC 3339
+  int32 actions = 5;
+  bool applied = 6;
+  bool held = 7;
+  string reason = 8;
+  string error = 9;
+}
+
+message GetAuditRequest {
+  string org = 1; // optional filter
+  int32 limit = 2; // 0 → server default
+}
+
+message GetAuditResponse {
+  repeated AuditRecord records = 1;
+}
+
+message AuditRecord {
+  string at = 1; // RFC 3339
+  string org = 2;
+  string kind = 3;
+  bool confirmed = 4;
+  string actor = 5;
+  string actor_email = 6;
+  repeated string adding = 7;
+  repeated string removing = 8;
+  repeated AuditChange changes = 9;
+  string error = 10;
+}
+
+message AuditChange {
+  string verb = 1;
+  string subject = 2;
+  string team = 3;
+  string detail = 4;
 }

@@ -38,15 +38,28 @@ export interface Roster {
   people?: Person[];
 }
 
+// fetchRoster reads the joined roster over ConnectRPC (the JSON /api/roster
+// stays for the cross-repo puller). Empty scalars → undefined, matching the
+// omitempty JSON the People view was written against.
 export async function fetchRoster(signal?: AbortSignal): Promise<Roster> {
-  const resp = await fetch("/api/roster", {
-    headers: { Accept: "application/json" },
-    signal,
-  });
-  if (!resp.ok) {
-    throw new Error(`GET /api/roster: ${resp.status}`);
-  }
-  return (await resp.json()) as Roster;
+  const resp = await rosterClient.getRoster({}, { signal });
+
+  return {
+    people: resp.people.map((p) => ({
+      name: p.name,
+      github: p.github,
+      class: p.class || undefined,
+      live: p.live,
+      state: p.state || undefined,
+      orgs: Object.fromEntries(
+        Object.entries(p.orgs).map(([org, m]) => [org, {
+          member: m.member,
+          invitationPending: m.invitationPending,
+          role: m.role || undefined,
+        }]),
+      ),
+    })),
+  };
 }
 
 export interface ReconcileStatus {
@@ -61,10 +74,23 @@ export interface ReconcileStatus {
   error?: string;
 }
 
+// fetchStatus reads reconcile status over ConnectRPC. The gateway injects the
+// operator's bearer token onto the proxied request (as it did for the JSON
+// endpoint), which the broker authorizes.
 export async function fetchStatus(signal?: AbortSignal): Promise<ReconcileStatus[]> {
-  const resp = await fetch("/api/status", { headers: { Accept: "application/json" }, signal });
-  if (!resp.ok) throw new Error(`GET /api/status: ${resp.status}`);
-  return (await resp.json()) as ReconcileStatus[];
+  const resp = await rosterClient.getStatus({}, { signal });
+
+  return resp.statuses.map((s) => ({
+    org: s.org,
+    enabled: s.enabled,
+    paused: s.paused,
+    at: s.at || undefined,
+    actions: s.actions,
+    applied: s.applied,
+    held: s.held,
+    reason: s.reason || undefined,
+    error: s.error || undefined,
+  }));
 }
 
 export interface AuditChange {
@@ -87,10 +113,25 @@ export interface AuditRecord {
   error?: string;
 }
 
+// fetchAudit reads audit records over ConnectRPC (the JSON /api/audit stays for
+// tooling).
 export async function fetchAudit(signal?: AbortSignal): Promise<AuditRecord[]> {
-  const resp = await fetch("/api/audit", { headers: { Accept: "application/json" }, signal });
-  if (!resp.ok) throw new Error(`GET /api/audit: ${resp.status}`);
-  return ((await resp.json()) as AuditRecord[]) ?? [];
+  const resp = await rosterClient.getAudit({}, { signal });
+
+  return resp.records.map((r) => ({
+    at: r.at,
+    org: r.org,
+    kind: r.kind || undefined,
+    confirmed: r.confirmed,
+    actor: r.actor || undefined,
+    actorEmail: r.actorEmail || undefined,
+    adding: r.adding.length ? r.adding : undefined,
+    removing: r.removing.length ? r.removing : undefined,
+    changes: r.changes.length
+      ? r.changes.map((c) => ({ verb: c.verb, subject: c.subject, team: c.team || undefined, detail: c.detail || undefined }))
+      : undefined,
+    error: r.error || undefined,
+  }));
 }
 
 export interface Change {

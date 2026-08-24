@@ -44,6 +44,12 @@ const (
 	// RosterServiceGetSettingsProcedure is the fully-qualified name of the RosterService's GetSettings
 	// RPC.
 	RosterServiceGetSettingsProcedure = "/roster.v1.RosterService/GetSettings"
+	// RosterServiceGetRosterProcedure is the fully-qualified name of the RosterService's GetRoster RPC.
+	RosterServiceGetRosterProcedure = "/roster.v1.RosterService/GetRoster"
+	// RosterServiceGetStatusProcedure is the fully-qualified name of the RosterService's GetStatus RPC.
+	RosterServiceGetStatusProcedure = "/roster.v1.RosterService/GetStatus"
+	// RosterServiceGetAuditProcedure is the fully-qualified name of the RosterService's GetAudit RPC.
+	RosterServiceGetAuditProcedure = "/roster.v1.RosterService/GetAudit"
 )
 
 // RosterServiceClient is a client for the roster.v1.RosterService service.
@@ -55,6 +61,15 @@ type RosterServiceClient interface {
 	// view shows (git-declared sources plus operator-added store directories),
 	// previously fetched from GET /api/settings.
 	GetSettings(context.Context, *connect.Request[v1.GetSettingsRequest]) (*connect.Response[v1.GetSettingsResponse], error)
+	// GetRoster returns the joined roster the People view shows. NOTE: the JSON
+	// GET /api/roster stays — it is a cross-repo contract (the gitops puller
+	// commits it); this is the SPA's typed view of the same data.
+	GetRoster(context.Context, *connect.Request[v1.GetRosterRequest]) (*connect.Response[v1.GetRosterResponse], error)
+	// GetStatus returns per-organization reconcile status (Status view). The
+	// caller's bearer token is forwarded to the broker, which authorizes.
+	GetStatus(context.Context, *connect.Request[v1.GetStatusRequest]) (*connect.Response[v1.GetStatusResponse], error)
+	// GetAudit returns audit records, newest first (History view).
+	GetAudit(context.Context, *connect.Request[v1.GetAuditRequest]) (*connect.Response[v1.GetAuditResponse], error)
 }
 
 // NewRosterServiceClient constructs a client for the roster.v1.RosterService service. By default,
@@ -80,6 +95,24 @@ func NewRosterServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(rosterServiceMethods.ByName("GetSettings")),
 			connect.WithClientOptions(opts...),
 		),
+		getRoster: connect.NewClient[v1.GetRosterRequest, v1.GetRosterResponse](
+			httpClient,
+			baseURL+RosterServiceGetRosterProcedure,
+			connect.WithSchema(rosterServiceMethods.ByName("GetRoster")),
+			connect.WithClientOptions(opts...),
+		),
+		getStatus: connect.NewClient[v1.GetStatusRequest, v1.GetStatusResponse](
+			httpClient,
+			baseURL+RosterServiceGetStatusProcedure,
+			connect.WithSchema(rosterServiceMethods.ByName("GetStatus")),
+			connect.WithClientOptions(opts...),
+		),
+		getAudit: connect.NewClient[v1.GetAuditRequest, v1.GetAuditResponse](
+			httpClient,
+			baseURL+RosterServiceGetAuditProcedure,
+			connect.WithSchema(rosterServiceMethods.ByName("GetAudit")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -87,6 +120,9 @@ func NewRosterServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 type rosterServiceClient struct {
 	getVersion  *connect.Client[v1.GetVersionRequest, v1.GetVersionResponse]
 	getSettings *connect.Client[v1.GetSettingsRequest, v1.GetSettingsResponse]
+	getRoster   *connect.Client[v1.GetRosterRequest, v1.GetRosterResponse]
+	getStatus   *connect.Client[v1.GetStatusRequest, v1.GetStatusResponse]
+	getAudit    *connect.Client[v1.GetAuditRequest, v1.GetAuditResponse]
 }
 
 // GetVersion calls roster.v1.RosterService.GetVersion.
@@ -99,6 +135,21 @@ func (c *rosterServiceClient) GetSettings(ctx context.Context, req *connect.Requ
 	return c.getSettings.CallUnary(ctx, req)
 }
 
+// GetRoster calls roster.v1.RosterService.GetRoster.
+func (c *rosterServiceClient) GetRoster(ctx context.Context, req *connect.Request[v1.GetRosterRequest]) (*connect.Response[v1.GetRosterResponse], error) {
+	return c.getRoster.CallUnary(ctx, req)
+}
+
+// GetStatus calls roster.v1.RosterService.GetStatus.
+func (c *rosterServiceClient) GetStatus(ctx context.Context, req *connect.Request[v1.GetStatusRequest]) (*connect.Response[v1.GetStatusResponse], error) {
+	return c.getStatus.CallUnary(ctx, req)
+}
+
+// GetAudit calls roster.v1.RosterService.GetAudit.
+func (c *rosterServiceClient) GetAudit(ctx context.Context, req *connect.Request[v1.GetAuditRequest]) (*connect.Response[v1.GetAuditResponse], error) {
+	return c.getAudit.CallUnary(ctx, req)
+}
+
 // RosterServiceHandler is an implementation of the roster.v1.RosterService service.
 type RosterServiceHandler interface {
 	// GetVersion returns the running build's identity — the same information the
@@ -108,6 +159,15 @@ type RosterServiceHandler interface {
 	// view shows (git-declared sources plus operator-added store directories),
 	// previously fetched from GET /api/settings.
 	GetSettings(context.Context, *connect.Request[v1.GetSettingsRequest]) (*connect.Response[v1.GetSettingsResponse], error)
+	// GetRoster returns the joined roster the People view shows. NOTE: the JSON
+	// GET /api/roster stays — it is a cross-repo contract (the gitops puller
+	// commits it); this is the SPA's typed view of the same data.
+	GetRoster(context.Context, *connect.Request[v1.GetRosterRequest]) (*connect.Response[v1.GetRosterResponse], error)
+	// GetStatus returns per-organization reconcile status (Status view). The
+	// caller's bearer token is forwarded to the broker, which authorizes.
+	GetStatus(context.Context, *connect.Request[v1.GetStatusRequest]) (*connect.Response[v1.GetStatusResponse], error)
+	// GetAudit returns audit records, newest first (History view).
+	GetAudit(context.Context, *connect.Request[v1.GetAuditRequest]) (*connect.Response[v1.GetAuditResponse], error)
 }
 
 // NewRosterServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -129,12 +189,36 @@ func NewRosterServiceHandler(svc RosterServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(rosterServiceMethods.ByName("GetSettings")),
 		connect.WithHandlerOptions(opts...),
 	)
+	rosterServiceGetRosterHandler := connect.NewUnaryHandler(
+		RosterServiceGetRosterProcedure,
+		svc.GetRoster,
+		connect.WithSchema(rosterServiceMethods.ByName("GetRoster")),
+		connect.WithHandlerOptions(opts...),
+	)
+	rosterServiceGetStatusHandler := connect.NewUnaryHandler(
+		RosterServiceGetStatusProcedure,
+		svc.GetStatus,
+		connect.WithSchema(rosterServiceMethods.ByName("GetStatus")),
+		connect.WithHandlerOptions(opts...),
+	)
+	rosterServiceGetAuditHandler := connect.NewUnaryHandler(
+		RosterServiceGetAuditProcedure,
+		svc.GetAudit,
+		connect.WithSchema(rosterServiceMethods.ByName("GetAudit")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/roster.v1.RosterService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case RosterServiceGetVersionProcedure:
 			rosterServiceGetVersionHandler.ServeHTTP(w, r)
 		case RosterServiceGetSettingsProcedure:
 			rosterServiceGetSettingsHandler.ServeHTTP(w, r)
+		case RosterServiceGetRosterProcedure:
+			rosterServiceGetRosterHandler.ServeHTTP(w, r)
+		case RosterServiceGetStatusProcedure:
+			rosterServiceGetStatusHandler.ServeHTTP(w, r)
+		case RosterServiceGetAuditProcedure:
+			rosterServiceGetAuditHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -150,4 +234,16 @@ func (UnimplementedRosterServiceHandler) GetVersion(context.Context, *connect.Re
 
 func (UnimplementedRosterServiceHandler) GetSettings(context.Context, *connect.Request[v1.GetSettingsRequest]) (*connect.Response[v1.GetSettingsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("roster.v1.RosterService.GetSettings is not implemented"))
+}
+
+func (UnimplementedRosterServiceHandler) GetRoster(context.Context, *connect.Request[v1.GetRosterRequest]) (*connect.Response[v1.GetRosterResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("roster.v1.RosterService.GetRoster is not implemented"))
+}
+
+func (UnimplementedRosterServiceHandler) GetStatus(context.Context, *connect.Request[v1.GetStatusRequest]) (*connect.Response[v1.GetStatusResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("roster.v1.RosterService.GetStatus is not implemented"))
+}
+
+func (UnimplementedRosterServiceHandler) GetAudit(context.Context, *connect.Request[v1.GetAuditRequest]) (*connect.Response[v1.GetAuditResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("roster.v1.RosterService.GetAudit is not implemented"))
 }

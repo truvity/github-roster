@@ -16,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file roster/v1/roster.proto.
  */
 export const file_roster_v1_roster: GenFile = /*@__PURE__*/
-  fileDesc("ChZyb3N0ZXIvdjEvcm9zdGVyLnByb3RvEglyb3N0ZXIudjEiEwoRR2V0VmVyc2lvblJlcXVlc3QiNQoSR2V0VmVyc2lvblJlc3BvbnNlEg8KB3ZlcnNpb24YASABKAkSDgoGY29tbWl0GAIgASgJIhQKEkdldFNldHRpbmdzUmVxdWVzdCKTAQoTR2V0U2V0dGluZ3NSZXNwb25zZRIrCgdzb3VyY2VzGAEgAygLMhoucm9zdGVyLnYxLkRpcmVjdG9yeVNvdXJjZRIxCg1zdG9yZV9zb3VyY2VzGAIgAygLMhoucm9zdGVyLnYxLkRpcmVjdG9yeVNvdXJjZRIcCgRvcmdzGAMgAygLMg4ucm9zdGVyLnYxLk9yZyJXCg9EaXJlY3RvcnlTb3VyY2USDAoEbmFtZRgBIAEoCRIPCgdkb21haW5zGAIgAygJEhAKCGVuZHBvaW50GAMgASgJEhMKC3Byb2JlX2dyb3VwGAQgASgJInMKA09yZxIMCgRuYW1lGAEgASgJEg8KB2NvbXBhbnkYAiABKAkSEgoKbWluX2FkbWlucxgDIAEoBRIZChFyZWNvbmNpbGVfZW5hYmxlZBgEIAEoCBIeCgV0ZWFtcxgFIAMoCzIPLnJvc3Rlci52MS5UZWFtIkUKBFRlYW0SDAoEbmFtZRgBIAEoCRIOCgZncm91cHMYAiADKAkSDwoHbWVtYmVycxgDIAMoCRIOCgZwaW5uZWQYBCABKAgyqAEKDVJvc3RlclNlcnZpY2USSQoKR2V0VmVyc2lvbhIcLnJvc3Rlci52MS5HZXRWZXJzaW9uUmVxdWVzdBodLnJvc3Rlci52MS5HZXRWZXJzaW9uUmVzcG9uc2USTAoLR2V0U2V0dGluZ3MSHS5yb3N0ZXIudjEuR2V0U2V0dGluZ3NSZXF1ZXN0Gh4ucm9zdGVyLnYxLkdldFNldHRpbmdzUmVzcG9uc2VCmgEKDWNvbS5yb3N0ZXIudjFCC1Jvc3RlclByb3RvUAFaN2dpdGh1Yi5jb20vdHJ1dml0eS9naXRodWItcm9zdGVyL2dlbi9yb3N0ZXIvdjE7cm9zdGVydjGiAgNSWFiqAglSb3N0ZXIuVjHKAglSb3N0ZXJcVjHiAhVSb3N0ZXJcVjFcR1BCTWV0YWRhdGHqAgpSb3N0ZXI6OlYxYgZwcm90bzM");
+  fileDesc("ChZyb3N0ZXIvdjEvcm9zdGVyLnByb3RvEglyb3N0ZXIudjEiEwoRR2V0VmVyc2lvblJlcXVlc3QiNQoSR2V0VmVyc2lvblJlc3BvbnNlEg8KB3ZlcnNpb24YASABKAkSDgoGY29tbWl0GAIgASgJIhQKEkdldFNldHRpbmdzUmVxdWVzdCKTAQoTR2V0U2V0dGluZ3NSZXNwb25zZRIrCgdzb3VyY2VzGAEgAygLMhoucm9zdGVyLnYxLkRpcmVjdG9yeVNvdXJjZRIxCg1zdG9yZV9zb3VyY2VzGAIgAygLMhoucm9zdGVyLnYxLkRpcmVjdG9yeVNvdXJjZRIcCgRvcmdzGAMgAygLMg4ucm9zdGVyLnYxLk9yZyJXCg9EaXJlY3RvcnlTb3VyY2USDAoEbmFtZRgBIAEoCRIPCgdkb21haW5zGAIgAygJEhAKCGVuZHBvaW50GAMgASgJEhMKC3Byb2JlX2dyb3VwGAQgASgJInMKA09yZxIMCgRuYW1lGAEgASgJEg8KB2NvbXBhbnkYAiABKAkSEgoKbWluX2FkbWlucxgDIAEoBRIZChFyZWNvbmNpbGVfZW5hYmxlZBgEIAEoCBIeCgV0ZWFtcxgFIAMoCzIPLnJvc3Rlci52MS5UZWFtIkUKBFRlYW0SDAoEbmFtZRgBIAEoCRIOCgZncm91cHMYAiADKAkSDwoHbWVtYmVycxgDIAMoCRIOCgZwaW5uZWQYBCABKAgiEgoQR2V0Um9zdGVyUmVxdWVzdCI2ChFHZXRSb3N0ZXJSZXNwb25zZRIhCgZwZW9wbGUYASADKAsyES5yb3N0ZXIudjEuUGVyc29uIsEBCgZQZXJzb24SDAoEbmFtZRgBIAEoCRIOCgZnaXRodWIYAiABKAkSDQoFY2xhc3MYAyABKAkSDAoEbGl2ZRgEIAEoCBINCgVzdGF0ZRgFIAEoCRIpCgRvcmdzGAYgAygLMhsucm9zdGVyLnYxLlBlcnNvbi5PcmdzRW50cnkaQgoJT3Jnc0VudHJ5EgsKA2tleRgBIAEoCRIkCgV2YWx1ZRgCIAEoCzIVLnJvc3Rlci52MS5NZW1iZXJzaGlwOgI4ASJGCgpNZW1iZXJzaGlwEg4KBm1lbWJlchgBIAEoCBIaChJpbnZpdGF0aW9uX3BlbmRpbmcYAiABKAgSDAoEcm9sZRgDIAEoCSISChBHZXRTdGF0dXNSZXF1ZXN0IkEKEUdldFN0YXR1c1Jlc3BvbnNlEiwKCHN0YXR1c2VzGAEgAygLMhoucm9zdGVyLnYxLlJlY29uY2lsZVN0YXR1cyKaAQoPUmVjb25jaWxlU3RhdHVzEgsKA29yZxgBIAEoCRIPCgdlbmFibGVkGAIgASgIEg4KBnBhdXNlZBgDIAEoCBIKCgJhdBgEIAEoCRIPCgdhY3Rpb25zGAUgASgFEg8KB2FwcGxpZWQYBiABKAgSDAoEaGVsZBgHIAEoCBIOCgZyZWFzb24YCCABKAkSDQoFZXJyb3IYCSABKAkiLQoPR2V0QXVkaXRSZXF1ZXN0EgsKA29yZxgBIAEoCRINCgVsaW1pdBgCIAEoBSI7ChBHZXRBdWRpdFJlc3BvbnNlEicKB3JlY29yZHMYASADKAsyFi5yb3N0ZXIudjEuQXVkaXRSZWNvcmQixQEKC0F1ZGl0UmVjb3JkEgoKAmF0GAEgASgJEgsKA29yZxgCIAEoCRIMCgRraW5kGAMgASgJEhEKCWNvbmZpcm1lZBgEIAEoCBINCgVhY3RvchgFIAEoCRITCgthY3Rvcl9lbWFpbBgGIAEoCRIOCgZhZGRpbmcYByADKAkSEAoIcmVtb3ZpbmcYCCADKAkSJwoHY2hhbmdlcxgJIAMoCzIWLnJvc3Rlci52MS5BdWRpdENoYW5nZRINCgVlcnJvchgKIAEoCSJKCgtBdWRpdENoYW5nZRIMCgR2ZXJiGAEgASgJEg8KB3N1YmplY3QYAiABKAkSDAoEdGVhbRgDIAEoCRIOCgZkZXRhaWwYBCABKAky/QIKDVJvc3RlclNlcnZpY2USSQoKR2V0VmVyc2lvbhIcLnJvc3Rlci52MS5HZXRWZXJzaW9uUmVxdWVzdBodLnJvc3Rlci52MS5HZXRWZXJzaW9uUmVzcG9uc2USTAoLR2V0U2V0dGluZ3MSHS5yb3N0ZXIudjEuR2V0U2V0dGluZ3NSZXF1ZXN0Gh4ucm9zdGVyLnYxLkdldFNldHRpbmdzUmVzcG9uc2USRgoJR2V0Um9zdGVyEhsucm9zdGVyLnYxLkdldFJvc3RlclJlcXVlc3QaHC5yb3N0ZXIudjEuR2V0Um9zdGVyUmVzcG9uc2USRgoJR2V0U3RhdHVzEhsucm9zdGVyLnYxLkdldFN0YXR1c1JlcXVlc3QaHC5yb3N0ZXIudjEuR2V0U3RhdHVzUmVzcG9uc2USQwoIR2V0QXVkaXQSGi5yb3N0ZXIudjEuR2V0QXVkaXRSZXF1ZXN0Ghsucm9zdGVyLnYxLkdldEF1ZGl0UmVzcG9uc2VCmgEKDWNvbS5yb3N0ZXIudjFCC1Jvc3RlclByb3RvUAFaN2dpdGh1Yi5jb20vdHJ1dml0eS9naXRodWItcm9zdGVyL2dlbi9yb3N0ZXIvdjE7cm9zdGVydjGiAgNSWFiqAglSb3N0ZXIuVjHKAglSb3N0ZXJcVjHiAhVSb3N0ZXJcVjFcR1BCTWV0YWRhdGHqAgpSb3N0ZXI6OlYxYgZwcm90bzM");
 
 /**
  * @generated from message roster.v1.GetVersionRequest
@@ -207,6 +207,333 @@ export const TeamSchema: GenMessage<Team> = /*@__PURE__*/
   messageDesc(file_roster_v1_roster, 6);
 
 /**
+ * @generated from message roster.v1.GetRosterRequest
+ */
+export type GetRosterRequest = Message<"roster.v1.GetRosterRequest"> & {
+};
+
+/**
+ * Describes the message roster.v1.GetRosterRequest.
+ * Use `create(GetRosterRequestSchema)` to create a new message.
+ */
+export const GetRosterRequestSchema: GenMessage<GetRosterRequest> = /*@__PURE__*/
+  messageDesc(file_roster_v1_roster, 7);
+
+/**
+ * @generated from message roster.v1.GetRosterResponse
+ */
+export type GetRosterResponse = Message<"roster.v1.GetRosterResponse"> & {
+  /**
+   * @generated from field: repeated roster.v1.Person people = 1;
+   */
+  people: Person[];
+};
+
+/**
+ * Describes the message roster.v1.GetRosterResponse.
+ * Use `create(GetRosterResponseSchema)` to create a new message.
+ */
+export const GetRosterResponseSchema: GenMessage<GetRosterResponse> = /*@__PURE__*/
+  messageDesc(file_roster_v1_roster, 8);
+
+/**
+ * @generated from message roster.v1.Person
+ */
+export type Person = Message<"roster.v1.Person"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string github = 2;
+   */
+  github: string;
+
+  /**
+   * @generated from field: string class = 3;
+   */
+  class: string;
+
+  /**
+   * @generated from field: bool live = 4;
+   */
+  live: boolean;
+
+  /**
+   * @generated from field: string state = 5;
+   */
+  state: string;
+
+  /**
+   * @generated from field: map<string, roster.v1.Membership> orgs = 6;
+   */
+  orgs: { [key: string]: Membership };
+};
+
+/**
+ * Describes the message roster.v1.Person.
+ * Use `create(PersonSchema)` to create a new message.
+ */
+export const PersonSchema: GenMessage<Person> = /*@__PURE__*/
+  messageDesc(file_roster_v1_roster, 9);
+
+/**
+ * @generated from message roster.v1.Membership
+ */
+export type Membership = Message<"roster.v1.Membership"> & {
+  /**
+   * @generated from field: bool member = 1;
+   */
+  member: boolean;
+
+  /**
+   * @generated from field: bool invitation_pending = 2;
+   */
+  invitationPending: boolean;
+
+  /**
+   * @generated from field: string role = 3;
+   */
+  role: string;
+};
+
+/**
+ * Describes the message roster.v1.Membership.
+ * Use `create(MembershipSchema)` to create a new message.
+ */
+export const MembershipSchema: GenMessage<Membership> = /*@__PURE__*/
+  messageDesc(file_roster_v1_roster, 10);
+
+/**
+ * @generated from message roster.v1.GetStatusRequest
+ */
+export type GetStatusRequest = Message<"roster.v1.GetStatusRequest"> & {
+};
+
+/**
+ * Describes the message roster.v1.GetStatusRequest.
+ * Use `create(GetStatusRequestSchema)` to create a new message.
+ */
+export const GetStatusRequestSchema: GenMessage<GetStatusRequest> = /*@__PURE__*/
+  messageDesc(file_roster_v1_roster, 11);
+
+/**
+ * @generated from message roster.v1.GetStatusResponse
+ */
+export type GetStatusResponse = Message<"roster.v1.GetStatusResponse"> & {
+  /**
+   * @generated from field: repeated roster.v1.ReconcileStatus statuses = 1;
+   */
+  statuses: ReconcileStatus[];
+};
+
+/**
+ * Describes the message roster.v1.GetStatusResponse.
+ * Use `create(GetStatusResponseSchema)` to create a new message.
+ */
+export const GetStatusResponseSchema: GenMessage<GetStatusResponse> = /*@__PURE__*/
+  messageDesc(file_roster_v1_roster, 12);
+
+/**
+ * @generated from message roster.v1.ReconcileStatus
+ */
+export type ReconcileStatus = Message<"roster.v1.ReconcileStatus"> & {
+  /**
+   * @generated from field: string org = 1;
+   */
+  org: string;
+
+  /**
+   * @generated from field: bool enabled = 2;
+   */
+  enabled: boolean;
+
+  /**
+   * @generated from field: bool paused = 3;
+   */
+  paused: boolean;
+
+  /**
+   * RFC 3339
+   *
+   * @generated from field: string at = 4;
+   */
+  at: string;
+
+  /**
+   * @generated from field: int32 actions = 5;
+   */
+  actions: number;
+
+  /**
+   * @generated from field: bool applied = 6;
+   */
+  applied: boolean;
+
+  /**
+   * @generated from field: bool held = 7;
+   */
+  held: boolean;
+
+  /**
+   * @generated from field: string reason = 8;
+   */
+  reason: string;
+
+  /**
+   * @generated from field: string error = 9;
+   */
+  error: string;
+};
+
+/**
+ * Describes the message roster.v1.ReconcileStatus.
+ * Use `create(ReconcileStatusSchema)` to create a new message.
+ */
+export const ReconcileStatusSchema: GenMessage<ReconcileStatus> = /*@__PURE__*/
+  messageDesc(file_roster_v1_roster, 13);
+
+/**
+ * @generated from message roster.v1.GetAuditRequest
+ */
+export type GetAuditRequest = Message<"roster.v1.GetAuditRequest"> & {
+  /**
+   * optional filter
+   *
+   * @generated from field: string org = 1;
+   */
+  org: string;
+
+  /**
+   * 0 → server default
+   *
+   * @generated from field: int32 limit = 2;
+   */
+  limit: number;
+};
+
+/**
+ * Describes the message roster.v1.GetAuditRequest.
+ * Use `create(GetAuditRequestSchema)` to create a new message.
+ */
+export const GetAuditRequestSchema: GenMessage<GetAuditRequest> = /*@__PURE__*/
+  messageDesc(file_roster_v1_roster, 14);
+
+/**
+ * @generated from message roster.v1.GetAuditResponse
+ */
+export type GetAuditResponse = Message<"roster.v1.GetAuditResponse"> & {
+  /**
+   * @generated from field: repeated roster.v1.AuditRecord records = 1;
+   */
+  records: AuditRecord[];
+};
+
+/**
+ * Describes the message roster.v1.GetAuditResponse.
+ * Use `create(GetAuditResponseSchema)` to create a new message.
+ */
+export const GetAuditResponseSchema: GenMessage<GetAuditResponse> = /*@__PURE__*/
+  messageDesc(file_roster_v1_roster, 15);
+
+/**
+ * @generated from message roster.v1.AuditRecord
+ */
+export type AuditRecord = Message<"roster.v1.AuditRecord"> & {
+  /**
+   * RFC 3339
+   *
+   * @generated from field: string at = 1;
+   */
+  at: string;
+
+  /**
+   * @generated from field: string org = 2;
+   */
+  org: string;
+
+  /**
+   * @generated from field: string kind = 3;
+   */
+  kind: string;
+
+  /**
+   * @generated from field: bool confirmed = 4;
+   */
+  confirmed: boolean;
+
+  /**
+   * @generated from field: string actor = 5;
+   */
+  actor: string;
+
+  /**
+   * @generated from field: string actor_email = 6;
+   */
+  actorEmail: string;
+
+  /**
+   * @generated from field: repeated string adding = 7;
+   */
+  adding: string[];
+
+  /**
+   * @generated from field: repeated string removing = 8;
+   */
+  removing: string[];
+
+  /**
+   * @generated from field: repeated roster.v1.AuditChange changes = 9;
+   */
+  changes: AuditChange[];
+
+  /**
+   * @generated from field: string error = 10;
+   */
+  error: string;
+};
+
+/**
+ * Describes the message roster.v1.AuditRecord.
+ * Use `create(AuditRecordSchema)` to create a new message.
+ */
+export const AuditRecordSchema: GenMessage<AuditRecord> = /*@__PURE__*/
+  messageDesc(file_roster_v1_roster, 16);
+
+/**
+ * @generated from message roster.v1.AuditChange
+ */
+export type AuditChange = Message<"roster.v1.AuditChange"> & {
+  /**
+   * @generated from field: string verb = 1;
+   */
+  verb: string;
+
+  /**
+   * @generated from field: string subject = 2;
+   */
+  subject: string;
+
+  /**
+   * @generated from field: string team = 3;
+   */
+  team: string;
+
+  /**
+   * @generated from field: string detail = 4;
+   */
+  detail: string;
+};
+
+/**
+ * Describes the message roster.v1.AuditChange.
+ * Use `create(AuditChangeSchema)` to create a new message.
+ */
+export const AuditChangeSchema: GenMessage<AuditChange> = /*@__PURE__*/
+  messageDesc(file_roster_v1_roster, 17);
+
+/**
  * RosterService is the read/console surface. Methods are added as the SPA
  * views move over from the huma JSON API.
  *
@@ -235,6 +562,39 @@ export const RosterService: GenService<{
     methodKind: "unary";
     input: typeof GetSettingsRequestSchema;
     output: typeof GetSettingsResponseSchema;
+  },
+  /**
+   * GetRoster returns the joined roster the People view shows. NOTE: the JSON
+   * GET /api/roster stays — it is a cross-repo contract (the gitops puller
+   * commits it); this is the SPA's typed view of the same data.
+   *
+   * @generated from rpc roster.v1.RosterService.GetRoster
+   */
+  getRoster: {
+    methodKind: "unary";
+    input: typeof GetRosterRequestSchema;
+    output: typeof GetRosterResponseSchema;
+  },
+  /**
+   * GetStatus returns per-organization reconcile status (Status view). The
+   * caller's bearer token is forwarded to the broker, which authorizes.
+   *
+   * @generated from rpc roster.v1.RosterService.GetStatus
+   */
+  getStatus: {
+    methodKind: "unary";
+    input: typeof GetStatusRequestSchema;
+    output: typeof GetStatusResponseSchema;
+  },
+  /**
+   * GetAudit returns audit records, newest first (History view).
+   *
+   * @generated from rpc roster.v1.RosterService.GetAudit
+   */
+  getAudit: {
+    methodKind: "unary";
+    input: typeof GetAuditRequestSchema;
+    output: typeof GetAuditResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_roster_v1_roster, 0);

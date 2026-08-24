@@ -68,3 +68,21 @@ func TestRosterConnectGetSettings(t *testing.T) {
 		t.Errorf("teams = %+v", o.GetTeams())
 	}
 }
+
+// TestRosterConnectGuards: each new method errors (not panics) when its
+// dependency is absent, so a misconfigured deployment fails cleanly.
+func TestRosterConnectGuards(t *testing.T) {
+	s := &rosterConnect{deps: &Deps{}} // no Mapping, Broker or Audit
+
+	if _, err := s.GetStatus(context.Background(), connect.NewRequest(&rosterv1.GetStatusRequest{})); err == nil {
+		t.Error("GetStatus without a broker should error")
+	}
+
+	if _, err := s.GetAudit(context.Background(), connect.NewRequest(&rosterv1.GetAuditRequest{})); err == nil {
+		t.Error("GetAudit without an audit sink should error")
+	}
+
+	if _, err := s.GetRoster(context.Background(), connect.NewRequest(&rosterv1.GetRosterRequest{})); err == nil {
+		t.Error("GetRoster without a mapping store should error")
+	}
+}

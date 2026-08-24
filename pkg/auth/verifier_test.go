@@ -168,6 +168,38 @@ func TestVerifierAcceptsAGoodToken(t *testing.T) {
 	require.Equal(t, RoleOperator, role)
 }
 
+func TestVerifierAcceptsForwardedAccessTokenHeader(t *testing.T) {
+	t.Parallel()
+
+	issuer := newFakeIssuer(t)
+	authenticator := newTestVerifier(t, issuer, "")
+
+	// A browser session carries no Authorization header; the oauth2-proxy
+	// gateway forwards the raw access token as X-Auth-Request-Access-Token.
+	app := fiber.New()
+	app.Use(authenticator.Middleware())
+
+	var seen Role
+
+	app.Get("/", func(c fiber.Ctx) error {
+		identity, _ := From(c)
+		seen = identity.Role
+
+		return c.SendStatus(fiber.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
+	req.Header.Set("X-Auth-Request-Access-Token", issuer.token(t, nil)) // no "Bearer " prefix
+
+	resp, err := app.Test(req)
+	require.NoError(t, err)
+
+	defer func() { _ = resp.Body.Close() }()
+
+	require.Equal(t, fiber.StatusOK, resp.StatusCode)
+	require.Equal(t, RoleOperator, seen)
+}
+
 func TestVerifierRejects(t *testing.T) {
 	t.Parallel()
 

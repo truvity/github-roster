@@ -186,6 +186,18 @@ func (v *verifier) Middleware() fiber.Handler {
 	return func(c fiber.Ctx) error {
 		raw, ok := bearerToken(c.Get(fiber.HeaderAuthorization))
 		if !ok {
+			// A browser session carries no Authorization header: the
+			// oauth2-proxy gateway forwards the validated access token as
+			// X-Auth-Request-Access-Token (raw, no "Bearer " prefix) — the
+			// same token Envoy's jwt_authn validates. Accept it so the
+			// console UI (cookie session) authenticates, while direct API
+			// callers still use Authorization: Bearer.
+			if t := strings.TrimSpace(c.Get(headerAccessToken)); t != "" {
+				raw, ok = t, true
+			}
+		}
+
+		if !ok {
 			// The gateway forwards a token on every authenticated request,
 			// so a missing one means the request did not come through it.
 			return fiber.NewError(fiber.StatusUnauthorized,
@@ -354,6 +366,12 @@ func (v *verifier) parse(raw string) (jwt.Token, error) {
 
 	return token, nil
 }
+
+// headerAccessToken is the header oauth2-proxy sets (pass_access_token) with
+// the raw access token — no "Bearer " prefix. Envoy's jwt_authn extracts the
+// same header; the console accepts it so a cookie-only browser session (which
+// sends no Authorization header) still presents a verifiable token.
+const headerAccessToken = "X-Auth-Request-Access-Token" //nolint:gosec // HTTP header name, not a credential
 
 // bearerToken pulls the credential out of an Authorization header. The
 // scheme is case-insensitive per RFC 7235, and proxies do normalize it.

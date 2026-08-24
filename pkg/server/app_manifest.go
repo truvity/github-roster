@@ -137,6 +137,10 @@ func (d *Deps) handleAppCallback(c fiber.Ctx) error {
 		return c.Redirect().To("/settings?flash=" + url.QueryEscape("storing the App credentials failed: "+err.Error()))
 	}
 
+	// Tag how this App came to be. Best-effort: the App is created and its
+	// credentials stored regardless — the provenance is display metadata.
+	_ = d.OrgStore.PutProvenance(c.Context(), org, configstore.ProvenanceRoster)
+
 	install := reg.HTMLURL + "/installations/new"
 
 	return c.Redirect().To("/settings?flash=" + url.QueryEscape(

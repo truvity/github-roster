@@ -49,9 +49,16 @@ const (
 	fieldConsoleAppSSM = "consoleAppSSM"
 	fieldApplierAppSSM = "applierAppSSM"
 	fieldExceptions    = "exceptions" // comma-separated
+	fieldProvenance    = "provenance" // "manual" (adopted) or "roster" (UI-created)
 	fieldGroups        = "groups"     // per-team, comma-separated
 	fieldMembers       = "members"    // per-team, comma-separated
 	segTeams           = "teams"
+)
+
+// Provenance values recorded for a store org's App.
+const (
+	ProvenanceManual = "manual" // a pre-existing App, adopted into the store
+	ProvenanceRoster = "roster" // created via the App-manifest flow
 )
 
 // OrgReader lists operator-added organizations with their teams. The team
@@ -66,6 +73,8 @@ type OrgStore interface {
 	OrgReader
 	// PutApp stores an org's GitHub App credentials (from the manifest flow).
 	PutApp(ctx context.Context, org string, creds AppCredentials) error
+	// PutProvenance records how the org's App came to be (manual/roster).
+	PutProvenance(ctx context.Context, org, provenance string) error
 }
 
 // OrgSSM reads organizations under <prefix>orgs/.
@@ -185,12 +194,18 @@ func orgsFrom(byName map[string]*collectedOrg) []config.Org {
 			continue // a team-less org must never surface (it would drive removals)
 		}
 
+		provenance := c.scalars[fieldProvenance]
+		if provenance == "" {
+			provenance = ProvenanceManual // a store org with no tag is an adopted one
+		}
+
 		out = append(out, config.Org{
 			Name:          name,
 			MinAdmins:     atoiOrZero(c.scalars[fieldMinAdmins]),
 			ConsoleAppSSM: console,
 			ApplierAppSSM: c.scalars[fieldApplierAppSSM],
 			Exceptions:    splitList(c.scalars[fieldExceptions]),
+			Provenance:    provenance,
 			Teams:         teams,
 			// ReconcileEnabled is deliberately left false: a store org is born
 			// disabled, exactly like a git org's day-0 state.
@@ -288,4 +303,13 @@ func (s *OrgSSM) putParam(ctx context.Context, name, value string, t types.Param
 	}
 
 	return nil
+}
+
+// PutProvenance records how an org's App was created (manual|roster).
+func (s *OrgSSM) PutProvenance(ctx context.Context, org, provenance string) error {
+	if org == "" || provenance == "" {
+		return fmt.Errorf("org and provenance are required")
+	}
+
+	return s.putParam(ctx, s.prefix+org+"/"+fieldProvenance, provenance, types.ParameterTypeString)
 }

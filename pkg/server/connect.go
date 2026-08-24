@@ -85,6 +85,7 @@ func protoOrgs(orgs []settingsOrg) []*rosterv1.Org {
 			Company:          o.Company,
 			MinAdmins:        int32(o.MinAdmins), //nolint:gosec // small operator-set bound
 			ReconcileEnabled: o.ReconcileEnabled,
+			Provenance:       o.Provenance,
 			Teams:            teams,
 		})
 	}

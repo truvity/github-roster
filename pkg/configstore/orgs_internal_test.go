@@ -109,3 +109,29 @@ func TestOrgAppPath(t *testing.T) {
 		t.Errorf("appPath = %q", got)
 	}
 }
+
+func TestOrgProvenance(t *testing.T) {
+	base := func(prov string) *collectedOrg {
+		c := &collectedOrg{
+			scalars: map[string]string{fieldConsoleAppSSM: "/s/console"},
+			teams:   map[string]map[string]string{"devs": {fieldGroups: "g@x"}},
+		}
+		if prov != "" {
+			c.scalars[fieldProvenance] = prov
+		}
+		return c
+	}
+
+	// No tag → adopted (manual). Explicit roster is preserved.
+	got := orgsFrom(map[string]*collectedOrg{"a": base(""), "b": base(ProvenanceRoster)})
+	by := map[string]string{}
+	for _, o := range got {
+		by[o.Name] = o.Provenance
+	}
+	if by["a"] != ProvenanceManual {
+		t.Errorf("untagged store org provenance = %q, want manual", by["a"])
+	}
+	if by["b"] != ProvenanceRoster {
+		t.Errorf("tagged org provenance = %q, want roster", by["b"])
+	}
+}

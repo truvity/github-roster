@@ -165,7 +165,7 @@ export function flattenAudit(records: AuditRecord[]): Change[] {
 }
 
 export interface SettingsTeam { name: string; groups?: string[]; members?: string[]; pinned?: boolean }
-export interface SettingsOrg { name: string; company: string; minAdmins: number; reconcileEnabled: boolean; teams?: SettingsTeam[] }
+export interface SettingsOrg { name: string; company: string; minAdmins: number; reconcileEnabled: boolean; provenance?: string; teams?: SettingsTeam[] }
 export interface SettingsSource { name: string; domains?: string[]; endpoint?: string; probeGroup?: string }
 export interface Settings { sources?: SettingsSource[]; storeSources?: SettingsSource[]; orgs?: SettingsOrg[]; storeOrgs?: SettingsOrg[] }
 
@@ -182,11 +182,12 @@ export async function fetchSettings(signal?: AbortSignal): Promise<Settings> {
     probeGroup: s.probeGroup || undefined,
   });
 
-  const org = (o: { name: string; company: string; minAdmins: number; reconcileEnabled: boolean; teams: { name: string; groups: string[]; members: string[]; pinned: boolean }[] }): SettingsOrg => ({
+  const org = (o: { name: string; company: string; minAdmins: number; reconcileEnabled: boolean; provenance: string; teams: { name: string; groups: string[]; members: string[]; pinned: boolean }[] }): SettingsOrg => ({
     name: o.name,
     company: o.company,
     minAdmins: o.minAdmins,
     reconcileEnabled: o.reconcileEnabled,
+    provenance: o.provenance || undefined,
     teams: o.teams.map((t) => ({
       name: t.name,
       groups: t.groups.length ? t.groups : undefined,

@@ -228,6 +228,12 @@ type Org struct {
 	// own company decides their liveness here when one exists.
 	Company string `yaml:"-"`
 
+	// Provenance records how the org's App came to be — set by the config
+	// store, never from git: "" (git-declared/IaC), "manual" (a pre-existing
+	// App adopted into the store), or "roster" (created via the manifest flow).
+	// Display metadata only; the reconciler ignores it.
+	Provenance string `yaml:"-"`
+
 	// ConsoleAppSSM holds the read-only App credentials used by the web
 	// tier. ApplierAppSSM holds the write-capable App credentials, which
 	// are only ever mounted into a reconciler Job — never read by the web

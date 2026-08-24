@@ -71,6 +71,9 @@ message Org {
   int32 min_admins = 3;
   bool reconcile_enabled = 4;
   repeated Team teams = 5;
+  // How the org's App came to be: "manual" (adopted) or "roster" (created via
+  // the manifest flow); empty for git-declared orgs.
+  string provenance = 6;
 }
 
 message Team {

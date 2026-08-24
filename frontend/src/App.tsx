@@ -170,7 +170,7 @@ function OrgSection({ org: o, staged }: { org: SettingsOrg; staged?: boolean }) 
       <h3>
         {o.name}{" "}
         {staged
-          ? <span className="badge warn">added here (staged)</span>
+          ? <span className="badge warn">{o.provenance === "roster" ? "created by roster" : "added manually"} (staged)</span>
           : <span className="badge muted">home: {o.company}</span>}{" "}
         {o.reconcileEnabled ? <span className="badge ok">loop enabled</span> : <span className="badge warn">loop disabled</span>}
       </h3>

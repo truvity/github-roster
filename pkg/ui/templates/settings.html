@@ -123,4 +123,17 @@
 </section>
 {{end}}
 {{end}}
+
+<section class="card">
+<h3>Stage an organization</h3>
+<p class="lede">Adds an organization to the config store, born reconcile-disabled with no credentials. Once staged it appears above with a “Create GitHub App” link that starts the manifest flow. At least one team (a group or a member) is required — a team-less org would drive member removals. A name already declared in git is ignored (git wins).</p>
+<form method="post" action="/settings/orgs" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+  <label>Organization login<br><input type="text" name="name" required placeholder="acme-inc"></label>
+  <label>Minimum owners<br><input type="number" name="minAdmins" min="0" style="width:110px" placeholder="0"></label>
+  <label>Seed team<br><input type="text" name="team" required placeholder="engineering"></label>
+  <label>Groups (comma-separated)<br><input type="text" name="groups" style="width:240px" placeholder="eng@acme.com"></label>
+  <label>Members (comma-separated)<br><input type="text" name="members" style="width:240px" placeholder="octocat"></label>
+  <button type="submit">Stage organization</button>
+</form>
+</section>
 {{end}}

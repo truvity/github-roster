@@ -229,6 +229,7 @@ func NewApp(deps *Deps) *fiber.App {
 	// GitHub App-manifest flow for a store org: start (operator-gated) hands a
 	// self-submitting form to GitHub; the callback (CSRF-guarded by the state
 	// cookie, not same-origin since GitHub redirects here) stores the App.
+	app.Post("/settings/orgs", requireOperator, sameOriginOnly, deps.handleCreateOrg)
 	app.Get("/settings/orgs/create-app", requireOperator, deps.handleCreateApp)
 	app.Get("/settings/orgs/app-callback", requireOperator, deps.handleAppCallback)
 

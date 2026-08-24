@@ -186,6 +186,12 @@ function OrgSection({ org: o, staged }: { org: SettingsOrg; staged?: boolean }) 
           {(o.teams ?? []).length === 0 && <tr><td colSpan={2} className="muted">No teams.</td></tr>}
         </tbody>
       </table>
+      {staged && (
+        <p>
+          <a href={`/settings/orgs/create-app?org=${encodeURIComponent(o.name)}`}>Create GitHub App →</a>{" "}
+          <span className="muted">redirects to GitHub; the Org Owner creates and installs it, then roster stores the credentials</span>
+        </p>
+      )}
     </section>
   );
 }

@@ -102,3 +102,10 @@ func TestMergeOrgs(t *testing.T) {
 		t.Errorf("merged = %+v", got)
 	}
 }
+
+func TestOrgAppPath(t *testing.T) {
+	s := &OrgSSM{prefix: "/roster/orgs/"}
+	if got := s.appPath("acme", fieldPrivateKey); got != "/roster/orgs/acme/app/github-private-key" {
+		t.Errorf("appPath = %q", got)
+	}
+}

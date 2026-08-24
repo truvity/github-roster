@@ -45,8 +45,9 @@ type readLayers struct {
 	Audit audit.Sink
 	// DirStore holds operator-added directories.
 	DirStore configstore.DirectoryStore
-	// OrgStore lists operator-added organizations (Settings display).
-	OrgStore configstore.OrgReader
+	// OrgStore lists operator-added organizations (Settings display) and
+	// stores App credentials from the manifest flow.
+	OrgStore configstore.OrgStore
 	// gitSources are the git-declared directory Sources (their live clients
 	// and caches survive reloads by name); cfg is retained so reloads can
 	// re-derive each store directory's mapped groups. Both back

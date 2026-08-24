@@ -10,13 +10,11 @@ import (
 	"github.com/gofiber/fiber/v3"
 
 	"github.com/truvity/github-roster/pkg/config"
-	"github.com/truvity/github-roster/pkg/ui"
 )
 
-// settingsData drives the Settings page. Read-only for now: directories,
-// organizations and teams come from the git-delivered config document, so
-// they render as managed-in-git. The store + editing (and the GitHub App
-// manifest flow) are the follow-on slices of this stream.
+// settingsData is the directories/orgs/teams view the SPA's Settings tab reads
+// over ConnectRPC (GetSettings). buildSettings assembles it; the server-
+// rendered Settings page that once consumed it is retired.
 type settingsData struct {
 	Sources []config.Source `json:"sources"`
 	// StoreSources are operator-added directories (editable/deletable here),
@@ -45,15 +43,6 @@ type settingsTeam struct {
 	Groups  []string `json:"groups,omitempty"`
 	Members []string `json:"members,omitempty"`
 	Pinned  bool     `json:"pinned,omitempty"`
-}
-
-func (d *Deps) handleSettings(c fiber.Ctx) error {
-	return d.Renderer.Render(c, fiber.StatusOK, "settings", ui.Page{
-		Title:  "Settings",
-		Nav:    "settings",
-		AuthOn: d.Auth.Enabled(),
-		Data:   d.settingsWithFlash(c),
-	})
 }
 
 // buildSettings assembles the directories, organizations and teams view
@@ -149,37 +138,6 @@ func toSettingsOrgs(orgs []config.Org) []settingsOrg {
 	return out
 }
 
-// handleSettingsAddDirectory writes an operator-added resolver-backed
-// directory to the config store. The broker's reconcile loop picks it up on
-// its next pass; it takes effect there without a restart.
-func (d *Deps) handleSettingsAddDirectory(c fiber.Ctx) error {
-	if d.DirStore == nil {
-		return fiber.NewError(fiber.StatusServiceUnavailable, "no config store configured")
-	}
-
-	name := strings.TrimSpace(formValue(c, "name"))
-	endpoint := strings.TrimSpace(formValue(c, "endpoint"))
-	probeGroup := strings.TrimSpace(formValue(c, "probeGroup"))
-
-	var domains []string
-	for _, dm := range strings.Split(formValue(c, "domains"), ",") {
-		if t := strings.TrimSpace(dm); t != "" {
-			domains = append(domains, t)
-		}
-	}
-
-	if name == "" || endpoint == "" || len(domains) == 0 {
-		return c.Redirect().To("/settings?flash=" + url.QueryEscape("a name, an endpoint and at least one domain are required"))
-	}
-
-	src := config.Source{Name: name, Endpoint: endpoint, Domains: domains, ProbeGroup: probeGroup}
-	if err := d.DirStore.Put(c.Context(), src); err != nil {
-		return c.Redirect().To("/settings?flash=" + url.QueryEscape("could not add directory: "+err.Error()))
-	}
-
-	return c.Redirect().To("/settings?flash=" + url.QueryEscape("added directory "+name+" — the reconcile loop will use it on its next pass"))
-}
-
 // splitCSV parses a comma-separated field into trimmed, non-empty values.
 func splitCSV(s string) []string {
 	var out []string
@@ -224,31 +182,4 @@ func (d *Deps) handleCreateOrg(c fiber.Ctx) error {
 	}
 
 	return c.Redirect().To("/settings?flash=" + url.QueryEscape("staged organization "+name+" — now create its GitHub App below"))
-}
-
-// handleSettingsDeleteDirectory removes an operator-added directory.
-func (d *Deps) handleSettingsDeleteDirectory(c fiber.Ctx) error {
-	if d.DirStore == nil {
-		return fiber.NewError(fiber.StatusServiceUnavailable, "no config store configured")
-	}
-
-	name := strings.TrimSpace(formValue(c, "name"))
-	if name == "" {
-		return fiber.NewError(fiber.StatusBadRequest, "name is required")
-	}
-
-	if err := d.DirStore.Delete(c.Context(), name); err != nil {
-		return c.Redirect().To("/settings?flash=" + url.QueryEscape("could not delete directory: "+err.Error()))
-	}
-
-	return c.Redirect().To("/settings?flash=deleted directory " + url.QueryEscape(name))
-}
-
-// settingsWithFlash renders the settings view with a one-shot flash from
-// the query string (post-redirect-get).
-func (d *Deps) settingsWithFlash(c fiber.Ctx) settingsData {
-	data := d.buildSettings(c.Context())
-	data.Flash = c.Query("flash")
-
-	return data
 }

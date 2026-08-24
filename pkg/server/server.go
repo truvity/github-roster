@@ -63,20 +63,6 @@ type OrgReader interface {
 	Read(ctx context.Context) (*orgstate.State, error)
 }
 
-// invalidator is the optional bust-on-write hook, called after every
-// applier run — once a Job has written to GitHub, a cached answer is
-// wrong by construction.
-type invalidator interface {
-	Invalidate()
-}
-
-// invalidate drops the reader's cache, when it has one.
-func invalidate(reader OrgReader) {
-	if cache, ok := reader.(invalidator); ok {
-		cache.Invalidate()
-	}
-}
-
 // Timeouts. The console serves small pages to humans; a request slower than
 // this is stuck, not slow.
 const (
@@ -181,50 +167,14 @@ func NewApp(deps *Deps) *fiber.App {
 	app.Get("/app", serveAppIndex)
 	app.Get("/app/*", deps.handleApp)
 
-	app.Get("/", deps.handleOverview)
-	app.Get("/structure", deps.handleStructure)
-
-	// The mapping editor and the audit log are operator surfaces: one
-	// changes access, the other records who changed it. Both are gated
-	// explicitly.
-	//
-	// The writing routes additionally refuse cross-site form posts. That
-	// is not belt-and-braces on top of the bearer token: the gateway in
-	// front of this service holds a SESSION COOKIE, so a form posted from
-	// another site would arrive with that cookie, be authenticated by the
-	// gateway, and reach here indistinguishable from a real click.
-	//
-	// The guard is STATELESS by hard-won necessity. The token-store CSRF
-	// pattern requires every POST to land on the pod that minted the
-	// token, and no amount of load-balancer affinity proved reliable —
-	// on 2026-08-01 a form GET and its POST landed on different pods
-	// straight through a cookie-hash policy, 403ing every operator
-	// write. Browsers state a request's provenance themselves
-	// (Sec-Fetch-Site, Origin), the gateway guarantees a browser is on
-	// the other end, and provenance is the whole question here.
-
-	app.Get("/mapping", requireOperator, deps.handleMapping)
-	// The person detail page is a read-only trace, viewer-accessible like
-	// Structure — it changes nothing and names no secrets.
-	app.Get("/person", deps.handlePerson)
-	app.Get("/mapping/edit", requireOperator, deps.handleMappingForm)
-	app.Post("/mapping/save", requireOperator, sameOriginOnly, deps.handleMappingSave)
-	app.Post("/mapping/delete", requireOperator, sameOriginOnly, deps.handleMappingDelete)
-	app.Get("/sync", requireOperator, deps.handleSync)
-	app.Post("/sync/preview", requireOperator, sameOriginOnly, deps.handleSyncPreview)
-	app.Post("/sync/apply", requireOperator, sameOriginOnly, deps.handleSyncApply)
-	app.Get("/sync/run", requireOperator, deps.handleSyncRun)
-	app.Get("/sync/run/stream", requireOperator, deps.handleSyncRunStream)
-
-	app.Get("/status", requireOperator, deps.handleStatus)
-	app.Post("/status/sync", requireOperator, sameOriginOnly, deps.handleStatusSync)
-	app.Post("/status/control", requireOperator, sameOriginOnly, deps.handleStatusControl)
-	app.Get("/history", requireOperator, deps.handleHistory)
-	app.Get("/settings", requireOperator, deps.handleSettings)
-	app.Post("/settings/directory", requireOperator, sameOriginOnly, deps.handleSettingsAddDirectory)
-	app.Post("/settings/directory/delete", requireOperator, sameOriginOnly, deps.handleSettingsDeleteDirectory)
-
-	app.Get("/audit", requireOperator, deps.handleAudit)
+	// The server-rendered pages are retired: the SPA under /app is the only
+	// console UI now, so land every visitor there. The read data those pages
+	// showed is served to the SPA over ConnectRPC (and the JSON /api/* the
+	// cross-repo puller consumes); operator write actions move into the SPA in
+	// a follow-up, alongside the App-manifest flow below which stays reachable.
+	app.Get("/", func(c fiber.Ctx) error {
+		return c.Redirect().To("/app")
+	})
 
 	// GitHub App-manifest flow for a store org: start (operator-gated) hands a
 	// self-submitting form to GitHub; the callback (CSRF-guarded by the state

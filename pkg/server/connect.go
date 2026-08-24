@@ -12,6 +12,7 @@ import (
 
 	rosterv1 "github.com/truvity/github-roster/gen/roster/v1"
 	"github.com/truvity/github-roster/gen/roster/v1/rosterv1connect"
+	"github.com/truvity/github-roster/pkg/config"
 )
 
 // rosterConnect implements the typed RosterService served over ConnectRPC,
@@ -31,6 +32,64 @@ func (s *rosterConnect) GetVersion(
 		Version: s.deps.Version.Version,
 		Commit:  s.deps.Version.Commit,
 	}), nil
+}
+
+// GetSettings returns the directories, orgs and teams the Settings view shows
+// (previously GET /api/settings), from the same buildSettings the SSR page uses.
+func (s *rosterConnect) GetSettings(
+	ctx context.Context,
+	_ *connect.Request[rosterv1.GetSettingsRequest],
+) (*connect.Response[rosterv1.GetSettingsResponse], error) {
+	data := s.deps.buildSettings(ctx)
+
+	resp := &rosterv1.GetSettingsResponse{
+		Sources:      protoSources(data.Sources),
+		StoreSources: protoSources(data.StoreSources),
+		Orgs:         make([]*rosterv1.Org, 0, len(data.Orgs)),
+	}
+
+	for i := range data.Orgs {
+		o := &data.Orgs[i]
+
+		teams := make([]*rosterv1.Team, 0, len(o.Teams))
+		for j := range o.Teams {
+			t := &o.Teams[j]
+			teams = append(teams, &rosterv1.Team{
+				Name:    t.Name,
+				Groups:  t.Groups,
+				Members: t.Members,
+				Pinned:  t.Pinned,
+			})
+		}
+
+		resp.Orgs = append(resp.Orgs, &rosterv1.Org{
+			Name:             o.Name,
+			Company:          o.Company,
+			MinAdmins:        int32(o.MinAdmins), //nolint:gosec // small operator-set bound
+			ReconcileEnabled: o.ReconcileEnabled,
+			Teams:            teams,
+		})
+	}
+
+	return connect.NewResponse(resp), nil
+}
+
+// protoSources maps directory sources to their proto form (the fields the
+// Settings view reads — the SSM prefix for git credentials is deliberately
+// omitted).
+func protoSources(srcs []config.Source) []*rosterv1.DirectorySource {
+	out := make([]*rosterv1.DirectorySource, 0, len(srcs))
+	for i := range srcs {
+		s := &srcs[i]
+		out = append(out, &rosterv1.DirectorySource{
+			Name:       s.Name,
+			Domains:    s.Domains,
+			Endpoint:   s.Endpoint,
+			ProbeGroup: s.ProbeGroup,
+		})
+	}
+
+	return out
 }
 
 // registerConnect mounts the ConnectRPC service on the fiber app. The generated

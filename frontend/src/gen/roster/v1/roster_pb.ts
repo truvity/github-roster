@@ -16,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file roster/v1/roster.proto.
  */
 export const file_roster_v1_roster: GenFile = /*@__PURE__*/
-  fileDesc("ChZyb3N0ZXIvdjEvcm9zdGVyLnByb3RvEglyb3N0ZXIudjEiEwoRR2V0VmVyc2lvblJlcXVlc3QiNQoSR2V0VmVyc2lvblJlc3BvbnNlEg8KB3ZlcnNpb24YASABKAkSDgoGY29tbWl0GAIgASgJMloKDVJvc3RlclNlcnZpY2USSQoKR2V0VmVyc2lvbhIcLnJvc3Rlci52MS5HZXRWZXJzaW9uUmVxdWVzdBodLnJvc3Rlci52MS5HZXRWZXJzaW9uUmVzcG9uc2VCmgEKDWNvbS5yb3N0ZXIudjFCC1Jvc3RlclByb3RvUAFaN2dpdGh1Yi5jb20vdHJ1dml0eS9naXRodWItcm9zdGVyL2dlbi9yb3N0ZXIvdjE7cm9zdGVydjGiAgNSWFiqAglSb3N0ZXIuVjHKAglSb3N0ZXJcVjHiAhVSb3N0ZXJcVjFcR1BCTWV0YWRhdGHqAgpSb3N0ZXI6OlYxYgZwcm90bzM");
+  fileDesc("ChZyb3N0ZXIvdjEvcm9zdGVyLnByb3RvEglyb3N0ZXIudjEiEwoRR2V0VmVyc2lvblJlcXVlc3QiNQoSR2V0VmVyc2lvblJlc3BvbnNlEg8KB3ZlcnNpb24YASABKAkSDgoGY29tbWl0GAIgASgJIhQKEkdldFNldHRpbmdzUmVxdWVzdCKTAQoTR2V0U2V0dGluZ3NSZXNwb25zZRIrCgdzb3VyY2VzGAEgAygLMhoucm9zdGVyLnYxLkRpcmVjdG9yeVNvdXJjZRIxCg1zdG9yZV9zb3VyY2VzGAIgAygLMhoucm9zdGVyLnYxLkRpcmVjdG9yeVNvdXJjZRIcCgRvcmdzGAMgAygLMg4ucm9zdGVyLnYxLk9yZyJXCg9EaXJlY3RvcnlTb3VyY2USDAoEbmFtZRgBIAEoCRIPCgdkb21haW5zGAIgAygJEhAKCGVuZHBvaW50GAMgASgJEhMKC3Byb2JlX2dyb3VwGAQgASgJInMKA09yZxIMCgRuYW1lGAEgASgJEg8KB2NvbXBhbnkYAiABKAkSEgoKbWluX2FkbWlucxgDIAEoBRIZChFyZWNvbmNpbGVfZW5hYmxlZBgEIAEoCBIeCgV0ZWFtcxgFIAMoCzIPLnJvc3Rlci52MS5UZWFtIkUKBFRlYW0SDAoEbmFtZRgBIAEoCRIOCgZncm91cHMYAiADKAkSDwoHbWVtYmVycxgDIAMoCRIOCgZwaW5uZWQYBCABKAgyqAEKDVJvc3RlclNlcnZpY2USSQoKR2V0VmVyc2lvbhIcLnJvc3Rlci52MS5HZXRWZXJzaW9uUmVxdWVzdBodLnJvc3Rlci52MS5HZXRWZXJzaW9uUmVzcG9uc2USTAoLR2V0U2V0dGluZ3MSHS5yb3N0ZXIudjEuR2V0U2V0dGluZ3NSZXF1ZXN0Gh4ucm9zdGVyLnYxLkdldFNldHRpbmdzUmVzcG9uc2VCmgEKDWNvbS5yb3N0ZXIudjFCC1Jvc3RlclByb3RvUAFaN2dpdGh1Yi5jb20vdHJ1dml0eS9naXRodWItcm9zdGVyL2dlbi9yb3N0ZXIvdjE7cm9zdGVydjGiAgNSWFiqAglSb3N0ZXIuVjHKAglSb3N0ZXJcVjHiAhVSb3N0ZXJcVjFcR1BCTWV0YWRhdGHqAgpSb3N0ZXI6OlYxYgZwcm90bzM");
 
 /**
  * @generated from message roster.v1.GetVersionRequest
@@ -58,6 +58,155 @@ export const GetVersionResponseSchema: GenMessage<GetVersionResponse> = /*@__PUR
   messageDesc(file_roster_v1_roster, 1);
 
 /**
+ * @generated from message roster.v1.GetSettingsRequest
+ */
+export type GetSettingsRequest = Message<"roster.v1.GetSettingsRequest"> & {
+};
+
+/**
+ * Describes the message roster.v1.GetSettingsRequest.
+ * Use `create(GetSettingsRequestSchema)` to create a new message.
+ */
+export const GetSettingsRequestSchema: GenMessage<GetSettingsRequest> = /*@__PURE__*/
+  messageDesc(file_roster_v1_roster, 2);
+
+/**
+ * @generated from message roster.v1.GetSettingsResponse
+ */
+export type GetSettingsResponse = Message<"roster.v1.GetSettingsResponse"> & {
+  /**
+   * Git-declared directory sources.
+   *
+   * @generated from field: repeated roster.v1.DirectorySource sources = 1;
+   */
+  sources: DirectorySource[];
+
+  /**
+   * Operator-added directories from the config store (editable in Settings).
+   *
+   * @generated from field: repeated roster.v1.DirectorySource store_sources = 2;
+   */
+  storeSources: DirectorySource[];
+
+  /**
+   * Managed organizations and their teams.
+   *
+   * @generated from field: repeated roster.v1.Org orgs = 3;
+   */
+  orgs: Org[];
+};
+
+/**
+ * Describes the message roster.v1.GetSettingsResponse.
+ * Use `create(GetSettingsResponseSchema)` to create a new message.
+ */
+export const GetSettingsResponseSchema: GenMessage<GetSettingsResponse> = /*@__PURE__*/
+  messageDesc(file_roster_v1_roster, 3);
+
+/**
+ * @generated from message roster.v1.DirectorySource
+ */
+export type DirectorySource = Message<"roster.v1.DirectorySource"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * @generated from field: repeated string domains = 2;
+   */
+  domains: string[];
+
+  /**
+   * Set when the source reads through a DirectoryService (google-group-sync).
+   *
+   * @generated from field: string endpoint = 3;
+   */
+  endpoint: string;
+
+  /**
+   * @generated from field: string probe_group = 4;
+   */
+  probeGroup: string;
+};
+
+/**
+ * Describes the message roster.v1.DirectorySource.
+ * Use `create(DirectorySourceSchema)` to create a new message.
+ */
+export const DirectorySourceSchema: GenMessage<DirectorySource> = /*@__PURE__*/
+  messageDesc(file_roster_v1_roster, 4);
+
+/**
+ * @generated from message roster.v1.Org
+ */
+export type Org = Message<"roster.v1.Org"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string company = 2;
+   */
+  company: string;
+
+  /**
+   * @generated from field: int32 min_admins = 3;
+   */
+  minAdmins: number;
+
+  /**
+   * @generated from field: bool reconcile_enabled = 4;
+   */
+  reconcileEnabled: boolean;
+
+  /**
+   * @generated from field: repeated roster.v1.Team teams = 5;
+   */
+  teams: Team[];
+};
+
+/**
+ * Describes the message roster.v1.Org.
+ * Use `create(OrgSchema)` to create a new message.
+ */
+export const OrgSchema: GenMessage<Org> = /*@__PURE__*/
+  messageDesc(file_roster_v1_roster, 5);
+
+/**
+ * @generated from message roster.v1.Team
+ */
+export type Team = Message<"roster.v1.Team"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * @generated from field: repeated string groups = 2;
+   */
+  groups: string[];
+
+  /**
+   * @generated from field: repeated string members = 3;
+   */
+  members: string[];
+
+  /**
+   * @generated from field: bool pinned = 4;
+   */
+  pinned: boolean;
+};
+
+/**
+ * Describes the message roster.v1.Team.
+ * Use `create(TeamSchema)` to create a new message.
+ */
+export const TeamSchema: GenMessage<Team> = /*@__PURE__*/
+  messageDesc(file_roster_v1_roster, 6);
+
+/**
  * RosterService is the read/console surface. Methods are added as the SPA
  * views move over from the huma JSON API.
  *
@@ -74,6 +223,18 @@ export const RosterService: GenService<{
     methodKind: "unary";
     input: typeof GetVersionRequestSchema;
     output: typeof GetVersionResponseSchema;
+  },
+  /**
+   * GetSettings returns the directories, organizations and teams the Settings
+   * view shows (git-declared sources plus operator-added store directories),
+   * previously fetched from GET /api/settings.
+   *
+   * @generated from rpc roster.v1.RosterService.GetSettings
+   */
+  getSettings: {
+    methodKind: "unary";
+    input: typeof GetSettingsRequestSchema;
+    output: typeof GetSettingsResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_roster_v1_roster, 0);

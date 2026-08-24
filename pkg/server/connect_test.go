@@ -10,6 +10,7 @@ import (
 	"connectrpc.com/connect"
 
 	rosterv1 "github.com/truvity/github-roster/gen/roster/v1"
+	"github.com/truvity/github-roster/pkg/config"
 	"github.com/truvity/github-roster/pkg/version"
 )
 
@@ -27,5 +28,43 @@ func TestRosterConnectGetVersion(t *testing.T) {
 
 	if got := resp.Msg.GetCommit(); got != "abcdef0" {
 		t.Errorf("commit = %q, want abcdef0", got)
+	}
+}
+
+func TestRosterConnectGetSettings(t *testing.T) {
+	deps := &Deps{Config: &config.Config{
+		Sources: []config.Source{
+			{Name: "acme", Domains: []string{"acme.example"}, Endpoint: "http://ggs-acme"},
+		},
+		Orgs: []config.Org{{
+			Name: "org1", Company: "co", MinAdmins: 2, ReconcileEnabled: true,
+			Teams: map[string]config.Team{
+				"devs": {Groups: []string{"g1@acme.example"}, Members: []string{"m1"}, Pinned: true},
+			},
+		}},
+	}}
+	s := &rosterConnect{deps: deps}
+
+	resp, err := s.GetSettings(context.Background(), connect.NewRequest(&rosterv1.GetSettingsRequest{}))
+	if err != nil {
+		t.Fatalf("GetSettings: %v", err)
+	}
+
+	if len(resp.Msg.GetSources()) != 1 || resp.Msg.GetSources()[0].GetName() != "acme" ||
+		resp.Msg.GetSources()[0].GetEndpoint() != "http://ggs-acme" {
+		t.Fatalf("sources = %+v", resp.Msg.GetSources())
+	}
+
+	if len(resp.Msg.GetOrgs()) != 1 {
+		t.Fatalf("orgs = %d, want 1", len(resp.Msg.GetOrgs()))
+	}
+
+	o := resp.Msg.GetOrgs()[0]
+	if o.GetName() != "org1" || o.GetCompany() != "co" || o.GetMinAdmins() != 2 || !o.GetReconcileEnabled() {
+		t.Errorf("org = %+v", o)
+	}
+
+	if len(o.GetTeams()) != 1 || o.GetTeams()[0].GetName() != "devs" || !o.GetTeams()[0].GetPinned() {
+		t.Errorf("teams = %+v", o.GetTeams())
 	}
 }

@@ -15,6 +15,11 @@ service RosterService {
   // GetVersion returns the running build's identity — the same information the
   // SPA header shows, previously fetched from GET /api/version.
   rpc GetVersion(GetVersionRequest) returns (GetVersionResponse);
+
+  // GetSettings returns the directories, organizations and teams the Settings
+  // view shows (git-declared sources plus operator-added store directories),
+  // previously fetched from GET /api/settings.
+  rpc GetSettings(GetSettingsRequest) returns (GetSettingsResponse);
 }
 
 message GetVersionRequest {}
@@ -24,4 +29,38 @@ message GetVersionResponse {
   string version = 1;
   // Source revision the build was cut from (empty for an untagged dev build).
   string commit = 2;
+}
+
+message GetSettingsRequest {}
+
+message GetSettingsResponse {
+  // Git-declared directory sources.
+  repeated DirectorySource sources = 1;
+  // Operator-added directories from the config store (editable in Settings).
+  repeated DirectorySource store_sources = 2;
+  // Managed organizations and their teams.
+  repeated Org orgs = 3;
+}
+
+message DirectorySource {
+  string name = 1;
+  repeated string domains = 2;
+  // Set when the source reads through a DirectoryService (google-group-sync).
+  string endpoint = 3;
+  string probe_group = 4;
+}
+
+message Org {
+  string name = 1;
+  string company = 2;
+  int32 min_admins = 3;
+  bool reconcile_enabled = 4;
+  repeated Team teams = 5;
+}
+
+message Team {
+  string name = 1;
+  repeated string groups = 2;
+  repeated string members = 3;
+  bool pinned = 4;
 }

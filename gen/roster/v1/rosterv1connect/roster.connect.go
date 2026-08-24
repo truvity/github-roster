@@ -41,6 +41,9 @@ const (
 	// RosterServiceGetVersionProcedure is the fully-qualified name of the RosterService's GetVersion
 	// RPC.
 	RosterServiceGetVersionProcedure = "/roster.v1.RosterService/GetVersion"
+	// RosterServiceGetSettingsProcedure is the fully-qualified name of the RosterService's GetSettings
+	// RPC.
+	RosterServiceGetSettingsProcedure = "/roster.v1.RosterService/GetSettings"
 )
 
 // RosterServiceClient is a client for the roster.v1.RosterService service.
@@ -48,6 +51,10 @@ type RosterServiceClient interface {
 	// GetVersion returns the running build's identity — the same information the
 	// SPA header shows, previously fetched from GET /api/version.
 	GetVersion(context.Context, *connect.Request[v1.GetVersionRequest]) (*connect.Response[v1.GetVersionResponse], error)
+	// GetSettings returns the directories, organizations and teams the Settings
+	// view shows (git-declared sources plus operator-added store directories),
+	// previously fetched from GET /api/settings.
+	GetSettings(context.Context, *connect.Request[v1.GetSettingsRequest]) (*connect.Response[v1.GetSettingsResponse], error)
 }
 
 // NewRosterServiceClient constructs a client for the roster.v1.RosterService service. By default,
@@ -67,12 +74,19 @@ func NewRosterServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(rosterServiceMethods.ByName("GetVersion")),
 			connect.WithClientOptions(opts...),
 		),
+		getSettings: connect.NewClient[v1.GetSettingsRequest, v1.GetSettingsResponse](
+			httpClient,
+			baseURL+RosterServiceGetSettingsProcedure,
+			connect.WithSchema(rosterServiceMethods.ByName("GetSettings")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // rosterServiceClient implements RosterServiceClient.
 type rosterServiceClient struct {
-	getVersion *connect.Client[v1.GetVersionRequest, v1.GetVersionResponse]
+	getVersion  *connect.Client[v1.GetVersionRequest, v1.GetVersionResponse]
+	getSettings *connect.Client[v1.GetSettingsRequest, v1.GetSettingsResponse]
 }
 
 // GetVersion calls roster.v1.RosterService.GetVersion.
@@ -80,11 +94,20 @@ func (c *rosterServiceClient) GetVersion(ctx context.Context, req *connect.Reque
 	return c.getVersion.CallUnary(ctx, req)
 }
 
+// GetSettings calls roster.v1.RosterService.GetSettings.
+func (c *rosterServiceClient) GetSettings(ctx context.Context, req *connect.Request[v1.GetSettingsRequest]) (*connect.Response[v1.GetSettingsResponse], error) {
+	return c.getSettings.CallUnary(ctx, req)
+}
+
 // RosterServiceHandler is an implementation of the roster.v1.RosterService service.
 type RosterServiceHandler interface {
 	// GetVersion returns the running build's identity — the same information the
 	// SPA header shows, previously fetched from GET /api/version.
 	GetVersion(context.Context, *connect.Request[v1.GetVersionRequest]) (*connect.Response[v1.GetVersionResponse], error)
+	// GetSettings returns the directories, organizations and teams the Settings
+	// view shows (git-declared sources plus operator-added store directories),
+	// previously fetched from GET /api/settings.
+	GetSettings(context.Context, *connect.Request[v1.GetSettingsRequest]) (*connect.Response[v1.GetSettingsResponse], error)
 }
 
 // NewRosterServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -100,10 +123,18 @@ func NewRosterServiceHandler(svc RosterServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(rosterServiceMethods.ByName("GetVersion")),
 		connect.WithHandlerOptions(opts...),
 	)
+	rosterServiceGetSettingsHandler := connect.NewUnaryHandler(
+		RosterServiceGetSettingsProcedure,
+		svc.GetSettings,
+		connect.WithSchema(rosterServiceMethods.ByName("GetSettings")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/roster.v1.RosterService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case RosterServiceGetVersionProcedure:
 			rosterServiceGetVersionHandler.ServeHTTP(w, r)
+		case RosterServiceGetSettingsProcedure:
+			rosterServiceGetSettingsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -115,4 +146,8 @@ type UnimplementedRosterServiceHandler struct{}
 
 func (UnimplementedRosterServiceHandler) GetVersion(context.Context, *connect.Request[v1.GetVersionRequest]) (*connect.Response[v1.GetVersionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("roster.v1.RosterService.GetVersion is not implemented"))
+}
+
+func (UnimplementedRosterServiceHandler) GetSettings(context.Context, *connect.Request[v1.GetSettingsRequest]) (*connect.Response[v1.GetSettingsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("roster.v1.RosterService.GetSettings is not implemented"))
 }

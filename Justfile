@@ -7,6 +7,11 @@ export GOWORK := "off"
 fmt:
     golangci-lint fmt ./...
 
+# Regenerate the protobuf + ConnectRPC code from proto/ (gen/ is committed,
+# so CI needs no buf at build time — only when the contract changes).
+generate:
+    buf generate
+
 # Rebuild the embedded TypeScript UI (frontend/dist). Run after changing
 # anything under frontend/src; dist/ is committed so CI needs no Node.
 build-ui:

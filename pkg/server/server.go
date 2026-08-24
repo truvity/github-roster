@@ -223,6 +223,7 @@ func NewApp(deps *Deps) *fiber.App {
 	app.Get("/audit", requireOperator, deps.handleAudit)
 
 	registerAPI(deps, app)
+	registerConnect(deps, app)
 
 	return app
 }

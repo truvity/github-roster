@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+// Package roster.v1 is the console's typed API, served over ConnectRPC beside
+// the existing huma JSON endpoints. The SPA (Connect-Web) and any Go client
+// share this one contract, so a drifted field is a compile error rather than a
+// runtime surprise. Endpoints are migrated off /api/* incrementally; GetVersion
+// is the first, proving the toolchain and the server wiring end to end.
+package roster.v1;
+
+option go_package = "github.com/truvity/github-roster/gen/roster/v1;rosterv1";
+
+// RosterService is the read/console surface. Methods are added as the SPA
+// views move over from the huma JSON API.
+service RosterService {
+  // GetVersion returns the running build's identity — the same information the
+  // SPA header shows, previously fetched from GET /api/version.
+  rpc GetVersion(GetVersionRequest) returns (GetVersionResponse);
+}
+
+message GetVersionRequest {}
+
+message GetVersionResponse {
+  // Semantic (or pseudo) version of the running build.
+  string version = 1;
+  // Source revision the build was cut from (empty for an untagged dev build).
+  string commit = 2;
+}

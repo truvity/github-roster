@@ -51,10 +51,10 @@ type Deps struct {
 	// DirStore holds operator-added directories (Settings writes; the
 	// broker's reconcile loop reads and applies them). Nil-safe.
 	DirStore configstore.DirectoryStore
-	// OrgStore lists operator-added organizations staged in the config store.
-	// Display only for now (Settings); not yet consumed by the reconciler.
-	// Nil-safe.
-	OrgStore configstore.OrgReader
+	// OrgStore lists operator-added organizations staged in the config store
+	// (Settings display) and stores App credentials from the manifest flow.
+	// Not yet consumed by the reconciler. Nil-safe.
+	OrgStore configstore.OrgStore
 }
 
 // OrgReader reads one organization's current GitHub state.
@@ -225,6 +225,12 @@ func NewApp(deps *Deps) *fiber.App {
 	app.Post("/settings/directory/delete", requireOperator, sameOriginOnly, deps.handleSettingsDeleteDirectory)
 
 	app.Get("/audit", requireOperator, deps.handleAudit)
+
+	// GitHub App-manifest flow for a store org: start (operator-gated) hands a
+	// self-submitting form to GitHub; the callback (CSRF-guarded by the state
+	// cookie, not same-origin since GitHub redirects here) stores the App.
+	app.Get("/settings/orgs/create-app", requireOperator, deps.handleCreateApp)
+	app.Get("/settings/orgs/app-callback", requireOperator, deps.handleAppCallback)
 
 	registerAPI(deps, app)
 	registerConnect(deps, app)

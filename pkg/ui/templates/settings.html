@@ -104,6 +104,7 @@
   <b class="muted">Minimum owners</b><span>{{.MinAdmins}}</span>
   <b class="muted">Reconcile loop</b><span><span class="badge warn">disabled</span> <span class="muted">staged in the store, not yet run</span></span>
 </div>
+<p><a href="/settings/orgs/create-app?org={{.Name}}">Create GitHub App →</a> <span class="muted">redirects to GitHub; the Org Owner reviews, creates and installs it, and roster stores the credentials</span></p>
 {{if .Teams}}
 <table>
   <thead><tr><th>Team</th><th>Membership from</th></tr></thead>

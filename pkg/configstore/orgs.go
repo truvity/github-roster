@@ -12,9 +12,34 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
+	"github.com/aws/aws-sdk-go-v2/service/ssm/types"
 
 	"github.com/truvity/github-roster/pkg/config"
 )
+
+// GitHub App credential fields written under <prefix>orgs/<name>/app/. These
+// names MUST match what the reader (pkg/app buildOrgCache) reads, so a
+// UI-created App and a Helm/ESO-provisioned one share one layout.
+const (
+	fieldAppID          = "github-app-id"
+	fieldInstallationID = "github-installation-id"
+	fieldPrivateKey     = "github-private-key"
+	fieldClientID       = "github-client-id"
+	fieldClientSecret   = "github-client-secret"  //nolint:gosec // SSM parameter name, not a secret value
+	fieldWebhookSecret  = "github-webhook-secret" //nolint:gosec // SSM parameter name, not a secret value
+)
+
+// AppCredentials is what the manifest flow captures for an org's App. The
+// installation id is 0 until the Org Owner installs the App; the private key
+// and the secrets are stored encrypted (SecureString).
+type AppCredentials struct {
+	AppID          int64
+	InstallationID int64
+	PrivateKey     string
+	ClientID       string
+	ClientSecret   string
+	WebhookSecret  string
+}
 
 // Organization fields, one SSM parameter each. Scalars live at
 // <prefix>orgs/<name>/<field>; per-team lists at
@@ -29,11 +54,18 @@ const (
 	segTeams           = "teams"
 )
 
-// OrgReader lists operator-added organizations with their teams. Credentials
-// are NEVER stored here — only pointers (the App SSM prefixes) and the team
-// group/member lists, mirroring the directory store's secret-free rule.
+// OrgReader lists operator-added organizations with their teams. The team
+// group/member lists carry no secret; the App credentials PutApp writes are
+// SecureString and never surfaced by the reader.
 type OrgReader interface {
 	ListOrgs(ctx context.Context) ([]config.Org, error)
+}
+
+// OrgStore adds the write half used by the App-manifest flow.
+type OrgStore interface {
+	OrgReader
+	// PutApp stores an org's GitHub App credentials (from the manifest flow).
+	PutApp(ctx context.Context, org string, creds AppCredentials) error
 }
 
 // OrgSSM reads organizations under <prefix>orgs/.
@@ -196,4 +228,64 @@ func MergeOrgs(iac, store []config.Org) []config.Org {
 	}
 
 	return out
+}
+
+// appPath is the SSM parameter path for one App-credential field of an org.
+func (s *OrgSSM) appPath(org, field string) string {
+	return s.prefix + org + "/app/" + field
+}
+
+// PutApp stores an org's App credentials under its store prefix. The private
+// key and the client/webhook secrets go in as SecureString; the ids as plain
+// String. A zero installation id is skipped — it is filled in once the App is
+// installed on the organization.
+func (s *OrgSSM) PutApp(ctx context.Context, org string, creds AppCredentials) error {
+	if org == "" || creds.AppID == 0 || creds.PrivateKey == "" {
+		return fmt.Errorf("org, app id and private key are required")
+	}
+
+	plain := map[string]string{
+		fieldAppID:    strconv.FormatInt(creds.AppID, 10),
+		fieldClientID: creds.ClientID,
+	}
+	if creds.InstallationID != 0 {
+		plain[fieldInstallationID] = strconv.FormatInt(creds.InstallationID, 10)
+	}
+
+	secret := map[string]string{
+		fieldPrivateKey:    creds.PrivateKey,
+		fieldClientSecret:  creds.ClientSecret,
+		fieldWebhookSecret: creds.WebhookSecret,
+	}
+
+	for field, value := range plain {
+		if err := s.putParam(ctx, s.appPath(org, field), value, types.ParameterTypeString); err != nil {
+			return err
+		}
+	}
+
+	for field, value := range secret {
+		if value == "" {
+			continue
+		}
+
+		if err := s.putParam(ctx, s.appPath(org, field), value, types.ParameterTypeSecureString); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *OrgSSM) putParam(ctx context.Context, name, value string, t types.ParameterType) error {
+	if _, err := s.client.PutParameter(ctx, &ssm.PutParameterInput{
+		Name:      aws.String(name),
+		Value:     aws.String(value),
+		Type:      t,
+		Overwrite: aws.Bool(true),
+	}); err != nil {
+		return fmt.Errorf("write %q: %w", name, err)
+	}
+
+	return nil
 }

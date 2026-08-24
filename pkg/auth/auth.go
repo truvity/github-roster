@@ -115,7 +115,11 @@ func (d *disabled) Enabled() bool { return false }
 
 func (d *disabled) Middleware() fiber.Handler {
 	return func(c fiber.Ctx) error {
-		c.Locals(ContextKey{}, Identity{Subject: "local", Name: "local operator", Role: RoleOperator})
+		id := Identity{Subject: "local", Name: "local operator", Role: RoleOperator}
+		c.Locals(ContextKey{}, id)
+		// Also expose it on the fasthttp request context so adapted net/http
+		// handlers (the ConnectRPC service) can read it via FromContext.
+		c.RequestCtx().SetUserValue(ContextKey{}, id)
 
 		return c.Next()
 	}
@@ -240,6 +244,10 @@ func (v *verifier) Middleware() fiber.Handler {
 		}
 
 		c.Locals(ContextKey{}, identity)
+		// Also expose it on the fasthttp request context so adapted net/http
+		// handlers (the ConnectRPC service, via the fiber adaptor) can read it
+		// with FromContext — fiber Locals do not cross that boundary.
+		c.RequestCtx().SetUserValue(ContextKey{}, identity)
 
 		return c.Next()
 	}

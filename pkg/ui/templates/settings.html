@@ -95,4 +95,31 @@
 {{end}}
 </section>
 {{end}}
+{{if .Data.StoreOrgs}}
+{{range .Data.StoreOrgs}}
+<section class="card">
+<h3>{{.Name}} <span class="badge warn">added here (staged)</span></h3>
+<div class="kv" style="display:grid;grid-template-columns:160px 1fr;gap:4px 12px;margin-bottom:12px">
+  <b class="muted">Home directory</b><span>{{.Company}}</span>
+  <b class="muted">Minimum owners</b><span>{{.MinAdmins}}</span>
+  <b class="muted">Reconcile loop</b><span><span class="badge warn">disabled</span> <span class="muted">staged in the store, not yet run</span></span>
+</div>
+{{if .Teams}}
+<table>
+  <thead><tr><th>Team</th><th>Membership from</th></tr></thead>
+  <tbody>
+  {{range .Teams}}
+    <tr>
+      <td>{{.Name}}</td>
+      <td>{{range $i, $g := .Groups}}{{if $i}}, {{end}}{{$g}}{{end}}{{if .Members}}<div class="muted">+ explicit: {{range $i, $m := .Members}}{{if $i}}, {{end}}{{$m}}{{end}}</div>{{end}}</td>
+    </tr>
+  {{end}}
+  </tbody>
+</table>
+{{else}}
+<p class="lede">No teams configured.</p>
+{{end}}
+</section>
+{{end}}
+{{end}}
 {{end}}

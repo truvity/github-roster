@@ -134,6 +134,7 @@ func BuildDeps(ctx context.Context, logger *slog.Logger, cfg *config.Config, inf
 		Broker:      brokerClient,
 		Audit:       layers.Audit,
 		DirStore:    layers.DirStore,
+		OrgStore:    layers.OrgStore,
 	}, nil
 }
 

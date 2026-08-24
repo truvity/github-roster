@@ -50,8 +50,11 @@ message GetSettingsResponse {
   repeated DirectorySource sources = 1;
   // Operator-added directories from the config store (editable in Settings).
   repeated DirectorySource store_sources = 2;
-  // Managed organizations and their teams.
+  // Git-declared organizations and their teams.
   repeated Org orgs = 3;
+  // Operator-added organizations staged in the config store (display only;
+  // born disabled, not yet reconciled).
+  repeated Org store_orgs = 4;
 }
 
 message DirectorySource {

@@ -45,6 +45,8 @@ type readLayers struct {
 	Audit audit.Sink
 	// DirStore holds operator-added directories.
 	DirStore configstore.DirectoryStore
+	// OrgStore lists operator-added organizations (Settings display).
+	OrgStore configstore.OrgReader
 	// gitSources are the git-declared directory Sources (their live clients
 	// and caches survive reloads by name); cfg is retained so reloads can
 	// re-derive each store directory's mapped groups. Both back
@@ -221,6 +223,7 @@ func buildReadLayers(ctx context.Context, logger *slog.Logger, cfg *config.Confi
 	layers := &readLayers{
 		Mapping:  store,
 		DirStore: configstore.NewSSM(ssmClient, cfg.Mapping.SSMPrefix),
+		OrgStore: configstore.NewOrgSSM(ssmClient, cfg.Mapping.SSMPrefix),
 		Orgs:     make(map[string]server.OrgReader, len(cfg.Orgs)),
 		cfg:      cfg,
 	}

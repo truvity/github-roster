@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   fetchRoster, fetchStatus, fetchAudit, flattenAudit,
   fetchSettings, fetchVersion,
-  type Person, type ReconcileStatus, type Change, type Settings,
+  type Person, type ReconcileStatus, type Change, type Settings, type SettingsOrg,
 } from "./api";
 
 type Tab = "people" | "status" | "history" | "settings";
@@ -162,6 +162,34 @@ function HistoryView() {
   );
 }
 
+// OrgSection renders one organization and its teams; `staged` marks a
+// store-added org (present in the config store, born disabled, not yet run).
+function OrgSection({ org: o, staged }: { org: SettingsOrg; staged?: boolean }) {
+  return (
+    <section style={{ marginTop: 16 }}>
+      <h3>
+        {o.name}{" "}
+        {staged
+          ? <span className="badge warn">added here (staged)</span>
+          : <span className="badge muted">home: {o.company}</span>}{" "}
+        {o.reconcileEnabled ? <span className="badge ok">loop enabled</span> : <span className="badge warn">loop disabled</span>}
+      </h3>
+      <table>
+        <thead><tr><th>Team</th><th>Membership from</th></tr></thead>
+        <tbody>
+          {(o.teams ?? []).map((t) => (
+            <tr key={t.name}>
+              <td>{t.name}</td>
+              <td className="muted">{t.pinned ? "pinned (operator-edited)" : [...(t.groups ?? []), ...(t.members ?? []).map((m) => `+${m}`)].join(", ")}</td>
+            </tr>
+          ))}
+          {(o.teams ?? []).length === 0 && <tr><td colSpan={2} className="muted">No teams.</td></tr>}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
 function SettingsView() {
   const { data, error } = useAsync<Settings>(fetchSettings);
   if (error) return <div className="banner">{error}</div>;
@@ -194,23 +222,8 @@ function SettingsView() {
       </table>
       <p className="muted">Add or remove directories on the classic Settings page; the loop uses them on its next pass.</p>
       <h2>Organizations</h2>
-      {(data.orgs ?? []).map((o) => (
-        <section key={o.name} style={{ marginTop: 16 }}>
-          <h3>{o.name} <span className="badge muted">home: {o.company}</span> {o.reconcileEnabled ? <span className="badge ok">loop enabled</span> : <span className="badge warn">loop disabled</span>}</h3>
-          <table>
-            <thead><tr><th>Team</th><th>Membership from</th></tr></thead>
-            <tbody>
-              {(o.teams ?? []).map((t) => (
-                <tr key={t.name}>
-                  <td>{t.name}</td>
-                  <td className="muted">{t.pinned ? "pinned (operator-edited)" : [...(t.groups ?? []), ...(t.members ?? []).map((m) => `+${m}`)].join(", ")}</td>
-                </tr>
-              ))}
-              {(o.teams ?? []).length === 0 && <tr><td colSpan={2} className="muted">No teams.</td></tr>}
-            </tbody>
-          </table>
-        </section>
-      ))}
+      {(data.orgs ?? []).map((o) => <OrgSection key={o.name} org={o} />)}
+      {(data.storeOrgs ?? []).map((o) => <OrgSection key={`store-${o.name}`} org={o} staged />)}
     </>
   );
 }

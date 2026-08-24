@@ -54,14 +54,20 @@ func (s *rosterConnect) GetSettings(
 ) (*connect.Response[rosterv1.GetSettingsResponse], error) {
 	data := s.deps.buildSettings(ctx)
 
-	resp := &rosterv1.GetSettingsResponse{
+	return connect.NewResponse(&rosterv1.GetSettingsResponse{
 		Sources:      protoSources(data.Sources),
 		StoreSources: protoSources(data.StoreSources),
-		Orgs:         make([]*rosterv1.Org, 0, len(data.Orgs)),
-	}
+		Orgs:         protoOrgs(data.Orgs),
+		StoreOrgs:    protoOrgs(data.StoreOrgs),
+	}), nil
+}
 
-	for i := range data.Orgs {
-		o := &data.Orgs[i]
+// protoOrgs maps settings orgs (git or store) to their proto form.
+func protoOrgs(orgs []settingsOrg) []*rosterv1.Org {
+	out := make([]*rosterv1.Org, 0, len(orgs))
+
+	for i := range orgs {
+		o := &orgs[i]
 
 		teams := make([]*rosterv1.Team, 0, len(o.Teams))
 		for j := range o.Teams {
@@ -74,7 +80,7 @@ func (s *rosterConnect) GetSettings(
 			})
 		}
 
-		resp.Orgs = append(resp.Orgs, &rosterv1.Org{
+		out = append(out, &rosterv1.Org{
 			Name:             o.Name,
 			Company:          o.Company,
 			MinAdmins:        int32(o.MinAdmins), //nolint:gosec // small operator-set bound
@@ -83,7 +89,7 @@ func (s *rosterConnect) GetSettings(
 		})
 	}
 
-	return connect.NewResponse(resp), nil
+	return out
 }
 
 // protoSources maps directory sources to their proto form (the fields the

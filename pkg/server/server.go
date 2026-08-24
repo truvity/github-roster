@@ -51,6 +51,10 @@ type Deps struct {
 	// DirStore holds operator-added directories (Settings writes; the
 	// broker's reconcile loop reads and applies them). Nil-safe.
 	DirStore configstore.DirectoryStore
+	// OrgStore lists operator-added organizations staged in the config store.
+	// Display only for now (Settings); not yet consumed by the reconciler.
+	// Nil-safe.
+	OrgStore configstore.OrgReader
 }
 
 // OrgReader reads one organization's current GitHub state.

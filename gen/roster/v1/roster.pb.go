@@ -159,8 +159,11 @@ type GetSettingsResponse struct {
 	Sources []*DirectorySource `protobuf:"bytes,1,rep,name=sources,proto3" json:"sources,omitempty"`
 	// Operator-added directories from the config store (editable in Settings).
 	StoreSources []*DirectorySource `protobuf:"bytes,2,rep,name=store_sources,json=storeSources,proto3" json:"store_sources,omitempty"`
-	// Managed organizations and their teams.
-	Orgs          []*Org `protobuf:"bytes,3,rep,name=orgs,proto3" json:"orgs,omitempty"`
+	// Git-declared organizations and their teams.
+	Orgs []*Org `protobuf:"bytes,3,rep,name=orgs,proto3" json:"orgs,omitempty"`
+	// Operator-added organizations staged in the config store (display only;
+	// born disabled, not yet reconciled).
+	StoreOrgs     []*Org `protobuf:"bytes,4,rep,name=store_orgs,json=storeOrgs,proto3" json:"store_orgs,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -212,6 +215,13 @@ func (x *GetSettingsResponse) GetStoreSources() []*DirectorySource {
 func (x *GetSettingsResponse) GetOrgs() []*Org {
 	if x != nil {
 		return x.Orgs
+	}
+	return nil
+}
+
+func (x *GetSettingsResponse) GetStoreOrgs() []*Org {
+	if x != nil {
+		return x.StoreOrgs
 	}
 	return nil
 }
@@ -1130,11 +1140,13 @@ const file_roster_v1_roster_proto_rawDesc = "" +
 	"\x12GetVersionResponse\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\tR\aversion\x12\x16\n" +
 	"\x06commit\x18\x02 \x01(\tR\x06commit\"\x14\n" +
-	"\x12GetSettingsRequest\"\xb0\x01\n" +
+	"\x12GetSettingsRequest\"\xdf\x01\n" +
 	"\x13GetSettingsResponse\x124\n" +
 	"\asources\x18\x01 \x03(\v2\x1a.roster.v1.DirectorySourceR\asources\x12?\n" +
 	"\rstore_sources\x18\x02 \x03(\v2\x1a.roster.v1.DirectorySourceR\fstoreSources\x12\"\n" +
-	"\x04orgs\x18\x03 \x03(\v2\x0e.roster.v1.OrgR\x04orgs\"|\n" +
+	"\x04orgs\x18\x03 \x03(\v2\x0e.roster.v1.OrgR\x04orgs\x12-\n" +
+	"\n" +
+	"store_orgs\x18\x04 \x03(\v2\x0e.roster.v1.OrgR\tstoreOrgs\"|\n" +
 	"\x0fDirectorySource\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
 	"\adomains\x18\x02 \x03(\tR\adomains\x12\x1a\n" +
@@ -1255,28 +1267,29 @@ var file_roster_v1_roster_proto_depIdxs = []int32{
 	4,  // 0: roster.v1.GetSettingsResponse.sources:type_name -> roster.v1.DirectorySource
 	4,  // 1: roster.v1.GetSettingsResponse.store_sources:type_name -> roster.v1.DirectorySource
 	5,  // 2: roster.v1.GetSettingsResponse.orgs:type_name -> roster.v1.Org
-	6,  // 3: roster.v1.Org.teams:type_name -> roster.v1.Team
-	9,  // 4: roster.v1.GetRosterResponse.people:type_name -> roster.v1.Person
-	18, // 5: roster.v1.Person.orgs:type_name -> roster.v1.Person.OrgsEntry
-	13, // 6: roster.v1.GetStatusResponse.statuses:type_name -> roster.v1.ReconcileStatus
-	16, // 7: roster.v1.GetAuditResponse.records:type_name -> roster.v1.AuditRecord
-	17, // 8: roster.v1.AuditRecord.changes:type_name -> roster.v1.AuditChange
-	10, // 9: roster.v1.Person.OrgsEntry.value:type_name -> roster.v1.Membership
-	0,  // 10: roster.v1.RosterService.GetVersion:input_type -> roster.v1.GetVersionRequest
-	2,  // 11: roster.v1.RosterService.GetSettings:input_type -> roster.v1.GetSettingsRequest
-	7,  // 12: roster.v1.RosterService.GetRoster:input_type -> roster.v1.GetRosterRequest
-	11, // 13: roster.v1.RosterService.GetStatus:input_type -> roster.v1.GetStatusRequest
-	14, // 14: roster.v1.RosterService.GetAudit:input_type -> roster.v1.GetAuditRequest
-	1,  // 15: roster.v1.RosterService.GetVersion:output_type -> roster.v1.GetVersionResponse
-	3,  // 16: roster.v1.RosterService.GetSettings:output_type -> roster.v1.GetSettingsResponse
-	8,  // 17: roster.v1.RosterService.GetRoster:output_type -> roster.v1.GetRosterResponse
-	12, // 18: roster.v1.RosterService.GetStatus:output_type -> roster.v1.GetStatusResponse
-	15, // 19: roster.v1.RosterService.GetAudit:output_type -> roster.v1.GetAuditResponse
-	15, // [15:20] is the sub-list for method output_type
-	10, // [10:15] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	5,  // 3: roster.v1.GetSettingsResponse.store_orgs:type_name -> roster.v1.Org
+	6,  // 4: roster.v1.Org.teams:type_name -> roster.v1.Team
+	9,  // 5: roster.v1.GetRosterResponse.people:type_name -> roster.v1.Person
+	18, // 6: roster.v1.Person.orgs:type_name -> roster.v1.Person.OrgsEntry
+	13, // 7: roster.v1.GetStatusResponse.statuses:type_name -> roster.v1.ReconcileStatus
+	16, // 8: roster.v1.GetAuditResponse.records:type_name -> roster.v1.AuditRecord
+	17, // 9: roster.v1.AuditRecord.changes:type_name -> roster.v1.AuditChange
+	10, // 10: roster.v1.Person.OrgsEntry.value:type_name -> roster.v1.Membership
+	0,  // 11: roster.v1.RosterService.GetVersion:input_type -> roster.v1.GetVersionRequest
+	2,  // 12: roster.v1.RosterService.GetSettings:input_type -> roster.v1.GetSettingsRequest
+	7,  // 13: roster.v1.RosterService.GetRoster:input_type -> roster.v1.GetRosterRequest
+	11, // 14: roster.v1.RosterService.GetStatus:input_type -> roster.v1.GetStatusRequest
+	14, // 15: roster.v1.RosterService.GetAudit:input_type -> roster.v1.GetAuditRequest
+	1,  // 16: roster.v1.RosterService.GetVersion:output_type -> roster.v1.GetVersionResponse
+	3,  // 17: roster.v1.RosterService.GetSettings:output_type -> roster.v1.GetSettingsResponse
+	8,  // 18: roster.v1.RosterService.GetRoster:output_type -> roster.v1.GetRosterResponse
+	12, // 19: roster.v1.RosterService.GetStatus:output_type -> roster.v1.GetStatusResponse
+	15, // 20: roster.v1.RosterService.GetAudit:output_type -> roster.v1.GetAuditResponse
+	16, // [16:21] is the sub-list for method output_type
+	11, // [11:16] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_roster_v1_roster_proto_init() }

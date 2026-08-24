@@ -22,7 +22,11 @@ type settingsData struct {
 	// distinct from the git-declared Sources above.
 	StoreSources []config.Source `json:"storeSources,omitempty"`
 	Orgs         []settingsOrg   `json:"orgs"`
-	Flash        string          `json:"-"`
+	// StoreOrgs are operator-added organizations staged in the config store,
+	// shown separately from the git-declared Orgs. Display only for now — the
+	// reconciler still runs the git orgs; a store org is born disabled.
+	StoreOrgs []settingsOrg `json:"storeOrgs,omitempty"`
+	Flash     string        `json:"-"`
 }
 
 type settingsOrg struct {
@@ -77,8 +81,40 @@ func (d *Deps) buildSettings(ctx context.Context) settingsData {
 		}
 	}
 
-	for i := range d.Config.Orgs {
-		o := &d.Config.Orgs[i]
+	data.Orgs = toSettingsOrgs(d.Config.Orgs)
+
+	// Operator-added organizations staged in the store, shown separately.
+	// Git wins by name (a store org shadowed by git is not shown twice).
+	// Display only: the reconciler is unchanged — these are staged, born
+	// disabled, and do not run until a later slice wires them behind the gate.
+	if d.OrgStore != nil {
+		if stored, err := d.OrgStore.ListOrgs(ctx); err == nil && len(stored) > 0 {
+			gitNames := make(map[string]bool, len(d.Config.Orgs))
+			for i := range d.Config.Orgs {
+				gitNames[strings.ToLower(d.Config.Orgs[i].Name)] = true
+			}
+
+			var storeOnly []config.Org
+			for i := range stored {
+				if !gitNames[strings.ToLower(stored[i].Name)] {
+					storeOnly = append(storeOnly, stored[i])
+				}
+			}
+
+			data.StoreOrgs = toSettingsOrgs(storeOnly)
+		}
+	}
+
+	return data
+}
+
+// toSettingsOrgs maps config orgs to the settings view shape (teams sorted by
+// name), shared by the git and store lists.
+func toSettingsOrgs(orgs []config.Org) []settingsOrg {
+	out := make([]settingsOrg, 0, len(orgs))
+
+	for i := range orgs {
+		o := &orgs[i]
 		so := settingsOrg{
 			Name:             o.Name,
 			Company:          o.Company,
@@ -103,10 +139,10 @@ func (d *Deps) buildSettings(ctx context.Context) settingsData {
 			})
 		}
 
-		data.Orgs = append(data.Orgs, so)
+		out = append(out, so)
 	}
 
-	return data
+	return out
 }
 
 // handleSettingsAddDirectory writes an operator-added resolver-backed

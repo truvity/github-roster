@@ -373,6 +373,22 @@ func (v *verifier) parse(raw string) (jwt.Token, error) {
 // sends no Authorization header) still presents a verifiable token.
 const headerAccessToken = "X-Auth-Request-Access-Token" //nolint:gosec // HTTP header name, not a credential
 
+// ForwardToken returns the Authorization value to forward to the broker: the
+// incoming Authorization header when present, else a Bearer built from the
+// gateway's X-Auth-Request-Access-Token (which a browser session carries
+// instead). Empty when neither is set. `get` reads a request header by name.
+func ForwardToken(get func(string) string) string {
+	if a := strings.TrimSpace(get("Authorization")); a != "" {
+		return a
+	}
+
+	if t := strings.TrimSpace(get(headerAccessToken)); t != "" {
+		return "Bearer " + t
+	}
+
+	return ""
+}
+
 // bearerToken pulls the credential out of an Authorization header. The
 // scheme is case-insensitive per RFC 7235, and proxies do normalize it.
 func bearerToken(header string) (string, bool) {

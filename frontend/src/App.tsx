@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   fetchRoster, fetchStatus, fetchAudit, flattenAudit,
-  fetchSettings, fetchVersion,
+  fetchSettings, fetchVersion, fetchMe,
   type Person, type ReconcileStatus, type Change, type Settings, type SettingsOrg,
 } from "./api";
 
@@ -243,6 +243,23 @@ function VersionBadge() {
   return <span className="version muted" title="via ConnectRPC">{data.version}{commit}</span>;
 }
 
+// UserBadge shows the signed-in caller and role, with a sign-out link. Sign
+// out goes to the oauth2-proxy gateway endpoint, which clears the session
+// cookie; the next request re-runs the OIDC login.
+function UserBadge() {
+  const { data } = useAsync(fetchMe);
+  if (!data) return null;
+  const who = data.name || data.email;
+  return (
+    <span className="user muted">
+      {who && <>{who} </>}
+      {data.role && <span className={`badge ${data.role === "operator" ? "ok" : "muted"}`}>{data.role}</span>}
+      {" · "}
+      <a href="/oauth2/sign_out" title="Sign out">sign out</a>
+    </span>
+  );
+}
+
 export function App() {
   const [tab, setTab] = useState<Tab>("people");
   const tabs: [Tab, string][] = [["people", "People"], ["status", "Status"], ["history", "History"], ["settings", "Settings"]];
@@ -252,6 +269,7 @@ export function App() {
         <span className="brand">roster</span>
         <nav>{tabs.map(([k, l]) => <a key={k} className={tab === k ? "cur" : ""} onClick={() => setTab(k)}>{l}</a>)}</nav>
         <VersionBadge />
+        <UserBadge />
       </header>
       <h1>{tabs.find(([k]) => k === tab)![1]}</h1>
       {tab === "people" && <PeopleView />}

@@ -16,7 +16,49 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file roster/v1/roster.proto.
  */
 export const file_roster_v1_roster: GenFile = /*@__PURE__*/
-  fileDesc("ChZyb3N0ZXIvdjEvcm9zdGVyLnByb3RvEglyb3N0ZXIudjEiEwoRR2V0VmVyc2lvblJlcXVlc3QiNQoSR2V0VmVyc2lvblJlc3BvbnNlEg8KB3ZlcnNpb24YASABKAkSDgoGY29tbWl0GAIgASgJIhQKEkdldFNldHRpbmdzUmVxdWVzdCK3AQoTR2V0U2V0dGluZ3NSZXNwb25zZRIrCgdzb3VyY2VzGAEgAygLMhoucm9zdGVyLnYxLkRpcmVjdG9yeVNvdXJjZRIxCg1zdG9yZV9zb3VyY2VzGAIgAygLMhoucm9zdGVyLnYxLkRpcmVjdG9yeVNvdXJjZRIcCgRvcmdzGAMgAygLMg4ucm9zdGVyLnYxLk9yZxIiCgpzdG9yZV9vcmdzGAQgAygLMg4ucm9zdGVyLnYxLk9yZyJXCg9EaXJlY3RvcnlTb3VyY2USDAoEbmFtZRgBIAEoCRIPCgdkb21haW5zGAIgAygJEhAKCGVuZHBvaW50GAMgASgJEhMKC3Byb2JlX2dyb3VwGAQgASgJIocBCgNPcmcSDAoEbmFtZRgBIAEoCRIPCgdjb21wYW55GAIgASgJEhIKCm1pbl9hZG1pbnMYAyABKAUSGQoRcmVjb25jaWxlX2VuYWJsZWQYBCABKAgSHgoFdGVhbXMYBSADKAsyDy5yb3N0ZXIudjEuVGVhbRISCgpwcm92ZW5hbmNlGAYgASgJIkUKBFRlYW0SDAoEbmFtZRgBIAEoCRIOCgZncm91cHMYAiADKAkSDwoHbWVtYmVycxgDIAMoCRIOCgZwaW5uZWQYBCABKAgiEgoQR2V0Um9zdGVyUmVxdWVzdCI2ChFHZXRSb3N0ZXJSZXNwb25zZRIhCgZwZW9wbGUYASADKAsyES5yb3N0ZXIudjEuUGVyc29uIsEBCgZQZXJzb24SDAoEbmFtZRgBIAEoCRIOCgZnaXRodWIYAiABKAkSDQoFY2xhc3MYAyABKAkSDAoEbGl2ZRgEIAEoCBINCgVzdGF0ZRgFIAEoCRIpCgRvcmdzGAYgAygLMhsucm9zdGVyLnYxLlBlcnNvbi5PcmdzRW50cnkaQgoJT3Jnc0VudHJ5EgsKA2tleRgBIAEoCRIkCgV2YWx1ZRgCIAEoCzIVLnJvc3Rlci52MS5NZW1iZXJzaGlwOgI4ASJGCgpNZW1iZXJzaGlwEg4KBm1lbWJlchgBIAEoCBIaChJpbnZpdGF0aW9uX3BlbmRpbmcYAiABKAgSDAoEcm9sZRgDIAEoCSISChBHZXRTdGF0dXNSZXF1ZXN0IkEKEUdldFN0YXR1c1Jlc3BvbnNlEiwKCHN0YXR1c2VzGAEgAygLMhoucm9zdGVyLnYxLlJlY29uY2lsZVN0YXR1cyKaAQoPUmVjb25jaWxlU3RhdHVzEgsKA29yZxgBIAEoCRIPCgdlbmFibGVkGAIgASgIEg4KBnBhdXNlZBgDIAEoCBIKCgJhdBgEIAEoCRIPCgdhY3Rpb25zGAUgASgFEg8KB2FwcGxpZWQYBiABKAgSDAoEaGVsZBgHIAEoCBIOCgZyZWFzb24YCCABKAkSDQoFZXJyb3IYCSABKAkiLQoPR2V0QXVkaXRSZXF1ZXN0EgsKA29yZxgBIAEoCRINCgVsaW1pdBgCIAEoBSI7ChBHZXRBdWRpdFJlc3BvbnNlEicKB3JlY29yZHMYASADKAsyFi5yb3N0ZXIudjEuQXVkaXRSZWNvcmQixQEKC0F1ZGl0UmVjb3JkEgoKAmF0GAEgASgJEgsKA29yZxgCIAEoCRIMCgRraW5kGAMgASgJEhEKCWNvbmZpcm1lZBgEIAEoCBINCgVhY3RvchgFIAEoCRITCgthY3Rvcl9lbWFpbBgGIAEoCRIOCgZhZGRpbmcYByADKAkSEAoIcmVtb3ZpbmcYCCADKAkSJwoHY2hhbmdlcxgJIAMoCzIWLnJvc3Rlci52MS5BdWRpdENoYW5nZRINCgVlcnJvchgKIAEoCSJKCgtBdWRpdENoYW5nZRIMCgR2ZXJiGAEgASgJEg8KB3N1YmplY3QYAiABKAkSDAoEdGVhbRgDIAEoCRIOCgZkZXRhaWwYBCABKAky/QIKDVJvc3RlclNlcnZpY2USSQoKR2V0VmVyc2lvbhIcLnJvc3Rlci52MS5HZXRWZXJzaW9uUmVxdWVzdBodLnJvc3Rlci52MS5HZXRWZXJzaW9uUmVzcG9uc2USTAoLR2V0U2V0dGluZ3MSHS5yb3N0ZXIudjEuR2V0U2V0dGluZ3NSZXF1ZXN0Gh4ucm9zdGVyLnYxLkdldFNldHRpbmdzUmVzcG9uc2USRgoJR2V0Um9zdGVyEhsucm9zdGVyLnYxLkdldFJvc3RlclJlcXVlc3QaHC5yb3N0ZXIudjEuR2V0Um9zdGVyUmVzcG9uc2USRgoJR2V0U3RhdHVzEhsucm9zdGVyLnYxLkdldFN0YXR1c1JlcXVlc3QaHC5yb3N0ZXIudjEuR2V0U3RhdHVzUmVzcG9uc2USQwoIR2V0QXVkaXQSGi5yb3N0ZXIudjEuR2V0QXVkaXRSZXF1ZXN0Ghsucm9zdGVyLnYxLkdldEF1ZGl0UmVzcG9uc2VCmgEKDWNvbS5yb3N0ZXIudjFCC1Jvc3RlclByb3RvUAFaN2dpdGh1Yi5jb20vdHJ1dml0eS9naXRodWItcm9zdGVyL2dlbi9yb3N0ZXIvdjE7cm9zdGVydjGiAgNSWFiqAglSb3N0ZXIuVjHKAglSb3N0ZXJcVjHiAhVSb3N0ZXJcVjFcR1BCTWV0YWRhdGHqAgpSb3N0ZXI6OlYxYgZwcm90bzM");
+  fileDesc("ChZyb3N0ZXIvdjEvcm9zdGVyLnByb3RvEglyb3N0ZXIudjEiDgoMR2V0TWVSZXF1ZXN0IjoKDUdldE1lUmVzcG9uc2USDAoEbmFtZRgBIAEoCRINCgVlbWFpbBgCIAEoCRIMCgRyb2xlGAMgASgJIhMKEUdldFZlcnNpb25SZXF1ZXN0IjUKEkdldFZlcnNpb25SZXNwb25zZRIPCgd2ZXJzaW9uGAEgASgJEg4KBmNvbW1pdBgCIAEoCSIUChJHZXRTZXR0aW5nc1JlcXVlc3QitwEKE0dldFNldHRpbmdzUmVzcG9uc2USKwoHc291cmNlcxgBIAMoCzIaLnJvc3Rlci52MS5EaXJlY3RvcnlTb3VyY2USMQoNc3RvcmVfc291cmNlcxgCIAMoCzIaLnJvc3Rlci52MS5EaXJlY3RvcnlTb3VyY2USHAoEb3JncxgDIAMoCzIOLnJvc3Rlci52MS5PcmcSIgoKc3RvcmVfb3JncxgEIAMoCzIOLnJvc3Rlci52MS5PcmciVwoPRGlyZWN0b3J5U291cmNlEgwKBG5hbWUYASABKAkSDwoHZG9tYWlucxgCIAMoCRIQCghlbmRwb2ludBgDIAEoCRITCgtwcm9iZV9ncm91cBgEIAEoCSKHAQoDT3JnEgwKBG5hbWUYASABKAkSDwoHY29tcGFueRgCIAEoCRISCgptaW5fYWRtaW5zGAMgASgFEhkKEXJlY29uY2lsZV9lbmFibGVkGAQgASgIEh4KBXRlYW1zGAUgAygLMg8ucm9zdGVyLnYxLlRlYW0SEgoKcHJvdmVuYW5jZRgGIAEoCSJFCgRUZWFtEgwKBG5hbWUYASABKAkSDgoGZ3JvdXBzGAIgAygJEg8KB21lbWJlcnMYAyADKAkSDgoGcGlubmVkGAQgASgIIhIKEEdldFJvc3RlclJlcXVlc3QiNgoRR2V0Um9zdGVyUmVzcG9uc2USIQoGcGVvcGxlGAEgAygLMhEucm9zdGVyLnYxLlBlcnNvbiLBAQoGUGVyc29uEgwKBG5hbWUYASABKAkSDgoGZ2l0aHViGAIgASgJEg0KBWNsYXNzGAMgASgJEgwKBGxpdmUYBCABKAgSDQoFc3RhdGUYBSABKAkSKQoEb3JncxgGIAMoCzIbLnJvc3Rlci52MS5QZXJzb24uT3Jnc0VudHJ5GkIKCU9yZ3NFbnRyeRILCgNrZXkYASABKAkSJAoFdmFsdWUYAiABKAsyFS5yb3N0ZXIudjEuTWVtYmVyc2hpcDoCOAEiRgoKTWVtYmVyc2hpcBIOCgZtZW1iZXIYASABKAgSGgoSaW52aXRhdGlvbl9wZW5kaW5nGAIgASgIEgwKBHJvbGUYAyABKAkiEgoQR2V0U3RhdHVzUmVxdWVzdCJBChFHZXRTdGF0dXNSZXNwb25zZRIsCghzdGF0dXNlcxgBIAMoCzIaLnJvc3Rlci52MS5SZWNvbmNpbGVTdGF0dXMimgEKD1JlY29uY2lsZVN0YXR1cxILCgNvcmcYASABKAkSDwoHZW5hYmxlZBgCIAEoCBIOCgZwYXVzZWQYAyABKAgSCgoCYXQYBCABKAkSDwoHYWN0aW9ucxgFIAEoBRIPCgdhcHBsaWVkGAYgASgIEgwKBGhlbGQYByABKAgSDgoGcmVhc29uGAggASgJEg0KBWVycm9yGAkgASgJIi0KD0dldEF1ZGl0UmVxdWVzdBILCgNvcmcYASABKAkSDQoFbGltaXQYAiABKAUiOwoQR2V0QXVkaXRSZXNwb25zZRInCgdyZWNvcmRzGAEgAygLMhYucm9zdGVyLnYxLkF1ZGl0UmVjb3JkIsUBCgtBdWRpdFJlY29yZBIKCgJhdBgBIAEoCRILCgNvcmcYAiABKAkSDAoEa2luZBgDIAEoCRIRCgljb25maXJtZWQYBCABKAgSDQoFYWN0b3IYBSABKAkSEwoLYWN0b3JfZW1haWwYBiABKAkSDgoGYWRkaW5nGAcgAygJEhAKCHJlbW92aW5nGAggAygJEicKB2NoYW5nZXMYCSADKAsyFi5yb3N0ZXIudjEuQXVkaXRDaGFuZ2USDQoFZXJyb3IYCiABKAkiSgoLQXVkaXRDaGFuZ2USDAoEdmVyYhgBIAEoCRIPCgdzdWJqZWN0GAIgASgJEgwKBHRlYW0YAyABKAkSDgoGZGV0YWlsGAQgASgJMrkDCg1Sb3N0ZXJTZXJ2aWNlEkkKCkdldFZlcnNpb24SHC5yb3N0ZXIudjEuR2V0VmVyc2lvblJlcXVlc3QaHS5yb3N0ZXIudjEuR2V0VmVyc2lvblJlc3BvbnNlEkwKC0dldFNldHRpbmdzEh0ucm9zdGVyLnYxLkdldFNldHRpbmdzUmVxdWVzdBoeLnJvc3Rlci52MS5HZXRTZXR0aW5nc1Jlc3BvbnNlEkYKCUdldFJvc3RlchIbLnJvc3Rlci52MS5HZXRSb3N0ZXJSZXF1ZXN0Ghwucm9zdGVyLnYxLkdldFJvc3RlclJlc3BvbnNlEkYKCUdldFN0YXR1cxIbLnJvc3Rlci52MS5HZXRTdGF0dXNSZXF1ZXN0Ghwucm9zdGVyLnYxLkdldFN0YXR1c1Jlc3BvbnNlEkMKCEdldEF1ZGl0Ehoucm9zdGVyLnYxLkdldEF1ZGl0UmVxdWVzdBobLnJvc3Rlci52MS5HZXRBdWRpdFJlc3BvbnNlEjoKBUdldE1lEhcucm9zdGVyLnYxLkdldE1lUmVxdWVzdBoYLnJvc3Rlci52MS5HZXRNZVJlc3BvbnNlQpoBCg1jb20ucm9zdGVyLnYxQgtSb3N0ZXJQcm90b1ABWjdnaXRodWIuY29tL3RydXZpdHkvZ2l0aHViLXJvc3Rlci9nZW4vcm9zdGVyL3YxO3Jvc3RlcnYxogIDUlhYqgIJUm9zdGVyLlYxygIJUm9zdGVyXFYx4gIVUm9zdGVyXFYxXEdQQk1ldGFkYXRh6gIKUm9zdGVyOjpWMWIGcHJvdG8z");
+
+/**
+ * @generated from message roster.v1.GetMeRequest
+ */
+export type GetMeRequest = Message<"roster.v1.GetMeRequest"> & {
+};
+
+/**
+ * Describes the message roster.v1.GetMeRequest.
+ * Use `create(GetMeRequestSchema)` to create a new message.
+ */
+export const GetMeRequestSchema: GenMessage<GetMeRequest> = /*@__PURE__*/
+  messageDesc(file_roster_v1_roster, 0);
+
+/**
+ * @generated from message roster.v1.GetMeResponse
+ */
+export type GetMeResponse = Message<"roster.v1.GetMeResponse"> & {
+  /**
+   * Display name, email address, and role ("operator" | "viewer" | "").
+   *
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string email = 2;
+   */
+  email: string;
+
+  /**
+   * @generated from field: string role = 3;
+   */
+  role: string;
+};
+
+/**
+ * Describes the message roster.v1.GetMeResponse.
+ * Use `create(GetMeResponseSchema)` to create a new message.
+ */
+export const GetMeResponseSchema: GenMessage<GetMeResponse> = /*@__PURE__*/
+  messageDesc(file_roster_v1_roster, 1);
 
 /**
  * @generated from message roster.v1.GetVersionRequest
@@ -29,7 +71,7 @@ export type GetVersionRequest = Message<"roster.v1.GetVersionRequest"> & {
  * Use `create(GetVersionRequestSchema)` to create a new message.
  */
 export const GetVersionRequestSchema: GenMessage<GetVersionRequest> = /*@__PURE__*/
-  messageDesc(file_roster_v1_roster, 0);
+  messageDesc(file_roster_v1_roster, 2);
 
 /**
  * @generated from message roster.v1.GetVersionResponse
@@ -55,7 +97,7 @@ export type GetVersionResponse = Message<"roster.v1.GetVersionResponse"> & {
  * Use `create(GetVersionResponseSchema)` to create a new message.
  */
 export const GetVersionResponseSchema: GenMessage<GetVersionResponse> = /*@__PURE__*/
-  messageDesc(file_roster_v1_roster, 1);
+  messageDesc(file_roster_v1_roster, 3);
 
 /**
  * @generated from message roster.v1.GetSettingsRequest
@@ -68,7 +110,7 @@ export type GetSettingsRequest = Message<"roster.v1.GetSettingsRequest"> & {
  * Use `create(GetSettingsRequestSchema)` to create a new message.
  */
 export const GetSettingsRequestSchema: GenMessage<GetSettingsRequest> = /*@__PURE__*/
-  messageDesc(file_roster_v1_roster, 2);
+  messageDesc(file_roster_v1_roster, 4);
 
 /**
  * @generated from message roster.v1.GetSettingsResponse
@@ -109,7 +151,7 @@ export type GetSettingsResponse = Message<"roster.v1.GetSettingsResponse"> & {
  * Use `create(GetSettingsResponseSchema)` to create a new message.
  */
 export const GetSettingsResponseSchema: GenMessage<GetSettingsResponse> = /*@__PURE__*/
-  messageDesc(file_roster_v1_roster, 3);
+  messageDesc(file_roster_v1_roster, 5);
 
 /**
  * @generated from message roster.v1.DirectorySource
@@ -143,7 +185,7 @@ export type DirectorySource = Message<"roster.v1.DirectorySource"> & {
  * Use `create(DirectorySourceSchema)` to create a new message.
  */
 export const DirectorySourceSchema: GenMessage<DirectorySource> = /*@__PURE__*/
-  messageDesc(file_roster_v1_roster, 4);
+  messageDesc(file_roster_v1_roster, 6);
 
 /**
  * @generated from message roster.v1.Org
@@ -188,7 +230,7 @@ export type Org = Message<"roster.v1.Org"> & {
  * Use `create(OrgSchema)` to create a new message.
  */
 export const OrgSchema: GenMessage<Org> = /*@__PURE__*/
-  messageDesc(file_roster_v1_roster, 5);
+  messageDesc(file_roster_v1_roster, 7);
 
 /**
  * @generated from message roster.v1.Team
@@ -220,7 +262,7 @@ export type Team = Message<"roster.v1.Team"> & {
  * Use `create(TeamSchema)` to create a new message.
  */
 export const TeamSchema: GenMessage<Team> = /*@__PURE__*/
-  messageDesc(file_roster_v1_roster, 6);
+  messageDesc(file_roster_v1_roster, 8);
 
 /**
  * @generated from message roster.v1.GetRosterRequest
@@ -233,7 +275,7 @@ export type GetRosterRequest = Message<"roster.v1.GetRosterRequest"> & {
  * Use `create(GetRosterRequestSchema)` to create a new message.
  */
 export const GetRosterRequestSchema: GenMessage<GetRosterRequest> = /*@__PURE__*/
-  messageDesc(file_roster_v1_roster, 7);
+  messageDesc(file_roster_v1_roster, 9);
 
 /**
  * @generated from message roster.v1.GetRosterResponse
@@ -250,7 +292,7 @@ export type GetRosterResponse = Message<"roster.v1.GetRosterResponse"> & {
  * Use `create(GetRosterResponseSchema)` to create a new message.
  */
 export const GetRosterResponseSchema: GenMessage<GetRosterResponse> = /*@__PURE__*/
-  messageDesc(file_roster_v1_roster, 8);
+  messageDesc(file_roster_v1_roster, 10);
 
 /**
  * @generated from message roster.v1.Person
@@ -292,7 +334,7 @@ export type Person = Message<"roster.v1.Person"> & {
  * Use `create(PersonSchema)` to create a new message.
  */
 export const PersonSchema: GenMessage<Person> = /*@__PURE__*/
-  messageDesc(file_roster_v1_roster, 9);
+  messageDesc(file_roster_v1_roster, 11);
 
 /**
  * @generated from message roster.v1.Membership
@@ -319,7 +361,7 @@ export type Membership = Message<"roster.v1.Membership"> & {
  * Use `create(MembershipSchema)` to create a new message.
  */
 export const MembershipSchema: GenMessage<Membership> = /*@__PURE__*/
-  messageDesc(file_roster_v1_roster, 10);
+  messageDesc(file_roster_v1_roster, 12);
 
 /**
  * @generated from message roster.v1.GetStatusRequest
@@ -332,7 +374,7 @@ export type GetStatusRequest = Message<"roster.v1.GetStatusRequest"> & {
  * Use `create(GetStatusRequestSchema)` to create a new message.
  */
 export const GetStatusRequestSchema: GenMessage<GetStatusRequest> = /*@__PURE__*/
-  messageDesc(file_roster_v1_roster, 11);
+  messageDesc(file_roster_v1_roster, 13);
 
 /**
  * @generated from message roster.v1.GetStatusResponse
@@ -349,7 +391,7 @@ export type GetStatusResponse = Message<"roster.v1.GetStatusResponse"> & {
  * Use `create(GetStatusResponseSchema)` to create a new message.
  */
 export const GetStatusResponseSchema: GenMessage<GetStatusResponse> = /*@__PURE__*/
-  messageDesc(file_roster_v1_roster, 12);
+  messageDesc(file_roster_v1_roster, 14);
 
 /**
  * @generated from message roster.v1.ReconcileStatus
@@ -408,7 +450,7 @@ export type ReconcileStatus = Message<"roster.v1.ReconcileStatus"> & {
  * Use `create(ReconcileStatusSchema)` to create a new message.
  */
 export const ReconcileStatusSchema: GenMessage<ReconcileStatus> = /*@__PURE__*/
-  messageDesc(file_roster_v1_roster, 13);
+  messageDesc(file_roster_v1_roster, 15);
 
 /**
  * @generated from message roster.v1.GetAuditRequest
@@ -434,7 +476,7 @@ export type GetAuditRequest = Message<"roster.v1.GetAuditRequest"> & {
  * Use `create(GetAuditRequestSchema)` to create a new message.
  */
 export const GetAuditRequestSchema: GenMessage<GetAuditRequest> = /*@__PURE__*/
-  messageDesc(file_roster_v1_roster, 14);
+  messageDesc(file_roster_v1_roster, 16);
 
 /**
  * @generated from message roster.v1.GetAuditResponse
@@ -451,7 +493,7 @@ export type GetAuditResponse = Message<"roster.v1.GetAuditResponse"> & {
  * Use `create(GetAuditResponseSchema)` to create a new message.
  */
 export const GetAuditResponseSchema: GenMessage<GetAuditResponse> = /*@__PURE__*/
-  messageDesc(file_roster_v1_roster, 15);
+  messageDesc(file_roster_v1_roster, 17);
 
 /**
  * @generated from message roster.v1.AuditRecord
@@ -515,7 +557,7 @@ export type AuditRecord = Message<"roster.v1.AuditRecord"> & {
  * Use `create(AuditRecordSchema)` to create a new message.
  */
 export const AuditRecordSchema: GenMessage<AuditRecord> = /*@__PURE__*/
-  messageDesc(file_roster_v1_roster, 16);
+  messageDesc(file_roster_v1_roster, 18);
 
 /**
  * @generated from message roster.v1.AuditChange
@@ -547,7 +589,7 @@ export type AuditChange = Message<"roster.v1.AuditChange"> & {
  * Use `create(AuditChangeSchema)` to create a new message.
  */
 export const AuditChangeSchema: GenMessage<AuditChange> = /*@__PURE__*/
-  messageDesc(file_roster_v1_roster, 17);
+  messageDesc(file_roster_v1_roster, 19);
 
 /**
  * RosterService is the read/console surface. Methods are added as the SPA
@@ -611,6 +653,18 @@ export const RosterService: GenService<{
     methodKind: "unary";
     input: typeof GetAuditRequestSchema;
     output: typeof GetAuditResponseSchema;
+  },
+  /**
+   * GetMe returns the signed-in caller (name, email, role) as the gateway
+   * forwards it, so the SPA header can show who is logged in and whether they
+   * may operate or only view.
+   *
+   * @generated from rpc roster.v1.RosterService.GetMe
+   */
+  getMe: {
+    methodKind: "unary";
+    input: typeof GetMeRequestSchema;
+    output: typeof GetMeResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_roster_v1_roster, 0);

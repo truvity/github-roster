@@ -14,6 +14,7 @@ import (
 
 	rosterv1 "github.com/truvity/github-roster/gen/roster/v1"
 	"github.com/truvity/github-roster/gen/roster/v1/rosterv1connect"
+	"github.com/truvity/github-roster/pkg/auth"
 	"github.com/truvity/github-roster/pkg/config"
 )
 
@@ -159,7 +160,7 @@ func (s *rosterConnect) GetStatus(
 		return nil, connect.NewError(connect.CodeUnavailable, errors.New("no applier broker is configured"))
 	}
 
-	statuses, err := s.deps.Broker.ReconcileStatus(ctx, req.Header().Get("Authorization"))
+	statuses, err := s.deps.Broker.ReconcileStatus(ctx, auth.ForwardToken(req.Header().Get))
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnavailable, err)
 	}
@@ -232,6 +233,30 @@ func (s *rosterConnect) GetAudit(
 	}
 
 	return connect.NewResponse(&rosterv1.GetAuditResponse{Records: out}), nil
+}
+
+// GetMe returns the signed-in caller as the gateway forwards it: name and
+// email from the oauth2-proxy X-Auth-Request-* headers, role derived from the
+// forwarded groups with the same operator-wins rule as token verification.
+// When auth is disabled (local dev) every caller is the local operator.
+func (s *rosterConnect) GetMe(
+	_ context.Context,
+	req *connect.Request[rosterv1.GetMeRequest],
+) (*connect.Response[rosterv1.GetMeResponse], error) {
+	if !s.deps.Auth.Enabled() {
+		return connect.NewResponse(&rosterv1.GetMeResponse{
+			Name: "local operator", Role: string(auth.RoleOperator),
+		}), nil
+	}
+
+	h := req.Header()
+	role := auth.RoleFromGroups(auth.SplitGroups(h.Get("X-Auth-Request-Groups")), s.deps.Config.OIDC.Roles)
+
+	return connect.NewResponse(&rosterv1.GetMeResponse{
+		Name:  h.Get("X-Auth-Request-User"),
+		Email: h.Get("X-Auth-Request-Email"),
+		Role:  string(role),
+	}), nil
 }
 
 // registerConnect mounts the ConnectRPC service on the fiber app. The generated

@@ -1,5 +1,6 @@
 {
   "packages": [
+    "buf@latest",
     "go@latest",
     "golangci-lint@latest",
     "gopls@latest",

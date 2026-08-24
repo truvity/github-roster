@@ -8,5 +8,11 @@ plugins:
   - remote: buf.build/connectrpc/go
     out: gen
     opt: paths=source_relative
+  # TypeScript for the SPA (Connect-Web). protobuf-es v2 emits the message
+  # schemas AND the service descriptor (GenService), which @connectrpc/connect
+  # v2 consumes via createClient — so no separate connect-es plugin.
+  - remote: buf.build/bufbuild/es
+    out: frontend/src/gen
+    opt: target=ts
 inputs:
   - directory: proto

@@ -1,3 +1,21 @@
+import { createClient } from "@connectrpc/connect";
+import { createConnectTransport } from "@connectrpc/connect-web";
+import { RosterService } from "./gen/roster/v1/roster_pb.js";
+
+// rosterClient is the typed ConnectRPC (Connect-Web) client. It talks to the
+// same server as the fetch() calls below, but over the generated contract —
+// the first endpoint migrated off the ad-hoc /api/* JSON, with more views to
+// follow.
+const rosterClient = createClient(RosterService, createConnectTransport({ baseUrl: "/" }));
+
+// fetchVersion returns the running build's identity via ConnectRPC
+// (replacing a JSON GET /api/version).
+export async function fetchVersion(signal?: AbortSignal): Promise<{ version: string; commit: string }> {
+  const resp = await rosterClient.getVersion({}, { signal });
+
+  return { version: resp.version, commit: resp.commit };
+}
+
 // Types mirror the console's JSON API (/api/roster). Kept minimal — the
 // fields the People view reads.
 export interface Membership {

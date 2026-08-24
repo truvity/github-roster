@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   fetchRoster, fetchStatus, fetchAudit, flattenAudit,
-  fetchSettings,
+  fetchSettings, fetchVersion,
   type Person, type ReconcileStatus, type Change, type Settings,
 } from "./api";
 
@@ -215,6 +215,15 @@ function SettingsView() {
   );
 }
 
+// VersionBadge shows the running build, fetched over ConnectRPC — the first
+// Connect-Web call, proving the typed client end to end.
+function VersionBadge() {
+  const { data } = useAsync(fetchVersion);
+  if (!data) return null;
+  const commit = data.commit ? ` (${data.commit.slice(0, 7)})` : "";
+  return <span className="version muted" title="via ConnectRPC">{data.version}{commit}</span>;
+}
+
 export function App() {
   const [tab, setTab] = useState<Tab>("people");
   const tabs: [Tab, string][] = [["people", "People"], ["status", "Status"], ["history", "History"], ["settings", "Settings"]];
@@ -223,6 +232,7 @@ export function App() {
       <header>
         <span className="brand">roster</span>
         <nav>{tabs.map(([k, l]) => <a key={k} className={tab === k ? "cur" : ""} onClick={() => setTab(k)}>{l}</a>)}</nav>
+        <VersionBadge />
       </header>
       <h1>{tabs.find(([k]) => k === tab)![1]}</h1>
       {tab === "people" && <PeopleView />}

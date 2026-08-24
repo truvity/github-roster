@@ -11,6 +11,7 @@ import (
 
 	"github.com/truvity/github-roster/pkg/config"
 	"github.com/truvity/github-roster/pkg/directory"
+	"github.com/truvity/github-roster/pkg/orgstate"
 )
 
 type fakeDirStore struct{ dirs []config.Source }
@@ -64,5 +65,72 @@ func TestReloadDirectories(t *testing.T) {
 
 	if len(git.Sources) != 1 {
 		t.Fatal("git config Sources must not be mutated by a reload")
+	}
+}
+
+// stubPart is a minimal orgstate.PartReader recording ReadMembership calls, so
+// a test can tell which cache a reloadableOrg is currently delegating to.
+type stubPart struct{ reads int }
+
+func (s *stubPart) ReadMembership(context.Context) (*orgstate.Membership, error) {
+	s.reads++
+
+	return &orgstate.Membership{}, nil
+}
+
+func (s *stubPart) ReadTeams(context.Context) (*orgstate.TeamState, error) {
+	return &orgstate.TeamState{}, nil
+}
+
+// TestReloadableOrgSwap: the wrapper swaps its reader only when the credentials
+// fingerprint changes (preserving the warm cache otherwise), and Read/Invalidate
+// always delegate to the current reader.
+func TestReloadableOrgSwap(t *testing.T) {
+	p1 := &stubPart{}
+	ro := &reloadableOrg{name: "acme", fp: "fp1"}
+	ro.current.Store(orgstate.NewCache("acme", p1))
+
+	// Same fingerprint: no swap, and Read still hits p1.
+	if ro.swapIfChanged(orgstate.NewCache("acme", &stubPart{}), "fp1") {
+		t.Fatal("swapIfChanged returned true for an unchanged fingerprint")
+	}
+
+	if _, err := ro.Read(context.Background()); err != nil {
+		t.Fatalf("read: %v", err)
+	}
+
+	if p1.reads == 0 {
+		t.Fatal("Read did not delegate to the current (p1) cache")
+	}
+
+	// Changed fingerprint: swap to p2, and Read now hits p2.
+	p2 := &stubPart{}
+	if !ro.swapIfChanged(orgstate.NewCache("acme", p2), "fp2") {
+		t.Fatal("swapIfChanged returned false for a changed fingerprint")
+	}
+
+	if _, err := ro.Read(context.Background()); err != nil {
+		t.Fatalf("read after swap: %v", err)
+	}
+
+	if p2.reads == 0 {
+		t.Fatal("Read did not delegate to the swapped-in (p2) cache")
+	}
+}
+
+// TestCredFingerprint: stable, sensitive to a rotated key, and unambiguous
+// across field boundaries (the unit separator).
+func TestCredFingerprint(t *testing.T) {
+	first := credFingerprint("1", "2", "key")
+	if again := credFingerprint("1", "2", "key"); first != again {
+		t.Fatal("fingerprint is not stable")
+	}
+
+	if credFingerprint("1", "2", "key") == credFingerprint("1", "2", "rotated") {
+		t.Fatal("fingerprint collides across a rotated private key")
+	}
+
+	if credFingerprint("12", "", "x") == credFingerprint("1", "2x", "") {
+		t.Fatal("fingerprint is ambiguous across field boundaries")
 	}
 }

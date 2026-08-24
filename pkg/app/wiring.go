@@ -2,9 +2,12 @@ package app
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"log/slog"
 	"strconv"
+	"sync/atomic"
 
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -48,6 +51,76 @@ type readLayers struct {
 	// reloadDirectories, the console's live counterpart to the broker's.
 	gitSources []directory.Source
 	cfg        *config.Config
+	// secretsReader + reloadableOrgs back reloadOrgs: each org's GitHub App
+	// client is rebuilt live when its SSM credentials rotate, without a
+	// restart. secretsReader re-reads the credentials each pass.
+	secretsReader  *secrets.Reader
+	reloadableOrgs []*reloadableOrg
+}
+
+// reloadableOrg wraps an org's cached GitHub reader behind an atomic pointer
+// so the App client can be rebuilt on the fly. The org SET is git-static, so
+// the Orgs map itself never changes (no map-swap race); only the reader inside
+// each entry is swapped, and only when the credentials actually change (a
+// fingerprint guard), which preserves the cache across no-op reloads.
+type reloadableOrg struct {
+	name    string
+	org     *config.Org
+	current atomic.Pointer[orgstate.Cache]
+	// fp is the credentials fingerprint of the current reader. Read and
+	// written only by the single reload goroutine (and once at startup), so
+	// it needs no synchronization of its own; the reader swap is what
+	// concurrent request handlers observe, and that goes through current.
+	fp string
+}
+
+// Read serves the current reader; satisfies server.OrgReader.
+func (r *reloadableOrg) Read(ctx context.Context) (*orgstate.State, error) {
+	return r.current.Load().Read(ctx)
+}
+
+// Invalidate busts the current reader's cache; satisfies the server's
+// invalidator so the applier's post-run cache drop still reaches through.
+func (r *reloadableOrg) Invalidate() {
+	r.current.Load().Invalidate()
+}
+
+// swapIfChanged installs a freshly-built reader only when the credentials
+// fingerprint differs, so an unchanged reload keeps the warm cache. Returns
+// whether it swapped. Called only from the reload goroutine.
+func (r *reloadableOrg) swapIfChanged(cache *orgstate.Cache, fp string) bool {
+	if fp == r.fp {
+		return false
+	}
+
+	r.fp = fp
+	r.current.Store(cache)
+
+	return true
+}
+
+// reloadOrgs re-reads each org's GitHub App credentials and rebuilds its
+// reader when they have rotated — the console's App-client live reload. A
+// per-org read failure keeps the current client (best-effort, like the
+// directory reload).
+func (l *readLayers) reloadOrgs(ctx context.Context, logger *slog.Logger) {
+	if l.secretsReader == nil {
+		return
+	}
+
+	for _, ro := range l.reloadableOrgs {
+		cache, fp, err := buildOrgCache(ctx, l.secretsReader, ro.org)
+		if err != nil {
+			logger.WarnContext(ctx, "org reload: rebuilding the App client failed; keeping current",
+				"org", ro.name, "error", err)
+
+			continue
+		}
+
+		if ro.swapIfChanged(cache, fp) {
+			logger.InfoContext(ctx, "org reload: App client rebuilt (credentials rotated)", "org", ro.name)
+		}
+	}
 }
 
 // reloadDirectories re-reads the directory store and reconciles the shared
@@ -176,21 +249,28 @@ func buildReadLayers(ctx context.Context, logger *slog.Logger, cfg *config.Confi
 		return nil, err
 	}
 
+	// secretsReader is retained so reloadOrgs can re-read rotated App
+	// credentials without a restart.
+	layers.secretsReader = reader
+
 	for i := range cfg.Orgs {
 		org := &cfg.Orgs[i]
 
 		// The CONSOLE credential, deliberately. The applier's credentials
 		// are never read by this process — they are mounted into the
 		// reconciler Job and nowhere else.
-		orgReader, err := buildOrgReader(ctx, reader, org)
+		cache, fp, err := buildOrgCache(ctx, reader, org)
 		if err != nil {
 			return nil, err
 		}
 
-		// Cached, with the sync/removals paths bypassing via ReadFresh
-		// and every applier run invalidating (pkg/orgstate/cache.go).
-		layers.Orgs[org.Name] = orgstate.NewCache(org.Name, orgReader)
+		// Behind a reloadable wrapper so a credential rotation swaps the
+		// client live (the Orgs map stays stable — the org set is git-static).
+		ro := &reloadableOrg{name: org.Name, org: org, fp: fp}
+		ro.current.Store(cache)
 
+		layers.Orgs[org.Name] = ro
+		layers.reloadableOrgs = append(layers.reloadableOrgs, ro)
 	}
 
 	return layers, nil
@@ -247,20 +327,25 @@ func buildSources(ctx context.Context, reader *secrets.Reader, cfg *config.Confi
 	return sources, nil
 }
 
-func buildOrgReader(ctx context.Context, reader *secrets.Reader, org *config.Org) (*orgstate.Reader, error) {
+// buildOrgCache reads an org's GitHub App credentials and builds its cached
+// reader, returning the reader and a fingerprint of the credentials so a live
+// reload can tell a rotation from a no-op (and keep the warm cache on a no-op).
+func buildOrgCache(ctx context.Context, reader *secrets.Reader, org *config.Org) (*orgstate.Cache, string, error) {
 	values, err := reader.ReadAll(ctx, org.ConsoleAppSSM, fieldAppID, fieldInstallationID, fieldPrivateKey)
 	if err != nil {
-		return nil, fmt.Errorf("org %q console credentials: %w", org.Name, err)
+		return nil, "", fmt.Errorf("org %q console credentials: %w", org.Name, err)
 	}
+
+	fp := credFingerprint(values[fieldAppID], values[fieldInstallationID], values[fieldPrivateKey])
 
 	appID, err := strconv.ParseInt(values[fieldAppID], 10, 64)
 	if err != nil {
-		return nil, fmt.Errorf("org %q: app id %q is not a number: %w", org.Name, values[fieldAppID], err)
+		return nil, "", fmt.Errorf("org %q: app id %q is not a number: %w", org.Name, values[fieldAppID], err)
 	}
 
 	installationID, err := strconv.ParseInt(values[fieldInstallationID], 10, 64)
 	if err != nil {
-		return nil, fmt.Errorf("org %q: installation id is not a number: %w", org.Name, err)
+		return nil, "", fmt.Errorf("org %q: installation id is not a number: %w", org.Name, err)
 	}
 
 	source, err := githubapp.NewTokenSource(githubapp.Credentials{
@@ -269,8 +354,24 @@ func buildOrgReader(ctx context.Context, reader *secrets.Reader, org *config.Org
 		PrivateKey:     []byte(values[fieldPrivateKey]),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("org %q: %w", org.Name, err)
+		return nil, "", fmt.Errorf("org %q: %w", org.Name, err)
 	}
 
-	return orgstate.NewReader(source, org.Name, "")
+	orgReader, err := orgstate.NewReader(source, org.Name, "")
+	if err != nil {
+		return nil, "", err
+	}
+
+	// Cached, with the sync/removals paths bypassing via ReadFresh and every
+	// applier run invalidating (pkg/orgstate/cache.go).
+	return orgstate.NewCache(org.Name, orgReader), fp, nil
+}
+
+// credFingerprint is a stable hash of an org's App credentials, used to detect
+// a rotation on reload without holding the private key around for comparison.
+func credFingerprint(appID, installationID, privateKey string) string {
+	// The unit separator keeps the three fields unambiguous.
+	sum := sha256.Sum256([]byte(fmt.Sprintf("%s\x1f%s\x1f%s", appID, installationID, privateKey)))
+
+	return hex.EncodeToString(sum[:])
 }

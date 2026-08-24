@@ -107,6 +107,7 @@ func BuildDeps(ctx context.Context, logger *slog.Logger, cfg *config.Config, inf
 					return
 				case <-ticker.C:
 					layers.reloadDirectories(ctx, logger)
+					layers.reloadOrgs(ctx, logger)
 				}
 			}
 		}()

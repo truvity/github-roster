@@ -50,6 +50,8 @@ const (
 	RosterServiceGetStatusProcedure = "/roster.v1.RosterService/GetStatus"
 	// RosterServiceGetAuditProcedure is the fully-qualified name of the RosterService's GetAudit RPC.
 	RosterServiceGetAuditProcedure = "/roster.v1.RosterService/GetAudit"
+	// RosterServiceGetMeProcedure is the fully-qualified name of the RosterService's GetMe RPC.
+	RosterServiceGetMeProcedure = "/roster.v1.RosterService/GetMe"
 )
 
 // RosterServiceClient is a client for the roster.v1.RosterService service.
@@ -70,6 +72,10 @@ type RosterServiceClient interface {
 	GetStatus(context.Context, *connect.Request[v1.GetStatusRequest]) (*connect.Response[v1.GetStatusResponse], error)
 	// GetAudit returns audit records, newest first (History view).
 	GetAudit(context.Context, *connect.Request[v1.GetAuditRequest]) (*connect.Response[v1.GetAuditResponse], error)
+	// GetMe returns the signed-in caller (name, email, role) as the gateway
+	// forwards it, so the SPA header can show who is logged in and whether they
+	// may operate or only view.
+	GetMe(context.Context, *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error)
 }
 
 // NewRosterServiceClient constructs a client for the roster.v1.RosterService service. By default,
@@ -113,6 +119,12 @@ func NewRosterServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(rosterServiceMethods.ByName("GetAudit")),
 			connect.WithClientOptions(opts...),
 		),
+		getMe: connect.NewClient[v1.GetMeRequest, v1.GetMeResponse](
+			httpClient,
+			baseURL+RosterServiceGetMeProcedure,
+			connect.WithSchema(rosterServiceMethods.ByName("GetMe")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -123,6 +135,7 @@ type rosterServiceClient struct {
 	getRoster   *connect.Client[v1.GetRosterRequest, v1.GetRosterResponse]
 	getStatus   *connect.Client[v1.GetStatusRequest, v1.GetStatusResponse]
 	getAudit    *connect.Client[v1.GetAuditRequest, v1.GetAuditResponse]
+	getMe       *connect.Client[v1.GetMeRequest, v1.GetMeResponse]
 }
 
 // GetVersion calls roster.v1.RosterService.GetVersion.
@@ -150,6 +163,11 @@ func (c *rosterServiceClient) GetAudit(ctx context.Context, req *connect.Request
 	return c.getAudit.CallUnary(ctx, req)
 }
 
+// GetMe calls roster.v1.RosterService.GetMe.
+func (c *rosterServiceClient) GetMe(ctx context.Context, req *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error) {
+	return c.getMe.CallUnary(ctx, req)
+}
+
 // RosterServiceHandler is an implementation of the roster.v1.RosterService service.
 type RosterServiceHandler interface {
 	// GetVersion returns the running build's identity — the same information the
@@ -168,6 +186,10 @@ type RosterServiceHandler interface {
 	GetStatus(context.Context, *connect.Request[v1.GetStatusRequest]) (*connect.Response[v1.GetStatusResponse], error)
 	// GetAudit returns audit records, newest first (History view).
 	GetAudit(context.Context, *connect.Request[v1.GetAuditRequest]) (*connect.Response[v1.GetAuditResponse], error)
+	// GetMe returns the signed-in caller (name, email, role) as the gateway
+	// forwards it, so the SPA header can show who is logged in and whether they
+	// may operate or only view.
+	GetMe(context.Context, *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error)
 }
 
 // NewRosterServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -207,6 +229,12 @@ func NewRosterServiceHandler(svc RosterServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(rosterServiceMethods.ByName("GetAudit")),
 		connect.WithHandlerOptions(opts...),
 	)
+	rosterServiceGetMeHandler := connect.NewUnaryHandler(
+		RosterServiceGetMeProcedure,
+		svc.GetMe,
+		connect.WithSchema(rosterServiceMethods.ByName("GetMe")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/roster.v1.RosterService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case RosterServiceGetVersionProcedure:
@@ -219,6 +247,8 @@ func NewRosterServiceHandler(svc RosterServiceHandler, opts ...connect.HandlerOp
 			rosterServiceGetStatusHandler.ServeHTTP(w, r)
 		case RosterServiceGetAuditProcedure:
 			rosterServiceGetAuditHandler.ServeHTTP(w, r)
+		case RosterServiceGetMeProcedure:
+			rosterServiceGetMeHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -246,4 +276,8 @@ func (UnimplementedRosterServiceHandler) GetStatus(context.Context, *connect.Req
 
 func (UnimplementedRosterServiceHandler) GetAudit(context.Context, *connect.Request[v1.GetAuditRequest]) (*connect.Response[v1.GetAuditResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("roster.v1.RosterService.GetAudit is not implemented"))
+}
+
+func (UnimplementedRosterServiceHandler) GetMe(context.Context, *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("roster.v1.RosterService.GetMe is not implemented"))
 }

@@ -32,6 +32,20 @@ service RosterService {
 
   // GetAudit returns audit records, newest first (History view).
   rpc GetAudit(GetAuditRequest) returns (GetAuditResponse);
+
+  // GetMe returns the signed-in caller (name, email, role) as the gateway
+  // forwards it, so the SPA header can show who is logged in and whether they
+  // may operate or only view.
+  rpc GetMe(GetMeRequest) returns (GetMeResponse);
+}
+
+message GetMeRequest {}
+
+message GetMeResponse {
+  // Display name, email address, and role ("operator" | "viewer" | "").
+  string name = 1;
+  string email = 2;
+  string role = 3;
 }
 
 message GetVersionRequest {}

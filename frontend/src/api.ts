@@ -16,6 +16,16 @@ export async function fetchVersion(signal?: AbortSignal): Promise<{ version: str
   return { version: resp.version, commit: resp.commit };
 }
 
+// fetchMe returns the signed-in caller (name, email, role) as the gateway
+// forwards it, for the header's user badge.
+export interface Me { name: string; email: string; role: string }
+
+export async function fetchMe(signal?: AbortSignal): Promise<Me> {
+  const resp = await rosterClient.getMe({}, { signal });
+
+  return { name: resp.name, email: resp.email, role: resp.role };
+}
+
 // Types mirror the console's JSON API (/api/roster). Kept minimal — the
 // fields the People view reads.
 export interface Membership {

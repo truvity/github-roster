@@ -4,7 +4,45 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/truvity/github-roster/pkg/config"
 )
+
+func TestRoleFromGroups(t *testing.T) {
+	t.Parallel()
+
+	roles := config.Roles{Viewer: "viewers", Operator: "operators"}
+
+	assert.Equal(t, RoleOperator, RoleFromGroups([]string{"viewers", "operators"}, roles))
+	assert.Equal(t, RoleViewer, RoleFromGroups([]string{"viewers"}, roles))
+	assert.Equal(t, Role(""), RoleFromGroups([]string{"nobody"}, roles))
+	assert.Equal(t, RoleViewer, RoleFromGroups(SplitGroups(" viewers , other "), roles))
+}
+
+func TestForwardToken(t *testing.T) {
+	t.Parallel()
+
+	// Authorization wins when present.
+	assert.Equal(t, "Bearer abc", ForwardToken(func(k string) string {
+		if k == "Authorization" {
+			return "Bearer abc"
+		}
+
+		return "xyz"
+	}))
+
+	// Falls back to the gateway's access-token header, adding the scheme.
+	assert.Equal(t, "Bearer xyz", ForwardToken(func(k string) string {
+		if k == headerAccessToken {
+			return "xyz"
+		}
+
+		return ""
+	}))
+
+	// Neither present → empty.
+	assert.Equal(t, "", ForwardToken(func(string) string { return "" }))
+}
 
 func TestRoleFor(t *testing.T) {
 	t.Parallel()

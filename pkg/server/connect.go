@@ -5,6 +5,8 @@ package server
 
 import (
 	"context"
+	"errors"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/gofiber/fiber/v3"
@@ -14,6 +16,16 @@ import (
 	"github.com/truvity/github-roster/gen/roster/v1/rosterv1connect"
 	"github.com/truvity/github-roster/pkg/config"
 )
+
+// rfc3339 formats a timestamp for the wire (empty for the zero time), matching
+// what the JSON API served.
+func rfc3339(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+
+	return t.Format(time.RFC3339)
+}
 
 // rosterConnect implements the typed RosterService served over ConnectRPC,
 // beside the huma JSON API. The SPA (Connect-Web) and Go clients share this one
@@ -90,6 +102,129 @@ func protoSources(srcs []config.Source) []*rosterv1.DirectorySource {
 	}
 
 	return out
+}
+
+// GetRoster returns the joined roster for the People view. The JSON
+// /api/roster stays (a cross-repo contract for the gitops puller); this serves
+// the SPA the same data, typed.
+func (s *rosterConnect) GetRoster(
+	ctx context.Context,
+	_ *connect.Request[rosterv1.GetRosterRequest],
+) (*connect.Response[rosterv1.GetRosterResponse], error) {
+	joined, err := s.deps.buildRoster(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	people := make([]*rosterv1.Person, 0, len(joined.People))
+	for i := range joined.People {
+		p := &joined.People[i]
+
+		orgs := make(map[string]*rosterv1.Membership, len(p.Orgs))
+		for name, m := range p.Orgs {
+			orgs[name] = &rosterv1.Membership{
+				Member:            m.Member,
+				InvitationPending: m.InvitationPending,
+				Role:              string(m.Role),
+			}
+		}
+
+		people = append(people, &rosterv1.Person{
+			Name:   p.Name,
+			Github: p.GitHub,
+			Class:  string(p.Class),
+			Live:   p.Live,
+			State:  string(p.State),
+			Orgs:   orgs,
+		})
+	}
+
+	return connect.NewResponse(&rosterv1.GetRosterResponse{People: people}), nil
+}
+
+// GetStatus returns per-org reconcile status (Status view). The caller's bearer
+// token is forwarded to the broker, which authorizes the human.
+func (s *rosterConnect) GetStatus(
+	ctx context.Context,
+	req *connect.Request[rosterv1.GetStatusRequest],
+) (*connect.Response[rosterv1.GetStatusResponse], error) {
+	if s.deps.Broker == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("no applier broker is configured"))
+	}
+
+	statuses, err := s.deps.Broker.ReconcileStatus(ctx, req.Header().Get("Authorization"))
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnavailable, err)
+	}
+
+	out := make([]*rosterv1.ReconcileStatus, 0, len(statuses))
+	for i := range statuses {
+		st := &statuses[i]
+		out = append(out, &rosterv1.ReconcileStatus{
+			Org:     st.Org,
+			Enabled: st.Enabled,
+			Paused:  st.Paused,
+			At:      rfc3339(st.At),
+			Actions: int32(st.Actions), //nolint:gosec // small action count
+			Applied: st.Applied,
+			Held:    st.Held,
+			Reason:  st.Reason,
+			Error:   st.Error,
+		})
+	}
+
+	return connect.NewResponse(&rosterv1.GetStatusResponse{Statuses: out}), nil
+}
+
+// GetAudit returns audit records newest-first (History view).
+func (s *rosterConnect) GetAudit(
+	ctx context.Context,
+	req *connect.Request[rosterv1.GetAuditRequest],
+) (*connect.Response[rosterv1.GetAuditResponse], error) {
+	if s.deps.Audit == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("no audit sink is configured"))
+	}
+
+	limit := int(req.Msg.GetLimit())
+	if limit <= 0 {
+		limit = 50
+	}
+
+	records, err := s.deps.Audit.List(ctx, req.Msg.GetOrg(), limit)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	out := make([]*rosterv1.AuditRecord, 0, len(records))
+	for i := range records {
+		r := &records[i]
+
+		changes := make([]*rosterv1.AuditChange, 0, len(r.Changes))
+		for j := range r.Changes {
+			c := &r.Changes[j]
+			changes = append(changes, &rosterv1.AuditChange{
+				Verb:    c.Verb,
+				Subject: c.Subject,
+				Team:    c.Team,
+				Detail:  c.Detail,
+			})
+		}
+
+		out = append(out, &rosterv1.AuditRecord{
+			At:         rfc3339(r.At),
+			Org:        r.Org,
+			Kind:       string(r.Kind),
+			Confirmed:  r.Confirmed,
+			Actor:      r.Actor,
+			ActorEmail: r.ActorEmail,
+			Adding:     r.Adding,
+			Removing:   r.Removing,
+			Changes:    changes,
+			Error:      r.Error,
+		})
+	}
+
+	return connect.NewResponse(&rosterv1.GetAuditResponse{Records: out}), nil
 }
 
 // registerConnect mounts the ConnectRPC service on the fiber app. The generated

@@ -21,7 +21,7 @@ func TestSameOriginGuard(t *testing.T) {
 	app := server.NewApp(newDeps(t, doc, &fixedAuth{role: auth.RoleOperator}))
 
 	post := func(headers map[string]string) int {
-		req := httptest.NewRequest(http.MethodPost, "/sync/preview",
+		req := httptest.NewRequest(http.MethodPost, "/settings/orgs",
 			strings.NewReader("org=example"))
 		req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationForm)
 

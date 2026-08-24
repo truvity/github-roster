@@ -1,7 +1,6 @@
 package server_test
 
 import (
-	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -96,68 +95,41 @@ func get(t *testing.T, app *fiber.App, path string) (status int, body string) {
 	return resp.StatusCode, string(raw)
 }
 
-func TestStructurePageRendersConfiguredTeams(t *testing.T) {
+// The root path now lands on the SPA: the server-rendered pages are retired.
+func TestRootRedirectsToApp(t *testing.T) {
 	t.Parallel()
 
 	app := server.NewApp(newDeps(t, doc, &fixedAuth{role: auth.RoleViewer}))
 
-	status, body := get(t, app, "/")
-	require.Equal(t, fiber.StatusOK, status)
+	req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
 
-	for _, want := range []string{"example", "team-engineers", "team-engineers@example.com", "team-engineers@alt.example.com", "robots", "pinned"} {
-		require.Contains(t, body, want)
-	}
+	resp, err := app.Test(req)
+	require.NoError(t, err)
+
+	defer func() { _ = resp.Body.Close() }()
+
+	require.Equal(t, fiber.StatusSeeOther, resp.StatusCode)
+	require.Equal(t, "/app", resp.Header.Get("Location"))
 }
 
-// The console renders directory group addresses and people's names. A
-// template interpolating them unescaped would be a stored-XSS sink. Group
-// addresses are no longer a viable vector (the naming invariant rejects
-// anything that is not team-<x>@<company domain> at parse), so the hostile
-// payload rides the one free-form field the page renders: a pinned team's
-// name is DNS-constrained too, but a MAPPING name is arbitrary text edited
-// through the operator UI.
-func TestTemplatesEscapeTheirData(t *testing.T) {
-	t.Parallel()
-
-	deps := newDeps(t, doc, &fixedAuth{role: auth.RoleViewer})
-
-	store := deps.Mapping.(*mapping.Memory)
-	require.NoError(t, store.Put(context.Background(), mapping.Entry{
-		Name:   "<script>alert(1)</script>",
-		GitHub: "hostile",
-		Class:  mapping.ClassEmployee,
-	}))
-
-	app := server.NewApp(deps)
-
-	// Person names render on the person detail page since the IA rework;
-	// Structure is team-centric and shows logins only.
-	_, body := get(t, app, "/person?name=%3Cscript%3Ealert(1)%3C/script%3E")
-
-	require.NotContains(t, body, "<script>alert(1)</script>", "mapping name was interpolated unescaped")
-	require.Contains(t, body, "&lt;script&gt;", "the test is not checking what it thinks")
-}
-
-func TestOperatorPagesRejectViewers(t *testing.T) {
+// The App-manifest routes are the surviving operator-gated surface (the old
+// SSR operator pages are retired); requireOperator still refuses a viewer.
+func TestOperatorRoutesRejectViewers(t *testing.T) {
 	t.Parallel()
 
 	app := server.NewApp(newDeps(t, doc, &fixedAuth{role: auth.RoleViewer}))
 
-	for _, path := range []string{"/mapping", "/audit"} {
-		status, _ := get(t, app, path)
-		require.Equal(t, fiber.StatusForbidden, status, "GET %s as viewer", path)
-	}
+	status, _ := get(t, app, "/settings/orgs/create-app?org=example")
+	require.Equal(t, fiber.StatusForbidden, status)
 }
 
-func TestOperatorPagesAdmitOperators(t *testing.T) {
+func TestOperatorRoutesAdmitOperators(t *testing.T) {
 	t.Parallel()
 
 	app := server.NewApp(newDeps(t, doc, &fixedAuth{role: auth.RoleOperator}))
 
-	for _, path := range []string{"/mapping", "/audit"} {
-		status, _ := get(t, app, path)
-		require.Equal(t, fiber.StatusOK, status, "GET %s as operator", path)
-	}
+	status, _ := get(t, app, "/settings/orgs/create-app?org=example")
+	require.Equal(t, fiber.StatusOK, status)
 }
 
 // Every route goes through the middleware, registered once before any route.
@@ -167,7 +139,7 @@ func TestUnauthenticatedCallersReachNothing(t *testing.T) {
 
 	app := server.NewApp(newDeps(t, doc, &fixedAuth{role: auth.RoleNone}))
 
-	for _, path := range []string{"/", "/mapping", "/audit", "/api/version"} {
+	for _, path := range []string{"/", "/api/version", "/api/roster", "/settings/orgs/create-app"} {
 		status, _ := get(t, app, path)
 		require.Equal(t, fiber.StatusUnauthorized, status, "GET %s unauthenticated", path)
 	}
@@ -182,7 +154,7 @@ func TestGatewaySizedHeadersAreAccepted(t *testing.T) {
 
 	app := server.NewApp(newDeps(t, doc, &fixedAuth{role: auth.RoleViewer}))
 
-	req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
+	req := httptest.NewRequest(http.MethodGet, "/api/version", http.NoBody)
 	req.Header.Set(fiber.HeaderAccept, fiber.MIMETextHTML)
 	req.Header.Set(fiber.HeaderCookie, "BearerToken="+strings.Repeat("t", 16<<10))
 	req.Header.Set(fiber.HeaderAuthorization, "Bearer "+strings.Repeat("j", 8<<10))
@@ -243,14 +215,14 @@ func TestErrorsMatchTheCallersContentType(t *testing.T) {
 	app := server.NewApp(newDeps(t, doc, &fixedAuth{role: auth.RoleViewer}))
 
 	t.Run("browser gets a page", func(t *testing.T) {
-		status, body := get(t, app, "/mapping")
+		status, body := get(t, app, "/settings/orgs/create-app?org=example")
 		require.Equal(t, fiber.StatusForbidden, status)
 		require.Contains(t, body, "<!DOCTYPE html>")
 		require.Contains(t, body, "operator role required")
 	})
 
 	t.Run("api client gets json", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/mapping", http.NoBody)
+		req := httptest.NewRequest(http.MethodGet, "/settings/orgs/create-app?org=example", http.NoBody)
 
 		resp, err := app.Test(req)
 		require.NoError(t, err)

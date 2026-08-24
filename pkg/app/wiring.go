@@ -42,6 +42,69 @@ type readLayers struct {
 	Audit audit.Sink
 	// DirStore holds operator-added directories.
 	DirStore configstore.DirectoryStore
+	// gitSources are the git-declared directory Sources (their live clients
+	// and caches survive reloads by name); cfg is retained so reloads can
+	// re-derive each store directory's mapped groups. Both back
+	// reloadDirectories, the console's live counterpart to the broker's.
+	gitSources []directory.Source
+	cfg        *config.Config
+}
+
+// reloadDirectories re-reads the directory store and reconciles the shared
+// directory Set to git ∪ store (keeping git clients + caches, adding/removing
+// store-backed resolvers). It is the CONSOLE's live-reload path: without it
+// an operator-added directory (written to the store via Settings) is picked up
+// by the broker at once but invisible on the console until restart. Simpler
+// than the broker's reload — the console runs no removals, so there is no
+// effective-config / expected-sources swap here, only the Set reconcile.
+// Best-effort: a store read failure keeps the current view.
+func (l *readLayers) reloadDirectories(ctx context.Context, logger *slog.Logger) {
+	if l.DirStore == nil || l.Directories == nil {
+		return
+	}
+
+	stored, err := l.DirStore.List(ctx)
+	if err != nil {
+		logger.WarnContext(ctx, "config reload: listing store directories failed; keeping current",
+			"error", err)
+
+		return
+	}
+
+	gitNames := make(map[string]bool, len(l.gitSources))
+	for _, gs := range l.gitSources {
+		gitNames[gs.Name()] = true
+	}
+
+	sources := append([]directory.Source(nil), l.gitSources...)
+
+	for i := range stored {
+		src := stored[i]
+		if gitNames[src.Name] {
+			continue // git wins by name
+		}
+
+		resolver, rerr := directory.NewResolver(directory.ResolverConfig{
+			Name:       src.Name,
+			Endpoint:   src.Endpoint,
+			Domains:    src.Domains,
+			Groups:     l.cfg.MappedGroupsForDomains(src.Domains),
+			ProbeGroup: src.ProbeGroup,
+		})
+		if rerr != nil {
+			logger.WarnContext(ctx, "config reload: skipping malformed store directory",
+				"directory", src.Name, "error", rerr)
+
+			continue
+		}
+
+		sources = append(sources, resolver)
+	}
+
+	if l.Directories.Reconcile(sources) {
+		logger.InfoContext(ctx, "config reload: console directory set updated",
+			"directories", len(sources))
+	}
 }
 
 // buildReadLayers constructs the read side from configuration.
@@ -86,24 +149,25 @@ func buildReadLayers(ctx context.Context, logger *slog.Logger, cfg *config.Confi
 		Mapping:  store,
 		DirStore: configstore.NewSSM(ssmClient, cfg.Mapping.SSMPrefix),
 		Orgs:     make(map[string]server.OrgReader, len(cfg.Orgs)),
+		cfg:      cfg,
 	}
 
-	// Operator-added directories from the config store, merged under the
-	// git-declared ones (git wins by name). Resolver-backed only, so no
-	// secret lives here. A read failure is non-fatal: the git config still
-	// stands.
-	if stored, err := configstore.NewSSM(ssmClient, cfg.Mapping.SSMPrefix).List(ctx); err != nil {
-		logger.WarnContext(ctx, "config store: listing directories failed; using git config only", "error", err)
-	} else if len(stored) > 0 {
-		cfg.Sources = configstore.MergeDirectories(cfg.Sources, stored)
-	}
-
-	sources, err := buildSources(ctx, reader, cfg)
+	// Git-declared directory sources, with their credentials. Operator-added
+	// store directories are NOT merged statically here (as they once were):
+	// reloadDirectories folds them in below and the console's reload ticker
+	// keeps them current, so a directory added via Settings takes effect
+	// without a restart — matching the broker.
+	gitSources, err := buildSources(ctx, reader, cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	layers.Directories = directory.NewSet(logger, sources...)
+	layers.gitSources = gitSources
+	layers.Directories = directory.NewSet(logger, gitSources...)
+
+	// Fold in the store directories once, now, so the console serves them
+	// from the first request rather than only after the first tick.
+	layers.reloadDirectories(ctx, logger)
 
 	// The audit sink. Required rather than optional: a deployment that
 	// cannot record what it did should not be quietly acting anyway.

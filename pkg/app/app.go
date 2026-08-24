@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"time"
 
 	"github.com/truvity/github-roster/pkg/auth"
 	"github.com/truvity/github-roster/pkg/broker"
@@ -89,6 +90,26 @@ func BuildDeps(ctx context.Context, logger *slog.Logger, cfg *config.Config, inf
 		logger.WarnContext(ctx, "directory source unhealthy at startup",
 			slog.String("source", name),
 			slog.Any("error", err))
+	}
+
+	// Live config reload: an operator-added directory (Settings → config
+	// store) is folded into the console's directory Set on this cadence,
+	// without a restart — the console counterpart to the broker's reload.
+	// The ticker stops with the process context.
+	if cfg.Reconcile.Interval > 0 {
+		go func() {
+			ticker := time.NewTicker(cfg.Reconcile.Interval)
+			defer ticker.Stop()
+
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					layers.reloadDirectories(ctx, logger)
+				}
+			}
+		}()
 	}
 
 	// The broker client carries no credentials: every call forwards the

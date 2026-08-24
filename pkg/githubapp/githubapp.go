@@ -181,10 +181,16 @@ func (t *TokenSource) appJWT() (string, error) {
 		return "", err
 	}
 
+	return signAppJWT(t.creds.AppID, key)
+}
+
+// signAppJWT builds and signs the short-lived App-identity assertion. Shared by
+// the token source and the App-level client (installation lookup).
+func signAppJWT(appID int64, key jwk.Key) (string, error) {
 	now := time.Now()
 
 	token, err := jwt.NewBuilder().
-		Issuer(strconv.FormatInt(t.creds.AppID, 10)).
+		Issuer(strconv.FormatInt(appID, 10)).
 		IssuedAt(now.Add(-clockSkew)).
 		Expiration(now.Add(appJWTLifetime)).
 		Build()

@@ -71,6 +71,9 @@ type OrgReader interface {
 // OrgStore adds the write half used by the App-manifest flow.
 type OrgStore interface {
 	OrgReader
+	// PutOrg stages an organization (scalars + teams + credential pointer),
+	// born reconcile-disabled and credential-less, ready for the App flow.
+	PutOrg(ctx context.Context, org config.Org) error
 	// PutApp stores an org's GitHub App credentials (from the manifest flow).
 	PutApp(ctx context.Context, org string, creds AppCredentials) error
 	// PutProvenance records how the org's App came to be (manual/roster).
@@ -245,9 +248,99 @@ func MergeOrgs(iac, store []config.Org) []config.Org {
 	return out
 }
 
+// orgAppPath is the SSM path prefix under which an org's App credentials
+// live. It is what consoleAppSSM points at (so the reader finds the creds)
+// and what appPath appends field names to.
+func (s *OrgSSM) orgAppPath(org string) string {
+	return s.prefix + org + "/app"
+}
+
 // appPath is the SSM parameter path for one App-credential field of an org.
 func (s *OrgSSM) appPath(org, field string) string {
-	return s.prefix + org + "/app/" + field
+	return s.orgAppPath(org) + "/" + field
+}
+
+// orgParam is one plain-String SSM parameter that stages an organization.
+type orgParam struct {
+	name  string
+	value string
+}
+
+// orgParams is the flat list of plain-String parameters that stage an
+// organization: the credential pointer (consoleAppSSM → the org's own app/
+// path), the optional scalars, and each team's group/member lists. Pure (no
+// I/O) and deterministically ordered so it is unit-tested; PutOrg writes it.
+// Credentials are NOT here — PutApp fills those once the App is created.
+func (s *OrgSSM) orgParams(org config.Org) []orgParam {
+	name := strings.TrimSpace(org.Name)
+
+	params := []orgParam{
+		{s.prefix + name + "/" + fieldConsoleAppSSM, s.orgAppPath(name)},
+	}
+
+	if org.MinAdmins > 0 {
+		params = append(params, orgParam{s.prefix + name + "/" + fieldMinAdmins, strconv.Itoa(org.MinAdmins)})
+	}
+
+	if len(org.Exceptions) > 0 {
+		params = append(params, orgParam{s.prefix + name + "/" + fieldExceptions, strings.Join(org.Exceptions, ",")})
+	}
+
+	tnames := make([]string, 0, len(org.Teams))
+	for tname := range org.Teams {
+		tnames = append(tnames, tname)
+	}
+
+	sort.Strings(tnames)
+
+	for _, tname := range tnames {
+		t := org.Teams[tname]
+		base := s.prefix + name + "/" + segTeams + "/" + strings.TrimSpace(tname) + "/"
+
+		if len(t.Groups) > 0 {
+			params = append(params, orgParam{base + fieldGroups, strings.Join(t.Groups, ",")})
+		}
+
+		if len(t.Members) > 0 {
+			params = append(params, orgParam{base + fieldMembers, strings.Join(t.Members, ",")})
+		}
+	}
+
+	return params
+}
+
+// PutOrg stages an organization in the store: its scalar fields, its teams,
+// and the consoleAppSSM pointer at its own app/ path so the reader (and
+// orgsFrom's safety filter) treat it as a usable org once the App flow fills
+// the credentials. Requires a name and at least one non-empty team — a
+// team-less org would drive member removals (see ListOrgs). Born reconcile-
+// disabled; enabling is the separate control path.
+func (s *OrgSSM) PutOrg(ctx context.Context, org config.Org) error {
+	name := strings.TrimSpace(org.Name)
+	if name == "" {
+		return fmt.Errorf("org name is required")
+	}
+
+	hasTeam := false
+	for _, t := range org.Teams {
+		if len(t.Groups) > 0 || len(t.Members) > 0 {
+			hasTeam = true
+
+			break
+		}
+	}
+
+	if !hasTeam {
+		return fmt.Errorf("at least one team with a group or member is required")
+	}
+
+	for _, p := range s.orgParams(org) {
+		if err := s.putParam(ctx, p.name, p.value, types.ParameterTypeString); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // PutApp stores an org's App credentials under its store prefix. The private
@@ -289,7 +382,10 @@ func (s *OrgSSM) PutApp(ctx context.Context, org string, creds AppCredentials) e
 		}
 	}
 
-	return nil
+	// Ensure the reader can find these credentials even if the org was seeded
+	// credentials-first (e.g. Helm/ESO wrote app/ but no scalar): point
+	// consoleAppSSM at this app path. Idempotent with PutOrg's own write.
+	return s.putParam(ctx, s.prefix+org+"/"+fieldConsoleAppSSM, s.orgAppPath(org), types.ParameterTypeString)
 }
 
 func (s *OrgSSM) putParam(ctx context.Context, name, value string, t types.ParameterType) error {

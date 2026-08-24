@@ -4,6 +4,7 @@
 package configstore
 
 import (
+	"context"
 	"testing"
 
 	"github.com/truvity/github-roster/pkg/config"
@@ -107,6 +108,85 @@ func TestOrgAppPath(t *testing.T) {
 	s := &OrgSSM{prefix: "/roster/orgs/"}
 	if got := s.appPath("acme", fieldPrivateKey); got != "/roster/orgs/acme/app/github-private-key" {
 		t.Errorf("appPath = %q", got)
+	}
+}
+
+func TestOrgParams(t *testing.T) {
+	s := &OrgSSM{prefix: "/roster/orgs/"}
+
+	params := s.orgParams(config.Org{
+		Name:      "acme",
+		MinAdmins: 2,
+		Teams: map[string]config.Team{
+			"devs": {Groups: []string{"g1@acme", "g2@acme"}, Members: []string{"m1"}},
+		},
+	})
+
+	got := map[string]string{}
+	for _, p := range params {
+		got[p.name] = p.value
+	}
+
+	// The credential pointer is what makes orgsFrom keep the org, and it must
+	// point at the org's own app/ path (where PutApp writes and the reader
+	// reads).
+	if got["/roster/orgs/acme/consoleAppSSM"] != "/roster/orgs/acme/app" {
+		t.Errorf("consoleAppSSM = %q, want /roster/orgs/acme/app", got["/roster/orgs/acme/consoleAppSSM"])
+	}
+	if got["/roster/orgs/acme/minAdmins"] != "2" {
+		t.Errorf("minAdmins = %q", got["/roster/orgs/acme/minAdmins"])
+	}
+	if got["/roster/orgs/acme/teams/devs/groups"] != "g1@acme,g2@acme" {
+		t.Errorf("groups = %q", got["/roster/orgs/acme/teams/devs/groups"])
+	}
+	if got["/roster/orgs/acme/teams/devs/members"] != "m1" {
+		t.Errorf("members = %q", got["/roster/orgs/acme/teams/devs/members"])
+	}
+
+	// Round-trip: the params PutOrg writes, read back through splitOrgParam +
+	// orgsFrom, yield a usable org — the pointer survives the safety filter.
+	byName := map[string]*collectedOrg{}
+	for _, p := range params {
+		name, team, field, ok := s.splitOrgParam(p.name)
+		if !ok {
+			continue
+		}
+		c := byName[name]
+		if c == nil {
+			c = &collectedOrg{scalars: map[string]string{}, teams: map[string]map[string]string{}}
+			byName[name] = c
+		}
+		if team == "" {
+			c.scalars[field] = p.value
+			continue
+		}
+		if c.teams[team] == nil {
+			c.teams[team] = map[string]string{}
+		}
+		c.teams[team][field] = p.value
+	}
+
+	orgs := orgsFrom(byName)
+	if len(orgs) != 1 || orgs[0].Name != "acme" || orgs[0].MinAdmins != 2 {
+		t.Fatalf("round-trip orgsFrom = %+v", orgs)
+	}
+	if orgs[0].Provenance != ProvenanceManual {
+		t.Errorf("round-trip provenance = %q, want manual (untagged staged org)", orgs[0].Provenance)
+	}
+}
+
+func TestPutOrgValidation(t *testing.T) {
+	s := &OrgSSM{prefix: "/roster/orgs/"} // nil client: rejects before any write
+
+	if err := s.PutOrg(context.Background(), config.Org{Name: ""}); err == nil {
+		t.Error("PutOrg with no name should error")
+	}
+
+	if err := s.PutOrg(context.Background(), config.Org{
+		Name:  "acme",
+		Teams: map[string]config.Team{"empty": {}},
+	}); err == nil {
+		t.Error("PutOrg with only an empty team should error (would drive removals)")
 	}
 }
 

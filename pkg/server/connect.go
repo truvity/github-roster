@@ -18,6 +18,7 @@ import (
 	"github.com/truvity/github-roster/pkg/auth"
 	"github.com/truvity/github-roster/pkg/config"
 	"github.com/truvity/github-roster/pkg/mapping"
+	"github.com/truvity/github-roster/pkg/roster"
 )
 
 // rfc3339 formats a timestamp for the wire (empty for the zero time), matching
@@ -149,7 +150,23 @@ func (s *rosterConnect) GetRoster(
 		})
 	}
 
-	return connect.NewResponse(&rosterv1.GetRosterResponse{People: people}), nil
+	candidates := make([]*rosterv1.Candidate, 0, len(joined.Warnings))
+	for i := range joined.Warnings {
+		w := &joined.Warnings[i]
+
+		switch w.Kind {
+		case roster.WarnUnmapped: // NEW: name known, login needed
+			candidates = append(candidates, &rosterv1.Candidate{
+				Kind: "new", Name: w.Subject, Detail: w.Detail,
+			})
+		case roster.WarnUnknownMember: // UNKNOWN: login known, name needed
+			candidates = append(candidates, &rosterv1.Candidate{
+				Kind: "unknown", Github: w.Subject, Org: w.Org, Detail: w.Detail,
+			})
+		}
+	}
+
+	return connect.NewResponse(&rosterv1.GetRosterResponse{People: people, Candidates: candidates}), nil
 }
 
 // GetStatus returns per-org reconcile status (Status view). The caller's bearer

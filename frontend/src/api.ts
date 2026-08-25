@@ -103,8 +103,19 @@ export interface Person {
   orgs?: Record<string, Membership>;
 }
 
+// Candidate is an awaiting-approval worklist row. NEW carries a name (login to
+// be supplied); UNKNOWN carries a github login (name to be supplied).
+export interface Candidate {
+  kind: "new" | "unknown" | string;
+  name: string;
+  github: string;
+  org?: string;
+  detail?: string;
+}
+
 export interface Roster {
   people?: Person[];
+  candidates?: Candidate[];
 }
 
 // fetchRoster reads the joined roster over ConnectRPC (the JSON /api/roster
@@ -127,6 +138,9 @@ export async function fetchRoster(signal?: AbortSignal): Promise<Roster> {
           role: m.role || undefined,
         }]),
       ),
+    })),
+    candidates: resp.candidates.map((c) => ({
+      kind: c.kind, name: c.name, github: c.github, org: c.org || undefined, detail: c.detail || undefined,
     })),
   };
 }

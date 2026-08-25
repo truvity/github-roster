@@ -183,6 +183,25 @@ message GetRosterRequest {}
 
 message GetRosterResponse {
   repeated Person people = 1;
+  // Candidates are the awaiting-approval worklist: people the join detected but
+  // nobody has approved — NEW (live in a mapped group, no entry) and UNKNOWN
+  // (a GitHub member matching no entry).
+  repeated Candidate candidates = 2;
+}
+
+// Candidate is an awaiting-approval row. For NEW the name is known and a
+// GitHub login must be supplied; for UNKNOWN the login is known and a name
+// must be supplied. Approving one is a PutPerson.
+message Candidate {
+  // Kind is "new" (unmapped live person) or "unknown" (unmapped GitHub member).
+  string kind = 1;
+  // Name is set for NEW (the directory display name); empty for UNKNOWN.
+  string name = 2;
+  // Github is set for UNKNOWN (the member login); empty for NEW.
+  string github = 3;
+  // Org is set for UNKNOWN (the organization the member was found in).
+  string org = 4;
+  string detail = 5;
 }
 
 message Person {

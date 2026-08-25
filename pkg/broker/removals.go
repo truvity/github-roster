@@ -150,9 +150,8 @@ func (d *Deps) sweepOrg(ctx context.Context, cfgOrg *config.Org) OrgOutcome {
 	entry := &stored{Org: cfgOrg.Name, Mode: peribolos.ModeRemovalsOnly, Result: result}
 
 	plan, err := reconciler.BuildPlan(result.Document, cfgOrg.Name, state, reconciler.Options{
-		Mode:               peribolos.ModeRemovalsOnly,
-		MinAdmins:          d.Config.MinAdminsFor(cfgOrg.Name),
-		MaxRemovalFraction: d.Config.Schedule.MaxRemovalFraction,
+		Mode:      peribolos.ModeRemovalsOnly,
+		MinAdmins: d.Config.MinAdminsFor(cfgOrg.Name),
 	})
 	if err != nil {
 		// A refused plan (shrink breaker, owner guard) is exactly what

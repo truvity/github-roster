@@ -202,7 +202,11 @@ func TestBuildPlanRefusesUnknownTeam(t *testing.T) {
 	}
 }
 
-func TestBuildPlanRefusesMassRemoval(t *testing.T) {
+func TestBuildPlanAllowsLargeRemoval(t *testing.T) {
+	// There is no percentage circuit-breaker anymore: removals follow the
+	// directory (the IdP leaver signal), and the safety is upstream — the join
+	// holds removals for a source whose read was not authoritative. A plan that
+	// legitimately removes a large share must go through.
 	doc := document(peribolos.Org{Admins: []string{"root-a", "root-b"}})
 
 	state := &orgstate.State{
@@ -216,11 +220,20 @@ func TestBuildPlanRefusesMassRemoval(t *testing.T) {
 		},
 	}
 
-	_, err := BuildPlan(doc, "acme", state, Options{
-		Mode: peribolos.ModeFull, MinAdmins: 2, MaxRemovalFraction: 0.25,
-	})
-	if err == nil || !strings.Contains(err.Error(), "circuit breaker") {
-		t.Fatalf("expected the removal circuit breaker, got %v", err)
+	plan, err := BuildPlan(doc, "acme", state, Options{Mode: peribolos.ModeFull, MinAdmins: 2})
+	if err != nil {
+		t.Fatalf("BuildPlan: %v", err)
+	}
+
+	removals := 0
+	for _, a := range plan.Actions {
+		if a.Kind == ActionRemoveMember {
+			removals++
+		}
+	}
+
+	if removals != 3 {
+		t.Fatalf("expected 3 removals (m1, m2, m3) to be allowed, got %d", removals)
 	}
 }
 

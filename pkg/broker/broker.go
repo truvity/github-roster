@@ -358,9 +358,8 @@ func (d *Deps) compute(ctx context.Context, name string, org *Org) (*stored, err
 	}
 
 	plan, err := reconciler.BuildPlan(result.Document, name, state, reconciler.Options{
-		Mode:               peribolos.ModeFull,
-		MinAdmins:          d.Config.MinAdminsFor(name),
-		MaxRemovalFraction: d.Config.Schedule.MaxRemovalFraction,
+		Mode:      peribolos.ModeFull,
+		MinAdmins: d.Config.MinAdminsFor(name),
 	})
 	if err != nil {
 		return nil, err

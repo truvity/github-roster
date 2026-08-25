@@ -332,11 +332,6 @@ type Schedule struct {
 	// a leaver loses organization membership within one interval of being
 	// suspended in the directory.
 	RemovalsInterval time.Duration `yaml:"removalsInterval"`
-
-	// MaxRemovalFraction stops a run that would remove an implausible share
-	// of an organization — the guard against a directory returning nonsense
-	// convincingly. 0 disables the guard.
-	MaxRemovalFraction float64 `yaml:"maxRemovalFraction"`
 }
 
 // Defaults returns the configuration before the document is applied.
@@ -350,8 +345,7 @@ func Defaults() Config {
 		Mapping:      Mapping{SSMPrefix: "/roster/"},
 		Audit:        Audit{PrefixPerOrg: true},
 		Schedule: Schedule{
-			RemovalsInterval:   time.Hour,
-			MaxRemovalFraction: 0.5,
+			RemovalsInterval: time.Hour,
 		},
 		Reconciler: Reconciler{
 			MinAdmins: 1,
@@ -486,10 +480,6 @@ func (c *Config) Validate() error {
 	// be stated explicitly (`0s`); negative is still a mistake.
 	if c.Schedule.RemovalsInterval < 0 {
 		return fmt.Errorf("schedule.removalsInterval must be zero (disabled) or positive, got %s", c.Schedule.RemovalsInterval)
-	}
-
-	if c.Schedule.MaxRemovalFraction < 0 || c.Schedule.MaxRemovalFraction > 1 {
-		return fmt.Errorf("schedule.maxRemovalFraction must be within [0,1], got %v", c.Schedule.MaxRemovalFraction)
 	}
 
 	if c.Reconcile.Interval < 0 {

@@ -73,6 +73,8 @@ const (
 	// RosterServiceDeletePersonProcedure is the fully-qualified name of the RosterService's
 	// DeletePerson RPC.
 	RosterServiceDeletePersonProcedure = "/roster.v1.RosterService/DeletePerson"
+	// RosterServiceGetPersonProcedure is the fully-qualified name of the RosterService's GetPerson RPC.
+	RosterServiceGetPersonProcedure = "/roster.v1.RosterService/GetPerson"
 )
 
 // RosterServiceClient is a client for the roster.v1.RosterService service.
@@ -122,6 +124,10 @@ type RosterServiceClient interface {
 	PutPerson(context.Context, *connect.Request[v1.PutPersonRequest]) (*connect.Response[v1.PutPersonResponse], error)
 	// DeletePerson removes a mapping entry (the operator "Remove"). Operator-only.
 	DeletePerson(context.Context, *connect.Request[v1.DeletePersonRequest]) (*connect.Response[v1.DeletePersonResponse], error)
+	// GetPerson returns one raw mapping entry (name, github, k8s, class, emails,
+	// pinned) so the operator's Edit form can prefill every field — the joined
+	// Person the roster shows omits emails/pinned. Operator-only.
+	GetPerson(context.Context, *connect.Request[v1.GetPersonRequest]) (*connect.Response[v1.GetPersonResponse], error)
 }
 
 // NewRosterServiceClient constructs a client for the roster.v1.RosterService service. By default,
@@ -219,6 +225,12 @@ func NewRosterServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(rosterServiceMethods.ByName("DeletePerson")),
 			connect.WithClientOptions(opts...),
 		),
+		getPerson: connect.NewClient[v1.GetPersonRequest, v1.GetPersonResponse](
+			httpClient,
+			baseURL+RosterServiceGetPersonProcedure,
+			connect.WithSchema(rosterServiceMethods.ByName("GetPerson")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -238,6 +250,7 @@ type rosterServiceClient struct {
 	setReconcileEnabled *connect.Client[v1.SetReconcileEnabledRequest, v1.SetReconcileEnabledResponse]
 	putPerson           *connect.Client[v1.PutPersonRequest, v1.PutPersonResponse]
 	deletePerson        *connect.Client[v1.DeletePersonRequest, v1.DeletePersonResponse]
+	getPerson           *connect.Client[v1.GetPersonRequest, v1.GetPersonResponse]
 }
 
 // GetVersion calls roster.v1.RosterService.GetVersion.
@@ -310,6 +323,11 @@ func (c *rosterServiceClient) DeletePerson(ctx context.Context, req *connect.Req
 	return c.deletePerson.CallUnary(ctx, req)
 }
 
+// GetPerson calls roster.v1.RosterService.GetPerson.
+func (c *rosterServiceClient) GetPerson(ctx context.Context, req *connect.Request[v1.GetPersonRequest]) (*connect.Response[v1.GetPersonResponse], error) {
+	return c.getPerson.CallUnary(ctx, req)
+}
+
 // RosterServiceHandler is an implementation of the roster.v1.RosterService service.
 type RosterServiceHandler interface {
 	// GetVersion returns the running build's identity — the same information the
@@ -357,6 +375,10 @@ type RosterServiceHandler interface {
 	PutPerson(context.Context, *connect.Request[v1.PutPersonRequest]) (*connect.Response[v1.PutPersonResponse], error)
 	// DeletePerson removes a mapping entry (the operator "Remove"). Operator-only.
 	DeletePerson(context.Context, *connect.Request[v1.DeletePersonRequest]) (*connect.Response[v1.DeletePersonResponse], error)
+	// GetPerson returns one raw mapping entry (name, github, k8s, class, emails,
+	// pinned) so the operator's Edit form can prefill every field — the joined
+	// Person the roster shows omits emails/pinned. Operator-only.
+	GetPerson(context.Context, *connect.Request[v1.GetPersonRequest]) (*connect.Response[v1.GetPersonResponse], error)
 }
 
 // NewRosterServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -450,6 +472,12 @@ func NewRosterServiceHandler(svc RosterServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(rosterServiceMethods.ByName("DeletePerson")),
 		connect.WithHandlerOptions(opts...),
 	)
+	rosterServiceGetPersonHandler := connect.NewUnaryHandler(
+		RosterServiceGetPersonProcedure,
+		svc.GetPerson,
+		connect.WithSchema(rosterServiceMethods.ByName("GetPerson")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/roster.v1.RosterService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case RosterServiceGetVersionProcedure:
@@ -480,6 +508,8 @@ func NewRosterServiceHandler(svc RosterServiceHandler, opts ...connect.HandlerOp
 			rosterServicePutPersonHandler.ServeHTTP(w, r)
 		case RosterServiceDeletePersonProcedure:
 			rosterServiceDeletePersonHandler.ServeHTTP(w, r)
+		case RosterServiceGetPersonProcedure:
+			rosterServiceGetPersonHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -543,4 +573,8 @@ func (UnimplementedRosterServiceHandler) PutPerson(context.Context, *connect.Req
 
 func (UnimplementedRosterServiceHandler) DeletePerson(context.Context, *connect.Request[v1.DeletePersonRequest]) (*connect.Response[v1.DeletePersonResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("roster.v1.RosterService.DeletePerson is not implemented"))
+}
+
+func (UnimplementedRosterServiceHandler) GetPerson(context.Context, *connect.Request[v1.GetPersonRequest]) (*connect.Response[v1.GetPersonResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("roster.v1.RosterService.GetPerson is not implemented"))
 }

@@ -70,6 +70,27 @@ service RosterService {
 
   // DeletePerson removes a mapping entry (the operator "Remove"). Operator-only.
   rpc DeletePerson(DeletePersonRequest) returns (DeletePersonResponse);
+
+  // GetPerson returns one raw mapping entry (name, github, k8s, class, emails,
+  // pinned) so the operator's Edit form can prefill every field — the joined
+  // Person the roster shows omits emails/pinned. Operator-only.
+  rpc GetPerson(GetPersonRequest) returns (GetPersonResponse);
+}
+
+message GetPersonRequest {
+  string name = 1;
+}
+
+message GetPersonResponse {
+  string name = 1;
+  string github = 2;
+  repeated string emails = 3;
+  string k8s = 4;
+  string class = 5;
+  repeated string pinned = 6;
+  // Provenance stamped when the entry was first blessed (empty if never).
+  string approved_by = 7;
+  string approved_at = 8;
 }
 
 message PutPersonRequest {
@@ -251,6 +272,21 @@ message ReconcileStatus {
   int32 removes = 11;
   int32 role_changes = 12;
   int32 team_changes = 13;
+  // Details is the per-action list behind the counts, so the operator can
+  // expand "+2 invite" and see exactly who and which team.
+  repeated ReconcileChange details = 14;
+}
+
+// ReconcileChange is one concrete action the plan would take, surfaced so the
+// Status view can explain a count rather than only tally it.
+message ReconcileChange {
+  // Verb is the action: "invite", "invite-admin", "remove", "cancel-invite",
+  // "role", "team-add", "team-remove".
+  string verb = 1;
+  // Login is the GitHub login the action targets.
+  string login = 2;
+  // Team is set for team-add/team-remove.
+  string team = 3;
 }
 
 message GetAuditRequest {

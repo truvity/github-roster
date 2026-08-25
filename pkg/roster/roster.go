@@ -694,6 +694,12 @@ func membership(in Inputs, org *config.Org, entry mapping.Entry, l *liveness, is
 
 	sort.Strings(m.Teams)
 
+	// Derive the reconcile lifecycle now that the resolved membership is
+	// complete. Only here, where a GitHub read exists — the early return
+	// above deliberately leaves State zero, because membership is unknown
+	// without a read.
+	m.State = membershipState(m)
+
 	return m
 }
 

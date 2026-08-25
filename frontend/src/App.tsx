@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   fetchRoster, fetchStatus, fetchAudit, flattenAudit,
   fetchSettings, fetchVersion, fetchMe, stageOrg,
-  addDirectory, deleteDirectory, setPaused, runReconcile, putPerson, deletePerson, setReconcileEnabled,
-  type Person, type ReconcileStatus, type Change, type Settings, type SettingsOrg, type Candidate,
+  addDirectory, deleteDirectory, setPaused, runReconcile, putPerson, deletePerson, getPerson, setReconcileEnabled,
+  type Person, type PersonInput, type ReconcileStatus, type Change, type Settings, type SettingsOrg, type Candidate,
 } from "./api";
 
 type Tab = "people" | "status" | "history" | "settings";
@@ -46,22 +46,24 @@ function peopleMatches(p: Person, preset: Preset, q: string): boolean {
   }
 }
 
-// PersonForm adds (or re-approves) a roster mapping entry — the operator fills
-// the data and blesses the person in one action (approvedBy/At are stamped
-// server-side). Editing an existing name replaces its entry.
-function PersonForm({ onSaved, onCancel }: { onSaved: () => void; onCancel: () => void }) {
-  const [name, setName] = useState("");
-  const [github, setGithub] = useState("");
-  const [k8s, setK8s] = useState("");
-  const [cls, setCls] = useState("employee");
-  const [emails, setEmails] = useState("");
+// PersonForm adds, re-approves, or edits a roster mapping entry — the operator
+// fills the data and blesses the person in one action (approvedBy/At are
+// stamped server-side). With `initial` it edits that entry: the name is the
+// store key, so it is shown read-only and the save replaces the entry in place.
+function PersonForm({ onSaved, onCancel, initial }: { onSaved: () => void; onCancel: () => void; initial?: PersonInput }) {
+  const editing = initial !== undefined;
+  const [name, setName] = useState(initial?.name ?? "");
+  const [github, setGithub] = useState(initial?.github ?? "");
+  const [k8s, setK8s] = useState(initial?.k8s ?? "");
+  const [cls, setCls] = useState(initial?.class ?? "employee");
+  const [emails, setEmails] = useState((initial?.emails ?? []).join(", "));
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setErr(""); setBusy(true);
     try {
-      await putPerson({ name: name.trim(), github: github.trim(), k8s: k8s.trim(), class: cls, emails: emails.split(",").map((x) => x.trim()).filter(Boolean) });
+      await putPerson({ name: name.trim(), github: github.trim(), k8s: k8s.trim(), class: cls, emails: emails.split(",").map((x) => x.trim()).filter(Boolean), pinned: initial?.pinned });
       onSaved();
     } catch (e2) {
       setErr(e2 instanceof Error ? e2.message : String(e2));
@@ -70,12 +72,12 @@ function PersonForm({ onSaved, onCancel }: { onSaved: () => void; onCancel: () =
   };
   return (
     <form onSubmit={submit} style={{ margin: "12px 0", padding: 12, border: "1px solid var(--border, #ddd)", borderRadius: 8, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
-      <label>Name<br /><input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ada Lovelace" required /></label>
+      <label>Name<br /><input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ada Lovelace" required readOnly={editing} title={editing ? "The name is the entry key and cannot change; Remove and re-add to rename." : undefined} /></label>
       <label>GitHub login<br /><input value={github} onChange={(e) => setGithub(e.target.value)} placeholder="ada" required /></label>
       <label>Namespace (k8s)<br /><input value={k8s} onChange={(e) => setK8s(e.target.value)} placeholder="alovelace" /></label>
       <label>Class<br /><select value={cls} onChange={(e) => setCls(e.target.value)}><option value="employee">employee</option><option value="bot">bot</option></select></label>
       <label>Emails (comma-separated)<br /><input value={emails} onChange={(e) => setEmails(e.target.value)} style={{ width: 220 }} placeholder="ada@acme.com" /></label>
-      <button type="submit" disabled={busy}>{busy ? "Saving…" : "Add person"}</button>
+      <button type="submit" disabled={busy}>{busy ? "Saving…" : editing ? "Save changes" : "Add person"}</button>
       <button type="button" className="chip" onClick={onCancel}>Cancel</button>
       {err && <span className="banner">{err}</span>}
     </form>
@@ -127,11 +129,16 @@ function PeopleView() {
   const [preset, setPreset] = useState<Preset>("needs");
   const [q, setQ] = useState("");
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<PersonInput | null>(null);
   const { data, error } = useAsync((s) => fetchRoster(s), [reload]);
   const refresh = () => setReload((r) => r + 1);
   const remove = async (name: string) => {
     setActErr("");
     try { await deletePerson(name); refresh(); } catch (e) { setActErr(e instanceof Error ? e.message : String(e)); }
+  };
+  const edit = async (name: string) => {
+    setActErr("");
+    try { setEditing(await getPerson(name)); setAdding(false); } catch (e) { setActErr(e instanceof Error ? e.message : String(e)); }
   };
   const people = data?.people ?? null;
   const candidates = data?.candidates ?? [];
@@ -150,10 +157,11 @@ function PeopleView() {
       <div className="presets" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
         {presets.map(([k, l]) => <button key={k} className={preset === k ? "chip cur" : "chip"} onClick={() => setPreset(k)}>{l}</button>)}
         <input placeholder="name or login…" value={q} onChange={(e) => setQ(e.target.value)} />
-        <button style={{ marginLeft: "auto" }} onClick={() => setAdding((a) => !a)}>{adding ? "Close" : "+ Add person"}</button>
+        <button style={{ marginLeft: "auto" }} onClick={() => { setEditing(null); setAdding((a) => !a); }}>{adding ? "Close" : "+ Add person"}</button>
       </div>
       {actErr && <div className="banner">{actErr}</div>}
       {adding && <PersonForm onSaved={() => { setAdding(false); refresh(); }} onCancel={() => setAdding(false)} />}
+      {editing && <PersonForm initial={editing} onSaved={() => { setEditing(null); refresh(); }} onCancel={() => setEditing(null)} />}
       <table>
         <thead><tr><th>State</th><th>Name</th><th>GitHub</th><th>Organizations</th><th></th></tr></thead>
         <tbody>
@@ -166,7 +174,10 @@ function PeopleView() {
                 <td>{p.name}</td>
                 <td className="mono">{p.github || "—"}</td>
                 <td>{orgCell(p)}</td>
-                <td><button className="chip" onClick={() => remove(p.name)} title="Remove from the roster">Remove</button></td>
+                <td style={{ display: "flex", gap: 6 }}>
+                  <button className="chip" onClick={() => edit(p.name)} title="Edit this entry">Edit</button>
+                  <button className="chip" onClick={() => remove(p.name)} title="Remove from the roster">Remove</button>
+                </td>
               </tr>
             );
           })}
@@ -182,6 +193,7 @@ function StatusView() {
   const { data, error } = useAsync(fetchStatus, [reload]);
   const [busy, setBusy] = useState("");
   const [actErr, setActErr] = useState("");
+  const [open, setOpen] = useState<Record<string, boolean>>({});
   const refresh = () => setReload((r) => r + 1);
   const act = async (key: string, fn: () => Promise<void>) => {
     setActErr(""); setBusy(key);
@@ -191,15 +203,46 @@ function StatusView() {
   if (data === null) return <p className="muted">Loading…</p>;
   const pending = (s: ReconcileStatus) => {
     if (!s.actions) return <span className="muted">in sync</span>;
-    return (
-      <span style={{ display: "inline-flex", gap: 4, flexWrap: "wrap" }}>
+    const hasDetails = (s.details?.length ?? 0) > 0;
+    const badges = (
+      <span style={{ display: "inline-flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
         {s.adds ? <span className="badge ok">+{s.adds} invite</span> : null}
         {s.removes ? <span className="badge danger">−{s.removes} remove</span> : null}
         {s.roleChanges ? <span className="badge warn">{s.roleChanges} role</span> : null}
         {s.teamChanges ? <span className="badge muted">{s.teamChanges} team</span> : null}
+        {hasDetails ? <span className="muted" style={{ fontSize: "0.85em" }}>{open[s.org] ? "▾" : "▸"}</span> : null}
       </span>
     );
+    if (!hasDetails) return badges;
+    return (
+      <button type="button" onClick={() => setOpen((o) => ({ ...o, [s.org]: !o[s.org] }))}
+        title="Show the exact changes" style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}>
+        {badges}
+      </button>
+    );
   };
+  const changeBadge = (verb: string) => {
+    if (verb.startsWith("invite")) return "ok";
+    if (verb === "remove" || verb === "cancel-invite") return "danger";
+    if (verb.startsWith("role")) return "warn";
+    return "muted";
+  };
+  const details = (s: ReconcileStatus) => (
+    <tr key={`${s.org}-detail`}>
+      <td></td>
+      <td colSpan={5} style={{ paddingTop: 0 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+          {(s.details ?? []).map((d, i) => (
+            <span key={i} style={{ fontSize: "0.9em" }}>
+              <span className={`badge ${changeBadge(d.verb)}`} style={{ marginRight: 6 }}>{d.verb}</span>
+              <span className="mono">{d.login || "—"}</span>
+              {d.team ? <span className="muted"> · team {d.team}</span> : null}
+            </span>
+          ))}
+        </div>
+      </td>
+    </tr>
+  );
   const outcome = (s: ReconcileStatus) => {
     if (s.error) return <span className="badge danger">failed</span>;
     if (s.held) return <><span className="badge warn">held</span> <span className="muted">{s.reason}</span></>;
@@ -220,7 +263,7 @@ function StatusView() {
       <table>
         <thead><tr><th>Organization</th><th>Loop</th><th>Pending</th><th>Last run</th><th>Outcome</th><th>Controls</th></tr></thead>
         <tbody>
-          {data.map((s) => (
+          {data.flatMap((s) => [
             <tr key={s.org}>
               <td>{s.org}</td>
               <td>{s.enabled ? <span className="badge ok">enabled</span> : <span className="badge warn">disabled</span>}{s.paused && <> <span className="badge danger">paused</span></>}</td>
@@ -237,8 +280,9 @@ function StatusView() {
                   </button>
                 )}
               </td>
-            </tr>
-          ))}
+            </tr>,
+            open[s.org] ? details(s) : null,
+          ])}
           {data.length === 0 && <tr><td colSpan={6} className="muted">No reconcile status yet.</td></tr>}
         </tbody>
       </table>

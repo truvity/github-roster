@@ -68,6 +68,21 @@ export async function deletePerson(name: string): Promise<void> {
   await rosterClient.deletePerson({ name });
 }
 
+// getPerson reads one raw mapping entry so the Edit form can prefill every
+// field the joined Person omits (emails, pinned).
+export async function getPerson(name: string): Promise<PersonInput> {
+  const p = await rosterClient.getPerson({ name });
+
+  return {
+    name: p.name,
+    github: p.github,
+    emails: p.emails,
+    k8s: p.k8s || undefined,
+    class: p.class || undefined,
+    pinned: p.pinned,
+  };
+}
+
 // Operational mutations (operator-only; the server rejects a viewer).
 export async function addDirectory(input: { name: string; domains: string[]; endpoint: string; probeGroup?: string }): Promise<void> {
   await rosterClient.addDirectory({ name: input.name, domains: input.domains, endpoint: input.endpoint, probeGroup: input.probeGroup ?? "" });
@@ -145,6 +160,14 @@ export async function fetchRoster(signal?: AbortSignal): Promise<Roster> {
   };
 }
 
+// ReconcileChange is one concrete action behind the counts, so the Status view
+// can expand "+2 invite" into who and which team.
+export interface ReconcileChange {
+  verb: string;
+  login: string;
+  team?: string;
+}
+
 export interface ReconcileStatus {
   org: string;
   enabled?: boolean;
@@ -155,6 +178,7 @@ export interface ReconcileStatus {
   removes?: number;
   roleChanges?: number;
   teamChanges?: number;
+  details?: ReconcileChange[];
   applied?: boolean;
   held?: boolean;
   reason?: string;
@@ -177,6 +201,7 @@ export async function fetchStatus(signal?: AbortSignal): Promise<ReconcileStatus
     removes: s.removes,
     roleChanges: s.roleChanges,
     teamChanges: s.teamChanges,
+    details: s.details.map((d) => ({ verb: d.verb, login: d.login, team: d.team || undefined })),
     applied: s.applied,
     held: s.held,
     reason: s.reason || undefined,

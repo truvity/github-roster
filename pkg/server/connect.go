@@ -15,6 +15,7 @@ import (
 
 	rosterv1 "github.com/truvity/github-roster/gen/roster/v1"
 	"github.com/truvity/github-roster/gen/roster/v1/rosterv1connect"
+	"github.com/truvity/github-roster/pkg/broker"
 	"github.com/truvity/github-roster/pkg/auth"
 	"github.com/truvity/github-roster/pkg/config"
 	"github.com/truvity/github-roster/pkg/mapping"
@@ -197,6 +198,7 @@ func (s *rosterConnect) GetStatus(
 			Removes:     int32(st.Removes),     //nolint:gosec // small count
 			RoleChanges: int32(st.RoleChanges), //nolint:gosec // small count
 			TeamChanges: int32(st.TeamChanges), //nolint:gosec // small count
+			Details:     reconcileChanges(st.Details),
 			Applied:     st.Applied,
 			Held:        st.Held,
 			Reason:      st.Reason,
@@ -546,6 +548,64 @@ func (s *rosterConnect) DeletePerson(
 	}
 
 	return connect.NewResponse(&rosterv1.DeletePersonResponse{}), nil
+}
+
+// GetPerson returns one raw mapping entry so the Edit form can prefill every
+// field the joined Person omits (emails, pinned).
+func (s *rosterConnect) GetPerson(
+	ctx context.Context,
+	req *connect.Request[rosterv1.GetPersonRequest],
+) (*connect.Response[rosterv1.GetPersonResponse], error) {
+	if err := requireOperatorCtx(ctx); err != nil {
+		return nil, err
+	}
+
+	if s.deps.Mapping == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("no mapping store is configured"))
+	}
+
+	name := strings.TrimSpace(req.Msg.GetName())
+	if name == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name is required"))
+	}
+
+	entry, err := s.deps.Mapping.Get(ctx, name)
+	if err != nil {
+		if errors.Is(err, mapping.ErrNotFound) {
+			return nil, connect.NewError(connect.CodeNotFound, err)
+		}
+
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return connect.NewResponse(&rosterv1.GetPersonResponse{
+		Name:       entry.Name,
+		Github:     entry.GitHub,
+		Emails:     entry.Emails,
+		K8S:        entry.K8s,
+		Class:      string(entry.Class),
+		Pinned:     entry.Pinned,
+		ApprovedBy: entry.ApprovedBy,
+		ApprovedAt: entry.ApprovedAt,
+	}), nil
+}
+
+// reconcileChanges maps the broker's per-action detail list to the proto.
+func reconcileChanges(in []broker.ReconcileChange) []*rosterv1.ReconcileChange {
+	if len(in) == 0 {
+		return nil
+	}
+
+	out := make([]*rosterv1.ReconcileChange, 0, len(in))
+	for i := range in {
+		out = append(out, &rosterv1.ReconcileChange{
+			Verb:  in[i].Verb,
+			Login: in[i].Login,
+			Team:  in[i].Team,
+		})
+	}
+
+	return out
 }
 
 // approver names who blessed a person, preferring the most human identifier.

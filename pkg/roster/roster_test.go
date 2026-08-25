@@ -137,6 +137,13 @@ func TestLiveMappedPerson(t *testing.T) {
 	require.False(t, m.InvitationPending)
 	require.Equal(t, []string{"team-engineers"}, m.Teams)
 	require.Equal(t, []string{"team-engineers"}, m.DesiredTeams)
+
+	// A live member whose teams match desired is synced — and the derived
+	// state must actually be wired into the join (regression: membershipState
+	// was defined but never called, leaving every state empty so the console's
+	// Active/Left filters matched nobody).
+	require.Equal(t, roster.StateSynced, m.State)
+	require.Equal(t, roster.PersonSynced, ada.State)
 }
 
 // An invited person occupies a seat and is absent from the members API.
@@ -145,10 +152,13 @@ func TestLiveMappedPerson(t *testing.T) {
 func TestPendingInvitationCountsAsMembership(t *testing.T) {
 	t.Parallel()
 
-	m := person(t, join(t), "Alan Turing").Orgs["example-org"]
+	turing := person(t, join(t), "Alan Turing")
+	m := turing.Orgs["example-org"]
 
 	require.True(t, m.Member)
 	require.True(t, m.InvitationPending)
+	require.Equal(t, roster.StateInvited, m.State)
+	require.Equal(t, roster.PersonInvited, turing.State)
 }
 
 // The fail-safe direction: a live person nobody has mapped gets nothing,

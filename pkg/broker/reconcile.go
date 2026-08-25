@@ -35,6 +35,9 @@ type ReconcileStatus struct {
 	Removes     int `json:"removes,omitempty"`
 	RoleChanges int `json:"roleChanges,omitempty"`
 	TeamChanges int `json:"teamChanges,omitempty"`
+	// Details is the per-action list behind the counts, so the console can
+	// explain "+2 invite" as the two logins and teams it stands for.
+	Details []ReconcileChange `json:"details,omitempty"`
 	// Applied is true when the loop executed the actions (enabled + a
 	// clean plan).
 	Applied bool `json:"applied"`
@@ -44,6 +47,40 @@ type ReconcileStatus struct {
 	Reason string `json:"reason,omitempty"`
 	// Error is a read/render/execute failure (not a guard refusal).
 	Error string `json:"error,omitempty"`
+}
+
+// ReconcileChange is one concrete action a plan would take, surfaced so the
+// console's Status view can expand a count into the who and which team.
+type ReconcileChange struct {
+	Verb  string `json:"verb"`
+	Login string `json:"login"`
+	Team  string `json:"team,omitempty"`
+}
+
+// changeVerb renders an action kind as the short verb the console shows.
+func changeVerb(kind reconciler.ActionKind, admin bool) string {
+	switch kind {
+	case reconciler.ActionAddMember:
+		return "invite"
+	case reconciler.ActionAddAdmin:
+		return "invite-admin"
+	case reconciler.ActionRemoveMember:
+		return "remove"
+	case reconciler.ActionCancelInvite:
+		return "cancel-invite"
+	case reconciler.ActionSetRole:
+		if admin {
+			return "role→owner"
+		}
+
+		return "role→member"
+	case reconciler.ActionTeamAdd:
+		return "team-add"
+	case reconciler.ActionTeamRemove:
+		return "team-remove"
+	default:
+		return string(kind)
+	}
 }
 
 // ReconcileStatuses returns a snapshot of the per-org reconcile status,
@@ -146,7 +183,8 @@ func (d *Deps) reconcileOrg(ctx context.Context, cfgOrg *config.Org, next time.T
 
 	st.Actions = len(entry.Plan.Actions)
 	for i := range entry.Plan.Actions {
-		switch entry.Plan.Actions[i].Kind {
+		a := &entry.Plan.Actions[i]
+		switch a.Kind {
 		case reconciler.ActionAddMember, reconciler.ActionAddAdmin:
 			st.Adds++
 		case reconciler.ActionRemoveMember, reconciler.ActionCancelInvite:
@@ -156,6 +194,12 @@ func (d *Deps) reconcileOrg(ctx context.Context, cfgOrg *config.Org, next time.T
 		case reconciler.ActionTeamAdd, reconciler.ActionTeamRemove:
 			st.TeamChanges++
 		}
+
+		st.Details = append(st.Details, ReconcileChange{
+			Verb:  changeVerb(a.Kind, a.Admin),
+			Login: a.Login,
+			Team:  a.Team,
+		})
 	}
 
 	if d.Control != nil {

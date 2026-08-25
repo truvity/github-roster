@@ -96,7 +96,9 @@ func get(t *testing.T, app *fiber.App, path string) (status int, body string) {
 }
 
 // The root path now lands on the SPA: the server-rendered pages are retired.
-func TestRootRedirectsToApp(t *testing.T) {
+// The SPA is served at the root; the old /app mount redirects home so
+// bookmarks survive the move.
+func TestRootServesSPAAndAppRedirectsHome(t *testing.T) {
 	t.Parallel()
 
 	app := server.NewApp(newDeps(t, doc, &fixedAuth{role: auth.RoleViewer}))
@@ -108,8 +110,18 @@ func TestRootRedirectsToApp(t *testing.T) {
 
 	defer func() { _ = resp.Body.Close() }()
 
-	require.Equal(t, fiber.StatusSeeOther, resp.StatusCode)
-	require.Equal(t, "/app", resp.Header.Get("Location"))
+	require.Equal(t, fiber.StatusOK, resp.StatusCode)
+	require.Contains(t, resp.Header.Get("Content-Type"), "text/html")
+
+	old := httptest.NewRequest(http.MethodGet, "/app", http.NoBody)
+
+	resp2, err := app.Test(old)
+	require.NoError(t, err)
+
+	defer func() { _ = resp2.Body.Close() }()
+
+	require.Equal(t, fiber.StatusSeeOther, resp2.StatusCode)
+	require.Equal(t, "/", resp2.Header.Get("Location"))
 }
 
 // The App-manifest routes are the surviving operator-gated surface (the old

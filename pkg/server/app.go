@@ -14,20 +14,16 @@ import (
 // appDist is the built SPA rooted at its dist/ directory.
 var appDist, _ = fs.Sub(frontend.Assets, "dist")
 
-// handleApp serves the embedded single-page app. A request for an existing
-// built file (the hashed JS/CSS under assets/) returns it; anything else
-// returns index.html so the SPA can route it client-side.
-func (d *Deps) handleApp(c fiber.Ctx) error {
-	name := strings.TrimPrefix(c.Params("*"), "/")
-
-	if name == "" || name == "index.html" {
-		return serveAppIndex(c)
-	}
+// handleAppAsset serves one hashed build file from the embedded SPA
+// (mounted at /assets/*). Assets are content-hashed, so they cache forever;
+// a miss is a real 404 — the SPA's views live in the URL fragment and never
+// produce server-side paths.
+func (d *Deps) handleAppAsset(c fiber.Ctx) error {
+	name := "assets/" + strings.TrimPrefix(c.Params("*"), "/")
 
 	data, err := fs.ReadFile(appDist, name)
 	if err != nil {
-		// Unknown path: the SPA's own route, not a missing asset.
-		return serveAppIndex(c)
+		return fiber.NewError(fiber.StatusNotFound, "no such asset")
 	}
 
 	if ct := mime.TypeByExtension(path.Ext(name)); ct != "" {

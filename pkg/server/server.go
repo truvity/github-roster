@@ -166,21 +166,18 @@ func NewApp(deps *Deps) *fiber.App {
 		return c.Send(data)
 	})
 
-	// The TypeScript UI (Vite/React), embedded and served under /app.
-	// Hashed assets under /app/assets/* are served from the build; any
-	// other /app path falls back to index.html so client-side routing
-	// works (a single-page app). Same-origin, so the strict CSP covers it.
-	app.Get("/app", serveAppIndex)
-	app.Get("/app/*", deps.handleApp)
+	// The TypeScript UI (Vite/React), embedded and served at the root: GET /
+	// is the SPA shell and /assets/* its hashed build files. Views live in
+	// the URL fragment (#status), which never reaches the server, so no
+	// catch-all is needed — the API (/api/*, /roster.v1.*), the manifest
+	// flow and /static keep their paths untouched. Same-origin, so the
+	// strict CSP covers it.
+	app.Get("/", serveAppIndex)
+	app.Get("/assets/*", deps.handleAppAsset)
 
-	// The server-rendered pages are retired: the SPA under /app is the only
-	// console UI now, so land every visitor there. The read data those pages
-	// showed is served to the SPA over ConnectRPC (and the JSON /api/* the
-	// cross-repo puller consumes); operator write actions move into the SPA in
-	// a follow-up, alongside the App-manifest flow below which stays reachable.
-	app.Get("/", func(c fiber.Ctx) error {
-		return c.Redirect().To("/app")
-	})
+	// The old /app mount redirects home — bookmarks survive the move.
+	app.Get("/app", func(c fiber.Ctx) error { return c.Redirect().To("/") })
+	app.Get("/app/*", func(c fiber.Ctx) error { return c.Redirect().To("/") })
 
 	// GitHub App-manifest flow for a store org: start (operator-gated) hands a
 	// self-submitting form to GitHub; the callback (CSRF-guarded by the state

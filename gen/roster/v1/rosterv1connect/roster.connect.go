@@ -52,6 +52,8 @@ const (
 	RosterServiceGetAuditProcedure = "/roster.v1.RosterService/GetAudit"
 	// RosterServiceGetMeProcedure is the fully-qualified name of the RosterService's GetMe RPC.
 	RosterServiceGetMeProcedure = "/roster.v1.RosterService/GetMe"
+	// RosterServiceStageOrgProcedure is the fully-qualified name of the RosterService's StageOrg RPC.
+	RosterServiceStageOrgProcedure = "/roster.v1.RosterService/StageOrg"
 )
 
 // RosterServiceClient is a client for the roster.v1.RosterService service.
@@ -76,6 +78,11 @@ type RosterServiceClient interface {
 	// forwards it, so the SPA header can show who is logged in and whether they
 	// may operate or only view.
 	GetMe(context.Context, *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error)
+	// StageOrg stages an operator-added organization in the config store (name,
+	// one seed team, optional minimum-owners), born reconcile-disabled and
+	// credential-less. Operator-only. It then shows a "Create GitHub App" link
+	// that starts the manifest flow. Replaces the retired SSR form.
+	StageOrg(context.Context, *connect.Request[v1.StageOrgRequest]) (*connect.Response[v1.StageOrgResponse], error)
 }
 
 // NewRosterServiceClient constructs a client for the roster.v1.RosterService service. By default,
@@ -125,6 +132,12 @@ func NewRosterServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(rosterServiceMethods.ByName("GetMe")),
 			connect.WithClientOptions(opts...),
 		),
+		stageOrg: connect.NewClient[v1.StageOrgRequest, v1.StageOrgResponse](
+			httpClient,
+			baseURL+RosterServiceStageOrgProcedure,
+			connect.WithSchema(rosterServiceMethods.ByName("StageOrg")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -136,6 +149,7 @@ type rosterServiceClient struct {
 	getStatus   *connect.Client[v1.GetStatusRequest, v1.GetStatusResponse]
 	getAudit    *connect.Client[v1.GetAuditRequest, v1.GetAuditResponse]
 	getMe       *connect.Client[v1.GetMeRequest, v1.GetMeResponse]
+	stageOrg    *connect.Client[v1.StageOrgRequest, v1.StageOrgResponse]
 }
 
 // GetVersion calls roster.v1.RosterService.GetVersion.
@@ -168,6 +182,11 @@ func (c *rosterServiceClient) GetMe(ctx context.Context, req *connect.Request[v1
 	return c.getMe.CallUnary(ctx, req)
 }
 
+// StageOrg calls roster.v1.RosterService.StageOrg.
+func (c *rosterServiceClient) StageOrg(ctx context.Context, req *connect.Request[v1.StageOrgRequest]) (*connect.Response[v1.StageOrgResponse], error) {
+	return c.stageOrg.CallUnary(ctx, req)
+}
+
 // RosterServiceHandler is an implementation of the roster.v1.RosterService service.
 type RosterServiceHandler interface {
 	// GetVersion returns the running build's identity — the same information the
@@ -190,6 +209,11 @@ type RosterServiceHandler interface {
 	// forwards it, so the SPA header can show who is logged in and whether they
 	// may operate or only view.
 	GetMe(context.Context, *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error)
+	// StageOrg stages an operator-added organization in the config store (name,
+	// one seed team, optional minimum-owners), born reconcile-disabled and
+	// credential-less. Operator-only. It then shows a "Create GitHub App" link
+	// that starts the manifest flow. Replaces the retired SSR form.
+	StageOrg(context.Context, *connect.Request[v1.StageOrgRequest]) (*connect.Response[v1.StageOrgResponse], error)
 }
 
 // NewRosterServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -235,6 +259,12 @@ func NewRosterServiceHandler(svc RosterServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(rosterServiceMethods.ByName("GetMe")),
 		connect.WithHandlerOptions(opts...),
 	)
+	rosterServiceStageOrgHandler := connect.NewUnaryHandler(
+		RosterServiceStageOrgProcedure,
+		svc.StageOrg,
+		connect.WithSchema(rosterServiceMethods.ByName("StageOrg")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/roster.v1.RosterService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case RosterServiceGetVersionProcedure:
@@ -249,6 +279,8 @@ func NewRosterServiceHandler(svc RosterServiceHandler, opts ...connect.HandlerOp
 			rosterServiceGetAuditHandler.ServeHTTP(w, r)
 		case RosterServiceGetMeProcedure:
 			rosterServiceGetMeHandler.ServeHTTP(w, r)
+		case RosterServiceStageOrgProcedure:
+			rosterServiceStageOrgHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -280,4 +312,8 @@ func (UnimplementedRosterServiceHandler) GetAudit(context.Context, *connect.Requ
 
 func (UnimplementedRosterServiceHandler) GetMe(context.Context, *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("roster.v1.RosterService.GetMe is not implemented"))
+}
+
+func (UnimplementedRosterServiceHandler) StageOrg(context.Context, *connect.Request[v1.StageOrgRequest]) (*connect.Response[v1.StageOrgResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("roster.v1.RosterService.StageOrg is not implemented"))
 }

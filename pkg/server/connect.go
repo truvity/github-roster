@@ -6,6 +6,7 @@ package server
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -266,6 +267,60 @@ func (s *rosterConnect) GetMe(
 		Email: h.Get("X-Auth-Request-Email"),
 		Role:  string(role),
 	}), nil
+}
+
+// StageOrg stages an operator-added organization in the config store. It is
+// operator-gated in-handler (the auth middleware put the identity on the
+// context) — ConnectRPC POSTs carry a custom protocol header, so a browser
+// cannot forge one cross-site, which is why no same-origin form guard is
+// needed here as it was for the retired SSR form.
+func (s *rosterConnect) StageOrg(
+	ctx context.Context,
+	req *connect.Request[rosterv1.StageOrgRequest],
+) (*connect.Response[rosterv1.StageOrgResponse], error) {
+	if id, ok := auth.FromContext(ctx); !ok || !id.Role.CanOperate() {
+		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("operator role required"))
+	}
+
+	if s.deps.OrgStore == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("no config store is configured"))
+	}
+
+	m := req.Msg
+	name := strings.TrimSpace(m.GetName())
+	team := strings.TrimSpace(m.GetTeam())
+	groups := trimmedNonEmpty(m.GetGroups())
+	members := trimmedNonEmpty(m.GetMembers())
+
+	if name == "" || team == "" || (len(groups) == 0 && len(members) == 0) {
+		return nil, connect.NewError(connect.CodeInvalidArgument,
+			errors.New("a name, a team, and at least one group or member are required"))
+	}
+
+	org := config.Org{
+		Name:      name,
+		MinAdmins: int(m.GetMinAdmins()),
+		Teams:     map[string]config.Team{team: {Groups: groups, Members: members}},
+	}
+
+	if err := s.deps.OrgStore.PutOrg(ctx, org); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return connect.NewResponse(&rosterv1.StageOrgResponse{}), nil
+}
+
+// trimmedNonEmpty trims each value and drops the empties.
+func trimmedNonEmpty(in []string) []string {
+	var out []string
+
+	for _, v := range in {
+		if t := strings.TrimSpace(v); t != "" {
+			out = append(out, t)
+		}
+	}
+
+	return out
 }
 
 // registerConnect mounts the ConnectRPC service on the fiber app. The generated

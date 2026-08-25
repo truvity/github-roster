@@ -27,6 +27,118 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type StageOrgRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	MinAdmins     int32                  `protobuf:"varint,2,opt,name=min_admins,json=minAdmins,proto3" json:"min_admins,omitempty"`
+	Team          string                 `protobuf:"bytes,3,opt,name=team,proto3" json:"team,omitempty"`
+	Groups        []string               `protobuf:"bytes,4,rep,name=groups,proto3" json:"groups,omitempty"`
+	Members       []string               `protobuf:"bytes,5,rep,name=members,proto3" json:"members,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StageOrgRequest) Reset() {
+	*x = StageOrgRequest{}
+	mi := &file_roster_v1_roster_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StageOrgRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StageOrgRequest) ProtoMessage() {}
+
+func (x *StageOrgRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_roster_v1_roster_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StageOrgRequest.ProtoReflect.Descriptor instead.
+func (*StageOrgRequest) Descriptor() ([]byte, []int) {
+	return file_roster_v1_roster_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *StageOrgRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *StageOrgRequest) GetMinAdmins() int32 {
+	if x != nil {
+		return x.MinAdmins
+	}
+	return 0
+}
+
+func (x *StageOrgRequest) GetTeam() string {
+	if x != nil {
+		return x.Team
+	}
+	return ""
+}
+
+func (x *StageOrgRequest) GetGroups() []string {
+	if x != nil {
+		return x.Groups
+	}
+	return nil
+}
+
+func (x *StageOrgRequest) GetMembers() []string {
+	if x != nil {
+		return x.Members
+	}
+	return nil
+}
+
+type StageOrgResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StageOrgResponse) Reset() {
+	*x = StageOrgResponse{}
+	mi := &file_roster_v1_roster_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StageOrgResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StageOrgResponse) ProtoMessage() {}
+
+func (x *StageOrgResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_roster_v1_roster_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StageOrgResponse.ProtoReflect.Descriptor instead.
+func (*StageOrgResponse) Descriptor() ([]byte, []int) {
+	return file_roster_v1_roster_proto_rawDescGZIP(), []int{1}
+}
+
 type GetMeRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -35,7 +147,7 @@ type GetMeRequest struct {
 
 func (x *GetMeRequest) Reset() {
 	*x = GetMeRequest{}
-	mi := &file_roster_v1_roster_proto_msgTypes[0]
+	mi := &file_roster_v1_roster_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -47,7 +159,7 @@ func (x *GetMeRequest) String() string {
 func (*GetMeRequest) ProtoMessage() {}
 
 func (x *GetMeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_roster_v1_roster_proto_msgTypes[0]
+	mi := &file_roster_v1_roster_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -60,7 +172,7 @@ func (x *GetMeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMeRequest.ProtoReflect.Descriptor instead.
 func (*GetMeRequest) Descriptor() ([]byte, []int) {
-	return file_roster_v1_roster_proto_rawDescGZIP(), []int{0}
+	return file_roster_v1_roster_proto_rawDescGZIP(), []int{2}
 }
 
 type GetMeResponse struct {
@@ -75,7 +187,7 @@ type GetMeResponse struct {
 
 func (x *GetMeResponse) Reset() {
 	*x = GetMeResponse{}
-	mi := &file_roster_v1_roster_proto_msgTypes[1]
+	mi := &file_roster_v1_roster_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -87,7 +199,7 @@ func (x *GetMeResponse) String() string {
 func (*GetMeResponse) ProtoMessage() {}
 
 func (x *GetMeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_roster_v1_roster_proto_msgTypes[1]
+	mi := &file_roster_v1_roster_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -100,7 +212,7 @@ func (x *GetMeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMeResponse.ProtoReflect.Descriptor instead.
 func (*GetMeResponse) Descriptor() ([]byte, []int) {
-	return file_roster_v1_roster_proto_rawDescGZIP(), []int{1}
+	return file_roster_v1_roster_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *GetMeResponse) GetName() string {
@@ -132,7 +244,7 @@ type GetVersionRequest struct {
 
 func (x *GetVersionRequest) Reset() {
 	*x = GetVersionRequest{}
-	mi := &file_roster_v1_roster_proto_msgTypes[2]
+	mi := &file_roster_v1_roster_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -144,7 +256,7 @@ func (x *GetVersionRequest) String() string {
 func (*GetVersionRequest) ProtoMessage() {}
 
 func (x *GetVersionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_roster_v1_roster_proto_msgTypes[2]
+	mi := &file_roster_v1_roster_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -157,7 +269,7 @@ func (x *GetVersionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetVersionRequest.ProtoReflect.Descriptor instead.
 func (*GetVersionRequest) Descriptor() ([]byte, []int) {
-	return file_roster_v1_roster_proto_rawDescGZIP(), []int{2}
+	return file_roster_v1_roster_proto_rawDescGZIP(), []int{4}
 }
 
 type GetVersionResponse struct {
@@ -172,7 +284,7 @@ type GetVersionResponse struct {
 
 func (x *GetVersionResponse) Reset() {
 	*x = GetVersionResponse{}
-	mi := &file_roster_v1_roster_proto_msgTypes[3]
+	mi := &file_roster_v1_roster_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -184,7 +296,7 @@ func (x *GetVersionResponse) String() string {
 func (*GetVersionResponse) ProtoMessage() {}
 
 func (x *GetVersionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_roster_v1_roster_proto_msgTypes[3]
+	mi := &file_roster_v1_roster_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -197,7 +309,7 @@ func (x *GetVersionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetVersionResponse.ProtoReflect.Descriptor instead.
 func (*GetVersionResponse) Descriptor() ([]byte, []int) {
-	return file_roster_v1_roster_proto_rawDescGZIP(), []int{3}
+	return file_roster_v1_roster_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *GetVersionResponse) GetVersion() string {
@@ -222,7 +334,7 @@ type GetSettingsRequest struct {
 
 func (x *GetSettingsRequest) Reset() {
 	*x = GetSettingsRequest{}
-	mi := &file_roster_v1_roster_proto_msgTypes[4]
+	mi := &file_roster_v1_roster_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -234,7 +346,7 @@ func (x *GetSettingsRequest) String() string {
 func (*GetSettingsRequest) ProtoMessage() {}
 
 func (x *GetSettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_roster_v1_roster_proto_msgTypes[4]
+	mi := &file_roster_v1_roster_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -247,7 +359,7 @@ func (x *GetSettingsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSettingsRequest.ProtoReflect.Descriptor instead.
 func (*GetSettingsRequest) Descriptor() ([]byte, []int) {
-	return file_roster_v1_roster_proto_rawDescGZIP(), []int{4}
+	return file_roster_v1_roster_proto_rawDescGZIP(), []int{6}
 }
 
 type GetSettingsResponse struct {
@@ -267,7 +379,7 @@ type GetSettingsResponse struct {
 
 func (x *GetSettingsResponse) Reset() {
 	*x = GetSettingsResponse{}
-	mi := &file_roster_v1_roster_proto_msgTypes[5]
+	mi := &file_roster_v1_roster_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -279,7 +391,7 @@ func (x *GetSettingsResponse) String() string {
 func (*GetSettingsResponse) ProtoMessage() {}
 
 func (x *GetSettingsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_roster_v1_roster_proto_msgTypes[5]
+	mi := &file_roster_v1_roster_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -292,7 +404,7 @@ func (x *GetSettingsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSettingsResponse.ProtoReflect.Descriptor instead.
 func (*GetSettingsResponse) Descriptor() ([]byte, []int) {
-	return file_roster_v1_roster_proto_rawDescGZIP(), []int{5}
+	return file_roster_v1_roster_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *GetSettingsResponse) GetSources() []*DirectorySource {
@@ -336,7 +448,7 @@ type DirectorySource struct {
 
 func (x *DirectorySource) Reset() {
 	*x = DirectorySource{}
-	mi := &file_roster_v1_roster_proto_msgTypes[6]
+	mi := &file_roster_v1_roster_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -348,7 +460,7 @@ func (x *DirectorySource) String() string {
 func (*DirectorySource) ProtoMessage() {}
 
 func (x *DirectorySource) ProtoReflect() protoreflect.Message {
-	mi := &file_roster_v1_roster_proto_msgTypes[6]
+	mi := &file_roster_v1_roster_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -361,7 +473,7 @@ func (x *DirectorySource) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DirectorySource.ProtoReflect.Descriptor instead.
 func (*DirectorySource) Descriptor() ([]byte, []int) {
-	return file_roster_v1_roster_proto_rawDescGZIP(), []int{6}
+	return file_roster_v1_roster_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *DirectorySource) GetName() string {
@@ -408,7 +520,7 @@ type Org struct {
 
 func (x *Org) Reset() {
 	*x = Org{}
-	mi := &file_roster_v1_roster_proto_msgTypes[7]
+	mi := &file_roster_v1_roster_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -420,7 +532,7 @@ func (x *Org) String() string {
 func (*Org) ProtoMessage() {}
 
 func (x *Org) ProtoReflect() protoreflect.Message {
-	mi := &file_roster_v1_roster_proto_msgTypes[7]
+	mi := &file_roster_v1_roster_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -433,7 +545,7 @@ func (x *Org) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Org.ProtoReflect.Descriptor instead.
 func (*Org) Descriptor() ([]byte, []int) {
-	return file_roster_v1_roster_proto_rawDescGZIP(), []int{7}
+	return file_roster_v1_roster_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *Org) GetName() string {
@@ -490,7 +602,7 @@ type Team struct {
 
 func (x *Team) Reset() {
 	*x = Team{}
-	mi := &file_roster_v1_roster_proto_msgTypes[8]
+	mi := &file_roster_v1_roster_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -502,7 +614,7 @@ func (x *Team) String() string {
 func (*Team) ProtoMessage() {}
 
 func (x *Team) ProtoReflect() protoreflect.Message {
-	mi := &file_roster_v1_roster_proto_msgTypes[8]
+	mi := &file_roster_v1_roster_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -515,7 +627,7 @@ func (x *Team) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Team.ProtoReflect.Descriptor instead.
 func (*Team) Descriptor() ([]byte, []int) {
-	return file_roster_v1_roster_proto_rawDescGZIP(), []int{8}
+	return file_roster_v1_roster_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *Team) GetName() string {
@@ -554,7 +666,7 @@ type GetRosterRequest struct {
 
 func (x *GetRosterRequest) Reset() {
 	*x = GetRosterRequest{}
-	mi := &file_roster_v1_roster_proto_msgTypes[9]
+	mi := &file_roster_v1_roster_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -566,7 +678,7 @@ func (x *GetRosterRequest) String() string {
 func (*GetRosterRequest) ProtoMessage() {}
 
 func (x *GetRosterRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_roster_v1_roster_proto_msgTypes[9]
+	mi := &file_roster_v1_roster_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -579,7 +691,7 @@ func (x *GetRosterRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetRosterRequest.ProtoReflect.Descriptor instead.
 func (*GetRosterRequest) Descriptor() ([]byte, []int) {
-	return file_roster_v1_roster_proto_rawDescGZIP(), []int{9}
+	return file_roster_v1_roster_proto_rawDescGZIP(), []int{11}
 }
 
 type GetRosterResponse struct {
@@ -591,7 +703,7 @@ type GetRosterResponse struct {
 
 func (x *GetRosterResponse) Reset() {
 	*x = GetRosterResponse{}
-	mi := &file_roster_v1_roster_proto_msgTypes[10]
+	mi := &file_roster_v1_roster_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -603,7 +715,7 @@ func (x *GetRosterResponse) String() string {
 func (*GetRosterResponse) ProtoMessage() {}
 
 func (x *GetRosterResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_roster_v1_roster_proto_msgTypes[10]
+	mi := &file_roster_v1_roster_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -616,7 +728,7 @@ func (x *GetRosterResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetRosterResponse.ProtoReflect.Descriptor instead.
 func (*GetRosterResponse) Descriptor() ([]byte, []int) {
-	return file_roster_v1_roster_proto_rawDescGZIP(), []int{10}
+	return file_roster_v1_roster_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *GetRosterResponse) GetPeople() []*Person {
@@ -640,7 +752,7 @@ type Person struct {
 
 func (x *Person) Reset() {
 	*x = Person{}
-	mi := &file_roster_v1_roster_proto_msgTypes[11]
+	mi := &file_roster_v1_roster_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -652,7 +764,7 @@ func (x *Person) String() string {
 func (*Person) ProtoMessage() {}
 
 func (x *Person) ProtoReflect() protoreflect.Message {
-	mi := &file_roster_v1_roster_proto_msgTypes[11]
+	mi := &file_roster_v1_roster_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -665,7 +777,7 @@ func (x *Person) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Person.ProtoReflect.Descriptor instead.
 func (*Person) Descriptor() ([]byte, []int) {
-	return file_roster_v1_roster_proto_rawDescGZIP(), []int{11}
+	return file_roster_v1_roster_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *Person) GetName() string {
@@ -721,7 +833,7 @@ type Membership struct {
 
 func (x *Membership) Reset() {
 	*x = Membership{}
-	mi := &file_roster_v1_roster_proto_msgTypes[12]
+	mi := &file_roster_v1_roster_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -733,7 +845,7 @@ func (x *Membership) String() string {
 func (*Membership) ProtoMessage() {}
 
 func (x *Membership) ProtoReflect() protoreflect.Message {
-	mi := &file_roster_v1_roster_proto_msgTypes[12]
+	mi := &file_roster_v1_roster_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -746,7 +858,7 @@ func (x *Membership) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Membership.ProtoReflect.Descriptor instead.
 func (*Membership) Descriptor() ([]byte, []int) {
-	return file_roster_v1_roster_proto_rawDescGZIP(), []int{12}
+	return file_roster_v1_roster_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *Membership) GetMember() bool {
@@ -778,7 +890,7 @@ type GetStatusRequest struct {
 
 func (x *GetStatusRequest) Reset() {
 	*x = GetStatusRequest{}
-	mi := &file_roster_v1_roster_proto_msgTypes[13]
+	mi := &file_roster_v1_roster_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -790,7 +902,7 @@ func (x *GetStatusRequest) String() string {
 func (*GetStatusRequest) ProtoMessage() {}
 
 func (x *GetStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_roster_v1_roster_proto_msgTypes[13]
+	mi := &file_roster_v1_roster_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -803,7 +915,7 @@ func (x *GetStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetStatusRequest.ProtoReflect.Descriptor instead.
 func (*GetStatusRequest) Descriptor() ([]byte, []int) {
-	return file_roster_v1_roster_proto_rawDescGZIP(), []int{13}
+	return file_roster_v1_roster_proto_rawDescGZIP(), []int{15}
 }
 
 type GetStatusResponse struct {
@@ -815,7 +927,7 @@ type GetStatusResponse struct {
 
 func (x *GetStatusResponse) Reset() {
 	*x = GetStatusResponse{}
-	mi := &file_roster_v1_roster_proto_msgTypes[14]
+	mi := &file_roster_v1_roster_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -827,7 +939,7 @@ func (x *GetStatusResponse) String() string {
 func (*GetStatusResponse) ProtoMessage() {}
 
 func (x *GetStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_roster_v1_roster_proto_msgTypes[14]
+	mi := &file_roster_v1_roster_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -840,7 +952,7 @@ func (x *GetStatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetStatusResponse.ProtoReflect.Descriptor instead.
 func (*GetStatusResponse) Descriptor() ([]byte, []int) {
-	return file_roster_v1_roster_proto_rawDescGZIP(), []int{14}
+	return file_roster_v1_roster_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *GetStatusResponse) GetStatuses() []*ReconcileStatus {
@@ -867,7 +979,7 @@ type ReconcileStatus struct {
 
 func (x *ReconcileStatus) Reset() {
 	*x = ReconcileStatus{}
-	mi := &file_roster_v1_roster_proto_msgTypes[15]
+	mi := &file_roster_v1_roster_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -879,7 +991,7 @@ func (x *ReconcileStatus) String() string {
 func (*ReconcileStatus) ProtoMessage() {}
 
 func (x *ReconcileStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_roster_v1_roster_proto_msgTypes[15]
+	mi := &file_roster_v1_roster_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -892,7 +1004,7 @@ func (x *ReconcileStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReconcileStatus.ProtoReflect.Descriptor instead.
 func (*ReconcileStatus) Descriptor() ([]byte, []int) {
-	return file_roster_v1_roster_proto_rawDescGZIP(), []int{15}
+	return file_roster_v1_roster_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *ReconcileStatus) GetOrg() string {
@@ -968,7 +1080,7 @@ type GetAuditRequest struct {
 
 func (x *GetAuditRequest) Reset() {
 	*x = GetAuditRequest{}
-	mi := &file_roster_v1_roster_proto_msgTypes[16]
+	mi := &file_roster_v1_roster_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -980,7 +1092,7 @@ func (x *GetAuditRequest) String() string {
 func (*GetAuditRequest) ProtoMessage() {}
 
 func (x *GetAuditRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_roster_v1_roster_proto_msgTypes[16]
+	mi := &file_roster_v1_roster_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -993,7 +1105,7 @@ func (x *GetAuditRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAuditRequest.ProtoReflect.Descriptor instead.
 func (*GetAuditRequest) Descriptor() ([]byte, []int) {
-	return file_roster_v1_roster_proto_rawDescGZIP(), []int{16}
+	return file_roster_v1_roster_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *GetAuditRequest) GetOrg() string {
@@ -1019,7 +1131,7 @@ type GetAuditResponse struct {
 
 func (x *GetAuditResponse) Reset() {
 	*x = GetAuditResponse{}
-	mi := &file_roster_v1_roster_proto_msgTypes[17]
+	mi := &file_roster_v1_roster_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1031,7 +1143,7 @@ func (x *GetAuditResponse) String() string {
 func (*GetAuditResponse) ProtoMessage() {}
 
 func (x *GetAuditResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_roster_v1_roster_proto_msgTypes[17]
+	mi := &file_roster_v1_roster_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1044,7 +1156,7 @@ func (x *GetAuditResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAuditResponse.ProtoReflect.Descriptor instead.
 func (*GetAuditResponse) Descriptor() ([]byte, []int) {
-	return file_roster_v1_roster_proto_rawDescGZIP(), []int{17}
+	return file_roster_v1_roster_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *GetAuditResponse) GetRecords() []*AuditRecord {
@@ -1072,7 +1184,7 @@ type AuditRecord struct {
 
 func (x *AuditRecord) Reset() {
 	*x = AuditRecord{}
-	mi := &file_roster_v1_roster_proto_msgTypes[18]
+	mi := &file_roster_v1_roster_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1084,7 +1196,7 @@ func (x *AuditRecord) String() string {
 func (*AuditRecord) ProtoMessage() {}
 
 func (x *AuditRecord) ProtoReflect() protoreflect.Message {
-	mi := &file_roster_v1_roster_proto_msgTypes[18]
+	mi := &file_roster_v1_roster_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1097,7 +1209,7 @@ func (x *AuditRecord) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AuditRecord.ProtoReflect.Descriptor instead.
 func (*AuditRecord) Descriptor() ([]byte, []int) {
-	return file_roster_v1_roster_proto_rawDescGZIP(), []int{18}
+	return file_roster_v1_roster_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *AuditRecord) GetAt() string {
@@ -1182,7 +1294,7 @@ type AuditChange struct {
 
 func (x *AuditChange) Reset() {
 	*x = AuditChange{}
-	mi := &file_roster_v1_roster_proto_msgTypes[19]
+	mi := &file_roster_v1_roster_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1194,7 +1306,7 @@ func (x *AuditChange) String() string {
 func (*AuditChange) ProtoMessage() {}
 
 func (x *AuditChange) ProtoReflect() protoreflect.Message {
-	mi := &file_roster_v1_roster_proto_msgTypes[19]
+	mi := &file_roster_v1_roster_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1207,7 +1319,7 @@ func (x *AuditChange) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AuditChange.ProtoReflect.Descriptor instead.
 func (*AuditChange) Descriptor() ([]byte, []int) {
-	return file_roster_v1_roster_proto_rawDescGZIP(), []int{19}
+	return file_roster_v1_roster_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *AuditChange) GetVerb() string {
@@ -1242,7 +1354,15 @@ var File_roster_v1_roster_proto protoreflect.FileDescriptor
 
 const file_roster_v1_roster_proto_rawDesc = "" +
 	"\n" +
-	"\x16roster/v1/roster.proto\x12\troster.v1\"\x0e\n" +
+	"\x16roster/v1/roster.proto\x12\troster.v1\"\x8a\x01\n" +
+	"\x0fStageOrgRequest\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1d\n" +
+	"\n" +
+	"min_admins\x18\x02 \x01(\x05R\tminAdmins\x12\x12\n" +
+	"\x04team\x18\x03 \x01(\tR\x04team\x12\x16\n" +
+	"\x06groups\x18\x04 \x03(\tR\x06groups\x12\x18\n" +
+	"\amembers\x18\x05 \x03(\tR\amembers\"\x12\n" +
+	"\x10StageOrgResponse\"\x0e\n" +
 	"\fGetMeRequest\"M\n" +
 	"\rGetMeResponse\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
@@ -1333,7 +1453,7 @@ const file_roster_v1_roster_proto_rawDesc = "" +
 	"\x04verb\x18\x01 \x01(\tR\x04verb\x12\x18\n" +
 	"\asubject\x18\x02 \x01(\tR\asubject\x12\x12\n" +
 	"\x04team\x18\x03 \x01(\tR\x04team\x12\x16\n" +
-	"\x06detail\x18\x04 \x01(\tR\x06detail2\xb9\x03\n" +
+	"\x06detail\x18\x04 \x01(\tR\x06detail2\xfe\x03\n" +
 	"\rRosterService\x12I\n" +
 	"\n" +
 	"GetVersion\x12\x1c.roster.v1.GetVersionRequest\x1a\x1d.roster.v1.GetVersionResponse\x12L\n" +
@@ -1341,7 +1461,8 @@ const file_roster_v1_roster_proto_rawDesc = "" +
 	"\tGetRoster\x12\x1b.roster.v1.GetRosterRequest\x1a\x1c.roster.v1.GetRosterResponse\x12F\n" +
 	"\tGetStatus\x12\x1b.roster.v1.GetStatusRequest\x1a\x1c.roster.v1.GetStatusResponse\x12C\n" +
 	"\bGetAudit\x12\x1a.roster.v1.GetAuditRequest\x1a\x1b.roster.v1.GetAuditResponse\x12:\n" +
-	"\x05GetMe\x12\x17.roster.v1.GetMeRequest\x1a\x18.roster.v1.GetMeResponseB\x9a\x01\n" +
+	"\x05GetMe\x12\x17.roster.v1.GetMeRequest\x1a\x18.roster.v1.GetMeResponse\x12C\n" +
+	"\bStageOrg\x12\x1a.roster.v1.StageOrgRequest\x1a\x1b.roster.v1.StageOrgResponseB\x9a\x01\n" +
 	"\rcom.roster.v1B\vRosterProtoP\x01Z7github.com/truvity/github-roster/gen/roster/v1;rosterv1\xa2\x02\x03RXX\xaa\x02\tRoster.V1\xca\x02\tRoster\\V1\xe2\x02\x15Roster\\V1\\GPBMetadata\xea\x02\n" +
 	"Roster::V1b\x06proto3"
 
@@ -1357,56 +1478,60 @@ func file_roster_v1_roster_proto_rawDescGZIP() []byte {
 	return file_roster_v1_roster_proto_rawDescData
 }
 
-var file_roster_v1_roster_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
+var file_roster_v1_roster_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
 var file_roster_v1_roster_proto_goTypes = []any{
-	(*GetMeRequest)(nil),        // 0: roster.v1.GetMeRequest
-	(*GetMeResponse)(nil),       // 1: roster.v1.GetMeResponse
-	(*GetVersionRequest)(nil),   // 2: roster.v1.GetVersionRequest
-	(*GetVersionResponse)(nil),  // 3: roster.v1.GetVersionResponse
-	(*GetSettingsRequest)(nil),  // 4: roster.v1.GetSettingsRequest
-	(*GetSettingsResponse)(nil), // 5: roster.v1.GetSettingsResponse
-	(*DirectorySource)(nil),     // 6: roster.v1.DirectorySource
-	(*Org)(nil),                 // 7: roster.v1.Org
-	(*Team)(nil),                // 8: roster.v1.Team
-	(*GetRosterRequest)(nil),    // 9: roster.v1.GetRosterRequest
-	(*GetRosterResponse)(nil),   // 10: roster.v1.GetRosterResponse
-	(*Person)(nil),              // 11: roster.v1.Person
-	(*Membership)(nil),          // 12: roster.v1.Membership
-	(*GetStatusRequest)(nil),    // 13: roster.v1.GetStatusRequest
-	(*GetStatusResponse)(nil),   // 14: roster.v1.GetStatusResponse
-	(*ReconcileStatus)(nil),     // 15: roster.v1.ReconcileStatus
-	(*GetAuditRequest)(nil),     // 16: roster.v1.GetAuditRequest
-	(*GetAuditResponse)(nil),    // 17: roster.v1.GetAuditResponse
-	(*AuditRecord)(nil),         // 18: roster.v1.AuditRecord
-	(*AuditChange)(nil),         // 19: roster.v1.AuditChange
-	nil,                         // 20: roster.v1.Person.OrgsEntry
+	(*StageOrgRequest)(nil),     // 0: roster.v1.StageOrgRequest
+	(*StageOrgResponse)(nil),    // 1: roster.v1.StageOrgResponse
+	(*GetMeRequest)(nil),        // 2: roster.v1.GetMeRequest
+	(*GetMeResponse)(nil),       // 3: roster.v1.GetMeResponse
+	(*GetVersionRequest)(nil),   // 4: roster.v1.GetVersionRequest
+	(*GetVersionResponse)(nil),  // 5: roster.v1.GetVersionResponse
+	(*GetSettingsRequest)(nil),  // 6: roster.v1.GetSettingsRequest
+	(*GetSettingsResponse)(nil), // 7: roster.v1.GetSettingsResponse
+	(*DirectorySource)(nil),     // 8: roster.v1.DirectorySource
+	(*Org)(nil),                 // 9: roster.v1.Org
+	(*Team)(nil),                // 10: roster.v1.Team
+	(*GetRosterRequest)(nil),    // 11: roster.v1.GetRosterRequest
+	(*GetRosterResponse)(nil),   // 12: roster.v1.GetRosterResponse
+	(*Person)(nil),              // 13: roster.v1.Person
+	(*Membership)(nil),          // 14: roster.v1.Membership
+	(*GetStatusRequest)(nil),    // 15: roster.v1.GetStatusRequest
+	(*GetStatusResponse)(nil),   // 16: roster.v1.GetStatusResponse
+	(*ReconcileStatus)(nil),     // 17: roster.v1.ReconcileStatus
+	(*GetAuditRequest)(nil),     // 18: roster.v1.GetAuditRequest
+	(*GetAuditResponse)(nil),    // 19: roster.v1.GetAuditResponse
+	(*AuditRecord)(nil),         // 20: roster.v1.AuditRecord
+	(*AuditChange)(nil),         // 21: roster.v1.AuditChange
+	nil,                         // 22: roster.v1.Person.OrgsEntry
 }
 var file_roster_v1_roster_proto_depIdxs = []int32{
-	6,  // 0: roster.v1.GetSettingsResponse.sources:type_name -> roster.v1.DirectorySource
-	6,  // 1: roster.v1.GetSettingsResponse.store_sources:type_name -> roster.v1.DirectorySource
-	7,  // 2: roster.v1.GetSettingsResponse.orgs:type_name -> roster.v1.Org
-	7,  // 3: roster.v1.GetSettingsResponse.store_orgs:type_name -> roster.v1.Org
-	8,  // 4: roster.v1.Org.teams:type_name -> roster.v1.Team
-	11, // 5: roster.v1.GetRosterResponse.people:type_name -> roster.v1.Person
-	20, // 6: roster.v1.Person.orgs:type_name -> roster.v1.Person.OrgsEntry
-	15, // 7: roster.v1.GetStatusResponse.statuses:type_name -> roster.v1.ReconcileStatus
-	18, // 8: roster.v1.GetAuditResponse.records:type_name -> roster.v1.AuditRecord
-	19, // 9: roster.v1.AuditRecord.changes:type_name -> roster.v1.AuditChange
-	12, // 10: roster.v1.Person.OrgsEntry.value:type_name -> roster.v1.Membership
-	2,  // 11: roster.v1.RosterService.GetVersion:input_type -> roster.v1.GetVersionRequest
-	4,  // 12: roster.v1.RosterService.GetSettings:input_type -> roster.v1.GetSettingsRequest
-	9,  // 13: roster.v1.RosterService.GetRoster:input_type -> roster.v1.GetRosterRequest
-	13, // 14: roster.v1.RosterService.GetStatus:input_type -> roster.v1.GetStatusRequest
-	16, // 15: roster.v1.RosterService.GetAudit:input_type -> roster.v1.GetAuditRequest
-	0,  // 16: roster.v1.RosterService.GetMe:input_type -> roster.v1.GetMeRequest
-	3,  // 17: roster.v1.RosterService.GetVersion:output_type -> roster.v1.GetVersionResponse
-	5,  // 18: roster.v1.RosterService.GetSettings:output_type -> roster.v1.GetSettingsResponse
-	10, // 19: roster.v1.RosterService.GetRoster:output_type -> roster.v1.GetRosterResponse
-	14, // 20: roster.v1.RosterService.GetStatus:output_type -> roster.v1.GetStatusResponse
-	17, // 21: roster.v1.RosterService.GetAudit:output_type -> roster.v1.GetAuditResponse
-	1,  // 22: roster.v1.RosterService.GetMe:output_type -> roster.v1.GetMeResponse
-	17, // [17:23] is the sub-list for method output_type
-	11, // [11:17] is the sub-list for method input_type
+	8,  // 0: roster.v1.GetSettingsResponse.sources:type_name -> roster.v1.DirectorySource
+	8,  // 1: roster.v1.GetSettingsResponse.store_sources:type_name -> roster.v1.DirectorySource
+	9,  // 2: roster.v1.GetSettingsResponse.orgs:type_name -> roster.v1.Org
+	9,  // 3: roster.v1.GetSettingsResponse.store_orgs:type_name -> roster.v1.Org
+	10, // 4: roster.v1.Org.teams:type_name -> roster.v1.Team
+	13, // 5: roster.v1.GetRosterResponse.people:type_name -> roster.v1.Person
+	22, // 6: roster.v1.Person.orgs:type_name -> roster.v1.Person.OrgsEntry
+	17, // 7: roster.v1.GetStatusResponse.statuses:type_name -> roster.v1.ReconcileStatus
+	20, // 8: roster.v1.GetAuditResponse.records:type_name -> roster.v1.AuditRecord
+	21, // 9: roster.v1.AuditRecord.changes:type_name -> roster.v1.AuditChange
+	14, // 10: roster.v1.Person.OrgsEntry.value:type_name -> roster.v1.Membership
+	4,  // 11: roster.v1.RosterService.GetVersion:input_type -> roster.v1.GetVersionRequest
+	6,  // 12: roster.v1.RosterService.GetSettings:input_type -> roster.v1.GetSettingsRequest
+	11, // 13: roster.v1.RosterService.GetRoster:input_type -> roster.v1.GetRosterRequest
+	15, // 14: roster.v1.RosterService.GetStatus:input_type -> roster.v1.GetStatusRequest
+	18, // 15: roster.v1.RosterService.GetAudit:input_type -> roster.v1.GetAuditRequest
+	2,  // 16: roster.v1.RosterService.GetMe:input_type -> roster.v1.GetMeRequest
+	0,  // 17: roster.v1.RosterService.StageOrg:input_type -> roster.v1.StageOrgRequest
+	5,  // 18: roster.v1.RosterService.GetVersion:output_type -> roster.v1.GetVersionResponse
+	7,  // 19: roster.v1.RosterService.GetSettings:output_type -> roster.v1.GetSettingsResponse
+	12, // 20: roster.v1.RosterService.GetRoster:output_type -> roster.v1.GetRosterResponse
+	16, // 21: roster.v1.RosterService.GetStatus:output_type -> roster.v1.GetStatusResponse
+	19, // 22: roster.v1.RosterService.GetAudit:output_type -> roster.v1.GetAuditResponse
+	3,  // 23: roster.v1.RosterService.GetMe:output_type -> roster.v1.GetMeResponse
+	1,  // 24: roster.v1.RosterService.StageOrg:output_type -> roster.v1.StageOrgResponse
+	18, // [18:25] is the sub-list for method output_type
+	11, // [11:18] is the sub-list for method input_type
 	11, // [11:11] is the sub-list for extension type_name
 	11, // [11:11] is the sub-list for extension extendee
 	0,  // [0:11] is the sub-list for field type_name
@@ -1423,7 +1548,7 @@ func file_roster_v1_roster_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_roster_v1_roster_proto_rawDesc), len(file_roster_v1_roster_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   21,
+			NumMessages:   23,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -2,12 +2,8 @@ package server
 
 import (
 	"context"
-	"net/url"
 	"sort"
-	"strconv"
 	"strings"
-
-	"github.com/gofiber/fiber/v3"
 
 	"github.com/truvity/github-roster/pkg/config"
 )
@@ -136,50 +132,4 @@ func toSettingsOrgs(orgs []config.Org) []settingsOrg {
 	}
 
 	return out
-}
-
-// splitCSV parses a comma-separated field into trimmed, non-empty values.
-func splitCSV(s string) []string {
-	var out []string
-
-	for _, p := range strings.Split(s, ",") {
-		if t := strings.TrimSpace(p); t != "" {
-			out = append(out, t)
-		}
-	}
-
-	return out
-}
-
-// handleСreateOrg stages an operator-added organization in the config store:
-// its name, optional minimum-owners, and one seed team. It is born reconcile-
-// disabled and carries no credentials — once staged it shows a "Create GitHub
-// App" link, which starts the manifest flow that fills the credentials. Git
-// orgs are unaffected (git wins by name in MergeOrgs).
-func (d *Deps) handleCreateOrg(c fiber.Ctx) error {
-	if d.OrgStore == nil {
-		return fiber.NewError(fiber.StatusServiceUnavailable, "no config store configured")
-	}
-
-	name := strings.TrimSpace(formValue(c, "name"))
-	teamName := strings.TrimSpace(formValue(c, "team"))
-	groups := splitCSV(formValue(c, "groups"))
-	members := splitCSV(formValue(c, "members"))
-	minAdmins, _ := strconv.Atoi(strings.TrimSpace(formValue(c, "minAdmins")))
-
-	if name == "" || teamName == "" || (len(groups) == 0 && len(members) == 0) {
-		return c.Redirect().To("/settings?flash=" + url.QueryEscape("a name, a team, and at least one group or member are required"))
-	}
-
-	org := config.Org{
-		Name:      name,
-		MinAdmins: minAdmins,
-		Teams:     map[string]config.Team{teamName: {Groups: groups, Members: members}},
-	}
-
-	if err := d.OrgStore.PutOrg(c.Context(), org); err != nil {
-		return c.Redirect().To("/settings?flash=" + url.QueryEscape("could not stage organization: "+err.Error()))
-	}
-
-	return c.Redirect().To("/settings?flash=" + url.QueryEscape("staged organization "+name+" — now create its GitHub App below"))
 }

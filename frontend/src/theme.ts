@@ -35,6 +35,7 @@ export function stateColor(state?: string): "success" | "warning" | "error" | "d
     case "synced": return "success";
     case "pending": case "invited": return "warning";
     case "leaving": case "unknown": return "error";
+    case "display-only": return "default";
     default: return "default";
   }
 }

@@ -1,6 +1,7 @@
 package peribolos_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -471,4 +472,34 @@ func TestFullSyncEvictsPersonSuspendedForThisOrg(t *testing.T) {
 
 	require.Empty(t, result.Adding)
 	require.Equal(t, []string{"maks"}, result.Removing)
+}
+
+// A member whose only identities live in display-only (sync: false) domains
+// is never removed — not even when that display identity is suspended. The
+// join marks them DisplayOnly and computes Live=false; the render must keep
+// them with a note, exactly like the unhealthy-source inaction path.
+func TestDisplayOnlyPersonSuppressesRemoval(t *testing.T) {
+	t.Parallel()
+
+	shown := person("Display Person", "shown", false)
+	shown.DisplayOnly = true
+	shown.Sources = []string{"corp"}
+
+	result := render(t, peribolos.Inputs{
+		Mode:   peribolos.ModeRemovalsOnly,
+		Org:    orgConfig(),
+		Roster: &roster.Roster{People: []roster.Person{shown}},
+		State:  state(member("shown")),
+	})
+
+	require.Empty(t, result.Removing, "a display-only person must never be removed")
+
+	found := false
+	for _, note := range result.Notes {
+		if strings.Contains(note, "display-only") {
+			found = true
+		}
+	}
+
+	require.True(t, found, "the inaction must be explained in the notes: %v", result.Notes)
 }

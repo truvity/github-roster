@@ -243,12 +243,43 @@ message Person {
   bool live = 4;
   string state = 5;
   map<string, Membership> orgs = 6;
+  // Primary display email — the address from the first directory that knew
+  // them. The join never keys on it; display only.
+  string email = 7;
+  // Sources names the directories that currently know this person.
+  repeated string sources = 8;
+  // ExpectedSources names the directories that SHOULD know them (derived from
+  // their email domains). A source in expected but not in sources is a person
+  // who has gone missing from a directory that ought to hold them.
+  repeated string expected_sources = 9;
+  // NoTeam is true when no group, member list, or pin resolves this person to
+  // any team in any org — mapped but inert (nothing will ever be granted).
+  bool no_team = 10;
+  // Directories is the per-source identity trace: which directory knows them,
+  // under which email, and whether that account is live there. Keyed by source
+  // name. The IdP(s) → mapping → org(s) trail starts here.
+  map<string, DirectoryIdentity> directories = 11;
+}
+
+// DirectoryIdentity is how one directory knows a person.
+message DirectoryIdentity {
+  string email = 1;
+  bool live = 2;
 }
 
 message Membership {
   bool member = 1;
   bool invitation_pending = 2;
   string role = 3;
+  // State is the per-org reconcile lifecycle: synced/pending/invited/leaving.
+  string state = 4;
+  // Live is this person's liveness FOR THIS ORG (home-company rule).
+  bool live = 5;
+  // Teams they currently belong to; DesiredTeams is what config says they
+  // should. The difference is exactly what a sync would change — it explains
+  // a "pending" state.
+  repeated string teams = 6;
+  repeated string desired_teams = 7;
 }
 
 message GetStatusRequest {}

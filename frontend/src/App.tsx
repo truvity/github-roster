@@ -134,6 +134,53 @@ function orgCell(p: Person) {
   return <>{entries.map(([o, m]) => { const b = badge(m.state); return <span key={o} className={`badge ${b.cls}`} style={{ marginRight: 4 }}>{o}: {b.label}</span>; })}</>;
 }
 
+// personTrace is the expandable identity trail for one person: which IdP
+// directories know them (and under which email, live or suspended), any
+// directory they are expected in but missing from, and per-org membership with
+// the exact team diff — which is what explains a "pending"/"leaving" state.
+function personTrace(p: Person) {
+  const dirs = Object.entries(p.directories ?? {});
+  const missing = (p.expectedSources ?? []).filter((s) => !(p.sources ?? []).includes(s));
+  return (
+    <tr key={`${p.name}-trace`}>
+      <td></td>
+      <td colSpan={4} style={{ paddingTop: 0 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: "0.9em", paddingBottom: 6 }}>
+          <div>
+            <span className="muted">IdP directories: </span>
+            {dirs.length === 0
+              ? <span className="muted">none — this person is in no directory</span>
+              : dirs.map(([src, d]) => (
+                <span key={src} style={{ marginRight: 12 }}>
+                  <b>{src}</b> <span className="mono">{d.email || "?"}</span> <span className={`badge ${d.live ? "ok" : "muted"}`}>{d.live ? "live" : "suspended"}</span>
+                </span>
+              ))}
+            {missing.length > 0 && <span className="badge danger" style={{ marginLeft: 6 }}>missing from: {missing.join(", ")}</span>}
+          </div>
+          {Object.entries(p.orgs ?? {}).map(([org, m]) => {
+            const cur = m.teams ?? [], des = m.desiredTeams ?? [];
+            const add = des.filter((t) => !cur.includes(t)), del = cur.filter((t) => !des.includes(t));
+            const b = badge(m.state);
+            return (
+              <div key={org}>
+                <b>{org}</b> <span className={`badge ${b.cls}`}>{b.label}</span>
+                {m.member
+                  ? <span className="muted"> · {m.role || "member"}{m.invitationPending ? " · invite pending" : ""}</span>
+                  : <span className="muted"> · not a member{m.live ? "" : " · not live here"}</span>}
+                <span className="muted"> · teams: </span>{cur.length ? cur.join(", ") : <span className="muted">none</span>}
+                {(add.length || del.length)
+                  ? <> {add.length ? <span className="badge ok" style={{ marginLeft: 4 }}>+{add.join(", ")}</span> : null}{del.length ? <span className="badge danger" style={{ marginLeft: 4 }}>−{del.join(", ")}</span> : null}</>
+                  : <span className="muted"> · in sync</span>}
+              </div>
+            );
+          })}
+          {p.noTeam && <div className="muted">Mapped, but no group/list/pin resolves to any team — nothing will be granted.</div>}
+        </div>
+      </td>
+    </tr>
+  );
+}
+
 function PeopleView() {
   const [reload, setReload] = useState(0);
   const [actErr, setActErr] = useState("");
@@ -141,6 +188,7 @@ function PeopleView() {
   const [q, setQ] = useState("");
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<PersonInput | null>(null);
+  const [open, setOpen] = useState<Record<string, boolean>>({});
   const { data, error } = useAsync((s) => fetchRoster(s), [reload]);
   const refresh = () => setReload((r) => r + 1);
   const remove = async (name: string) => {
@@ -177,12 +225,19 @@ function PeopleView() {
         <thead><tr><th>State</th><th>Name</th><th>GitHub</th><th>Organizations</th><th></th></tr></thead>
         <tbody>
           {shownCandidates.map((c, i) => <CandidateRow key={`c-${c.kind}-${c.name}-${c.github}-${i}`} c={c} onApproved={refresh} />)}
-          {rows.map((p) => {
+          {rows.flatMap((p) => {
             const b = badge(p.state);
-            return (
+            const main = (
               <tr key={p.name}>
                 <td><span className={`badge ${b.cls}`}>{b.label}</span></td>
-                <td>{p.name}</td>
+                <td>
+                  <button onClick={() => setOpen((o) => ({ ...o, [p.name]: !o[p.name] }))}
+                    title="Show the identity trace (IdP → mapping → orgs)"
+                    style={{ background: "none", border: "none", padding: 0, cursor: "pointer", font: "inherit", textAlign: "left" }}>
+                    <span className="muted" style={{ marginRight: 6 }}>{open[p.name] ? "▾" : "▸"}</span>{p.name}
+                  </button>
+                  {p.email && <div className="muted" style={{ fontSize: "0.82em", marginLeft: 18 }}>{p.email}</div>}
+                </td>
                 <td className="mono">{p.github || "—"}</td>
                 <td>{orgCell(p)}</td>
                 <td style={{ display: "flex", gap: 6 }}>
@@ -191,6 +246,7 @@ function PeopleView() {
                 </td>
               </tr>
             );
+            return open[p.name] ? [main, personTrace(p)] : [main];
           })}
           {empty && <tr><td colSpan={5} className="muted">Nobody matches this filter.</td></tr>}
         </tbody>

@@ -16,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file roster/v1/roster.proto.
  */
 export const file_roster_v1_roster: GenFile = /*@__PURE__*/
-  fileDesc("ChZyb3N0ZXIvdjEvcm9zdGVyLnByb3RvEglyb3N0ZXIudjEiIAoQR2V0UGVyc29uUmVxdWVzdBIMCgRuYW1lGAEgASgJIpcBChFHZXRQZXJzb25SZXNwb25zZRIMCgRuYW1lGAEgASgJEg4KBmdpdGh1YhgCIAEoCRIOCgZlbWFpbHMYAyADKAkSCwoDazhzGAQgASgJEg0KBWNsYXNzGAUgASgJEg4KBnBpbm5lZBgGIAMoCRITCgthcHByb3ZlZF9ieRgHIAEoCRITCgthcHByb3ZlZF9hdBgIIAEoCSJsChBQdXRQZXJzb25SZXF1ZXN0EgwKBG5hbWUYASABKAkSDgoGZ2l0aHViGAIgASgJEg4KBmVtYWlscxgDIAMoCRILCgNrOHMYBCABKAkSDQoFY2xhc3MYBSABKAkSDgoGcGlubmVkGAYgAygJIhMKEVB1dFBlcnNvblJlc3BvbnNlIiMKE0RlbGV0ZVBlcnNvblJlcXVlc3QSDAoEbmFtZRgBIAEoCSIWChREZWxldGVQZXJzb25SZXNwb25zZSJbChNBZGREaXJlY3RvcnlSZXF1ZXN0EgwKBG5hbWUYASABKAkSDwoHZG9tYWlucxgCIAMoCRIQCghlbmRwb2ludBgDIAEoCRITCgtwcm9iZV9ncm91cBgEIAEoCSIWChRBZGREaXJlY3RvcnlSZXNwb25zZSImChZEZWxldGVEaXJlY3RvcnlSZXF1ZXN0EgwKBG5hbWUYASABKAkiGQoXRGVsZXRlRGlyZWN0b3J5UmVzcG9uc2UiLwoQU2V0UGF1c2VkUmVxdWVzdBILCgNvcmcYASABKAkSDgoGcGF1c2VkGAIgASgIIhMKEVNldFBhdXNlZFJlc3BvbnNlIjoKGlNldFJlY29uY2lsZUVuYWJsZWRSZXF1ZXN0EgsKA29yZxgBIAEoCRIPCgdlbmFibGVkGAIgASgIIh0KG1NldFJlY29uY2lsZUVuYWJsZWRSZXNwb25zZSIVChNSdW5SZWNvbmNpbGVSZXF1ZXN0IhYKFFJ1blJlY29uY2lsZVJlc3BvbnNlImIKD1N0YWdlT3JnUmVxdWVzdBIMCgRuYW1lGAEgASgJEhIKCm1pbl9hZG1pbnMYAiABKAUSDAoEdGVhbRgDIAEoCRIOCgZncm91cHMYBCADKAkSDwoHbWVtYmVycxgFIAMoCSISChBTdGFnZU9yZ1Jlc3BvbnNlIg4KDEdldE1lUmVxdWVzdCI6Cg1HZXRNZVJlc3BvbnNlEgwKBG5hbWUYASABKAkSDQoFZW1haWwYAiABKAkSDAoEcm9sZRgDIAEoCSITChFHZXRWZXJzaW9uUmVxdWVzdCI1ChJHZXRWZXJzaW9uUmVzcG9uc2USDwoHdmVyc2lvbhgBIAEoCRIOCgZjb21taXQYAiABKAkiFAoSR2V0U2V0dGluZ3NSZXF1ZXN0IrcBChNHZXRTZXR0aW5nc1Jlc3BvbnNlEisKB3NvdXJjZXMYASADKAsyGi5yb3N0ZXIudjEuRGlyZWN0b3J5U291cmNlEjEKDXN0b3JlX3NvdXJjZXMYAiADKAsyGi5yb3N0ZXIudjEuRGlyZWN0b3J5U291cmNlEhwKBG9yZ3MYAyADKAsyDi5yb3N0ZXIudjEuT3JnEiIKCnN0b3JlX29yZ3MYBCADKAsyDi5yb3N0ZXIudjEuT3JnIlcKD0RpcmVjdG9yeVNvdXJjZRIMCgRuYW1lGAEgASgJEg8KB2RvbWFpbnMYAiADKAkSEAoIZW5kcG9pbnQYAyABKAkSEwoLcHJvYmVfZ3JvdXAYBCABKAkihwEKA09yZxIMCgRuYW1lGAEgASgJEg8KB2NvbXBhbnkYAiABKAkSEgoKbWluX2FkbWlucxgDIAEoBRIZChFyZWNvbmNpbGVfZW5hYmxlZBgEIAEoCBIeCgV0ZWFtcxgFIAMoCzIPLnJvc3Rlci52MS5UZWFtEhIKCnByb3ZlbmFuY2UYBiABKAkiRQoEVGVhbRIMCgRuYW1lGAEgASgJEg4KBmdyb3VwcxgCIAMoCRIPCgdtZW1iZXJzGAMgAygJEg4KBnBpbm5lZBgEIAEoCCISChBHZXRSb3N0ZXJSZXF1ZXN0ImAKEUdldFJvc3RlclJlc3BvbnNlEiEKBnBlb3BsZRgBIAMoCzIRLnJvc3Rlci52MS5QZXJzb24SKAoKY2FuZGlkYXRlcxgCIAMoCzIULnJvc3Rlci52MS5DYW5kaWRhdGUiVAoJQ2FuZGlkYXRlEgwKBGtpbmQYASABKAkSDAoEbmFtZRgCIAEoCRIOCgZnaXRodWIYAyABKAkSCwoDb3JnGAQgASgJEg4KBmRldGFpbBgFIAEoCSLBAQoGUGVyc29uEgwKBG5hbWUYASABKAkSDgoGZ2l0aHViGAIgASgJEg0KBWNsYXNzGAMgASgJEgwKBGxpdmUYBCABKAgSDQoFc3RhdGUYBSABKAkSKQoEb3JncxgGIAMoCzIbLnJvc3Rlci52MS5QZXJzb24uT3Jnc0VudHJ5GkIKCU9yZ3NFbnRyeRILCgNrZXkYASABKAkSJAoFdmFsdWUYAiABKAsyFS5yb3N0ZXIudjEuTWVtYmVyc2hpcDoCOAEiRgoKTWVtYmVyc2hpcBIOCgZtZW1iZXIYASABKAgSGgoSaW52aXRhdGlvbl9wZW5kaW5nGAIgASgIEgwKBHJvbGUYAyABKAkiEgoQR2V0U3RhdHVzUmVxdWVzdCJBChFHZXRTdGF0dXNSZXNwb25zZRIsCghzdGF0dXNlcxgBIAMoCzIaLnJvc3Rlci52MS5SZWNvbmNpbGVTdGF0dXMikgIKD1JlY29uY2lsZVN0YXR1cxILCgNvcmcYASABKAkSDwoHZW5hYmxlZBgCIAEoCBIOCgZwYXVzZWQYAyABKAgSCgoCYXQYBCABKAkSDwoHYWN0aW9ucxgFIAEoBRIPCgdhcHBsaWVkGAYgASgIEgwKBGhlbGQYByABKAgSDgoGcmVhc29uGAggASgJEg0KBWVycm9yGAkgASgJEgwKBGFkZHMYCiABKAUSDwoHcmVtb3ZlcxgLIAEoBRIUCgxyb2xlX2NoYW5nZXMYDCABKAUSFAoMdGVhbV9jaGFuZ2VzGA0gASgFEisKB2RldGFpbHMYDiADKAsyGi5yb3N0ZXIudjEuUmVjb25jaWxlQ2hhbmdlIjwKD1JlY29uY2lsZUNoYW5nZRIMCgR2ZXJiGAEgASgJEg0KBWxvZ2luGAIgASgJEgwKBHRlYW0YAyABKAkiLQoPR2V0QXVkaXRSZXF1ZXN0EgsKA29yZxgBIAEoCRINCgVsaW1pdBgCIAEoBSI7ChBHZXRBdWRpdFJlc3BvbnNlEicKB3JlY29yZHMYASADKAsyFi5yb3N0ZXIudjEuQXVkaXRSZWNvcmQixQEKC0F1ZGl0UmVjb3JkEgoKAmF0GAEgASgJEgsKA29yZxgCIAEoCRIMCgRraW5kGAMgASgJEhEKCWNvbmZpcm1lZBgEIAEoCBINCgVhY3RvchgFIAEoCRITCgthY3Rvcl9lbWFpbBgGIAEoCRIOCgZhZGRpbmcYByADKAkSEAoIcmVtb3ZpbmcYCCADKAkSJwoHY2hhbmdlcxgJIAMoCzIWLnJvc3Rlci52MS5BdWRpdENoYW5nZRINCgVlcnJvchgKIAEoCSJKCgtBdWRpdENoYW5nZRIMCgR2ZXJiGAEgASgJEg8KB3N1YmplY3QYAiABKAkSDAoEdGVhbRgDIAEoCRIOCgZkZXRhaWwYBCABKAkyiQkKDVJvc3RlclNlcnZpY2USSQoKR2V0VmVyc2lvbhIcLnJvc3Rlci52MS5HZXRWZXJzaW9uUmVxdWVzdBodLnJvc3Rlci52MS5HZXRWZXJzaW9uUmVzcG9uc2USTAoLR2V0U2V0dGluZ3MSHS5yb3N0ZXIudjEuR2V0U2V0dGluZ3NSZXF1ZXN0Gh4ucm9zdGVyLnYxLkdldFNldHRpbmdzUmVzcG9uc2USRgoJR2V0Um9zdGVyEhsucm9zdGVyLnYxLkdldFJvc3RlclJlcXVlc3QaHC5yb3N0ZXIudjEuR2V0Um9zdGVyUmVzcG9uc2USRgoJR2V0U3RhdHVzEhsucm9zdGVyLnYxLkdldFN0YXR1c1JlcXVlc3QaHC5yb3N0ZXIudjEuR2V0U3RhdHVzUmVzcG9uc2USQwoIR2V0QXVkaXQSGi5yb3N0ZXIudjEuR2V0QXVkaXRSZXF1ZXN0Ghsucm9zdGVyLnYxLkdldEF1ZGl0UmVzcG9uc2USOgoFR2V0TWUSFy5yb3N0ZXIudjEuR2V0TWVSZXF1ZXN0Ghgucm9zdGVyLnYxLkdldE1lUmVzcG9uc2USQwoIU3RhZ2VPcmcSGi5yb3N0ZXIudjEuU3RhZ2VPcmdSZXF1ZXN0Ghsucm9zdGVyLnYxLlN0YWdlT3JnUmVzcG9uc2USTwoMQWRkRGlyZWN0b3J5Eh4ucm9zdGVyLnYxLkFkZERpcmVjdG9yeVJlcXVlc3QaHy5yb3N0ZXIudjEuQWRkRGlyZWN0b3J5UmVzcG9uc2USWAoPRGVsZXRlRGlyZWN0b3J5EiEucm9zdGVyLnYxLkRlbGV0ZURpcmVjdG9yeVJlcXVlc3QaIi5yb3N0ZXIudjEuRGVsZXRlRGlyZWN0b3J5UmVzcG9uc2USRgoJU2V0UGF1c2VkEhsucm9zdGVyLnYxLlNldFBhdXNlZFJlcXVlc3QaHC5yb3N0ZXIudjEuU2V0UGF1c2VkUmVzcG9uc2USTwoMUnVuUmVjb25jaWxlEh4ucm9zdGVyLnYxLlJ1blJlY29uY2lsZVJlcXVlc3QaHy5yb3N0ZXIudjEuUnVuUmVjb25jaWxlUmVzcG9uc2USZAoTU2V0UmVjb25jaWxlRW5hYmxlZBIlLnJvc3Rlci52MS5TZXRSZWNvbmNpbGVFbmFibGVkUmVxdWVzdBomLnJvc3Rlci52MS5TZXRSZWNvbmNpbGVFbmFibGVkUmVzcG9uc2USRgoJUHV0UGVyc29uEhsucm9zdGVyLnYxLlB1dFBlcnNvblJlcXVlc3QaHC5yb3N0ZXIudjEuUHV0UGVyc29uUmVzcG9uc2USTwoMRGVsZXRlUGVyc29uEh4ucm9zdGVyLnYxLkRlbGV0ZVBlcnNvblJlcXVlc3QaHy5yb3N0ZXIudjEuRGVsZXRlUGVyc29uUmVzcG9uc2USRgoJR2V0UGVyc29uEhsucm9zdGVyLnYxLkdldFBlcnNvblJlcXVlc3QaHC5yb3N0ZXIudjEuR2V0UGVyc29uUmVzcG9uc2VCmgEKDWNvbS5yb3N0ZXIudjFCC1Jvc3RlclByb3RvUAFaN2dpdGh1Yi5jb20vdHJ1dml0eS9naXRodWItcm9zdGVyL2dlbi9yb3N0ZXIvdjE7cm9zdGVydjGiAgNSWFiqAglSb3N0ZXIuVjHKAglSb3N0ZXJcVjHiAhVSb3N0ZXJcVjFcR1BCTWV0YWRhdGHqAgpSb3N0ZXI6OlYxYgZwcm90bzM");
+  fileDesc("ChZyb3N0ZXIvdjEvcm9zdGVyLnByb3RvEglyb3N0ZXIudjEiIAoQR2V0UGVyc29uUmVxdWVzdBIMCgRuYW1lGAEgASgJIpcBChFHZXRQZXJzb25SZXNwb25zZRIMCgRuYW1lGAEgASgJEg4KBmdpdGh1YhgCIAEoCRIOCgZlbWFpbHMYAyADKAkSCwoDazhzGAQgASgJEg0KBWNsYXNzGAUgASgJEg4KBnBpbm5lZBgGIAMoCRITCgthcHByb3ZlZF9ieRgHIAEoCRITCgthcHByb3ZlZF9hdBgIIAEoCSJsChBQdXRQZXJzb25SZXF1ZXN0EgwKBG5hbWUYASABKAkSDgoGZ2l0aHViGAIgASgJEg4KBmVtYWlscxgDIAMoCRILCgNrOHMYBCABKAkSDQoFY2xhc3MYBSABKAkSDgoGcGlubmVkGAYgAygJIhMKEVB1dFBlcnNvblJlc3BvbnNlIiMKE0RlbGV0ZVBlcnNvblJlcXVlc3QSDAoEbmFtZRgBIAEoCSIWChREZWxldGVQZXJzb25SZXNwb25zZSJbChNBZGREaXJlY3RvcnlSZXF1ZXN0EgwKBG5hbWUYASABKAkSDwoHZG9tYWlucxgCIAMoCRIQCghlbmRwb2ludBgDIAEoCRITCgtwcm9iZV9ncm91cBgEIAEoCSIWChRBZGREaXJlY3RvcnlSZXNwb25zZSImChZEZWxldGVEaXJlY3RvcnlSZXF1ZXN0EgwKBG5hbWUYASABKAkiGQoXRGVsZXRlRGlyZWN0b3J5UmVzcG9uc2UiLwoQU2V0UGF1c2VkUmVxdWVzdBILCgNvcmcYASABKAkSDgoGcGF1c2VkGAIgASgIIhMKEVNldFBhdXNlZFJlc3BvbnNlIjoKGlNldFJlY29uY2lsZUVuYWJsZWRSZXF1ZXN0EgsKA29yZxgBIAEoCRIPCgdlbmFibGVkGAIgASgIIh0KG1NldFJlY29uY2lsZUVuYWJsZWRSZXNwb25zZSIVChNSdW5SZWNvbmNpbGVSZXF1ZXN0IhYKFFJ1blJlY29uY2lsZVJlc3BvbnNlImIKD1N0YWdlT3JnUmVxdWVzdBIMCgRuYW1lGAEgASgJEhIKCm1pbl9hZG1pbnMYAiABKAUSDAoEdGVhbRgDIAEoCRIOCgZncm91cHMYBCADKAkSDwoHbWVtYmVycxgFIAMoCSISChBTdGFnZU9yZ1Jlc3BvbnNlIg4KDEdldE1lUmVxdWVzdCI6Cg1HZXRNZVJlc3BvbnNlEgwKBG5hbWUYASABKAkSDQoFZW1haWwYAiABKAkSDAoEcm9sZRgDIAEoCSITChFHZXRWZXJzaW9uUmVxdWVzdCI1ChJHZXRWZXJzaW9uUmVzcG9uc2USDwoHdmVyc2lvbhgBIAEoCRIOCgZjb21taXQYAiABKAkiFAoSR2V0U2V0dGluZ3NSZXF1ZXN0IrcBChNHZXRTZXR0aW5nc1Jlc3BvbnNlEisKB3NvdXJjZXMYASADKAsyGi5yb3N0ZXIudjEuRGlyZWN0b3J5U291cmNlEjEKDXN0b3JlX3NvdXJjZXMYAiADKAsyGi5yb3N0ZXIudjEuRGlyZWN0b3J5U291cmNlEhwKBG9yZ3MYAyADKAsyDi5yb3N0ZXIudjEuT3JnEiIKCnN0b3JlX29yZ3MYBCADKAsyDi5yb3N0ZXIudjEuT3JnIlcKD0RpcmVjdG9yeVNvdXJjZRIMCgRuYW1lGAEgASgJEg8KB2RvbWFpbnMYAiADKAkSEAoIZW5kcG9pbnQYAyABKAkSEwoLcHJvYmVfZ3JvdXAYBCABKAkihwEKA09yZxIMCgRuYW1lGAEgASgJEg8KB2NvbXBhbnkYAiABKAkSEgoKbWluX2FkbWlucxgDIAEoBRIZChFyZWNvbmNpbGVfZW5hYmxlZBgEIAEoCBIeCgV0ZWFtcxgFIAMoCzIPLnJvc3Rlci52MS5UZWFtEhIKCnByb3ZlbmFuY2UYBiABKAkiRQoEVGVhbRIMCgRuYW1lGAEgASgJEg4KBmdyb3VwcxgCIAMoCRIPCgdtZW1iZXJzGAMgAygJEg4KBnBpbm5lZBgEIAEoCCISChBHZXRSb3N0ZXJSZXF1ZXN0ImAKEUdldFJvc3RlclJlc3BvbnNlEiEKBnBlb3BsZRgBIAMoCzIRLnJvc3Rlci52MS5QZXJzb24SKAoKY2FuZGlkYXRlcxgCIAMoCzIULnJvc3Rlci52MS5DYW5kaWRhdGUiVAoJQ2FuZGlkYXRlEgwKBGtpbmQYASABKAkSDAoEbmFtZRgCIAEoCRIOCgZnaXRodWIYAyABKAkSCwoDb3JnGAQgASgJEg4KBmRldGFpbBgFIAEoCSKXAwoGUGVyc29uEgwKBG5hbWUYASABKAkSDgoGZ2l0aHViGAIgASgJEg0KBWNsYXNzGAMgASgJEgwKBGxpdmUYBCABKAgSDQoFc3RhdGUYBSABKAkSKQoEb3JncxgGIAMoCzIbLnJvc3Rlci52MS5QZXJzb24uT3Jnc0VudHJ5Eg0KBWVtYWlsGAcgASgJEg8KB3NvdXJjZXMYCCADKAkSGAoQZXhwZWN0ZWRfc291cmNlcxgJIAMoCRIPCgdub190ZWFtGAogASgIEjcKC2RpcmVjdG9yaWVzGAsgAygLMiIucm9zdGVyLnYxLlBlcnNvbi5EaXJlY3Rvcmllc0VudHJ5GkIKCU9yZ3NFbnRyeRILCgNrZXkYASABKAkSJAoFdmFsdWUYAiABKAsyFS5yb3N0ZXIudjEuTWVtYmVyc2hpcDoCOAEaUAoQRGlyZWN0b3JpZXNFbnRyeRILCgNrZXkYASABKAkSKwoFdmFsdWUYAiABKAsyHC5yb3N0ZXIudjEuRGlyZWN0b3J5SWRlbnRpdHk6AjgBIjAKEURpcmVjdG9yeUlkZW50aXR5Eg0KBWVtYWlsGAEgASgJEgwKBGxpdmUYAiABKAgiiQEKCk1lbWJlcnNoaXASDgoGbWVtYmVyGAEgASgIEhoKEmludml0YXRpb25fcGVuZGluZxgCIAEoCBIMCgRyb2xlGAMgASgJEg0KBXN0YXRlGAQgASgJEgwKBGxpdmUYBSABKAgSDQoFdGVhbXMYBiADKAkSFQoNZGVzaXJlZF90ZWFtcxgHIAMoCSISChBHZXRTdGF0dXNSZXF1ZXN0IkEKEUdldFN0YXR1c1Jlc3BvbnNlEiwKCHN0YXR1c2VzGAEgAygLMhoucm9zdGVyLnYxLlJlY29uY2lsZVN0YXR1cyKSAgoPUmVjb25jaWxlU3RhdHVzEgsKA29yZxgBIAEoCRIPCgdlbmFibGVkGAIgASgIEg4KBnBhdXNlZBgDIAEoCBIKCgJhdBgEIAEoCRIPCgdhY3Rpb25zGAUgASgFEg8KB2FwcGxpZWQYBiABKAgSDAoEaGVsZBgHIAEoCBIOCgZyZWFzb24YCCABKAkSDQoFZXJyb3IYCSABKAkSDAoEYWRkcxgKIAEoBRIPCgdyZW1vdmVzGAsgASgFEhQKDHJvbGVfY2hhbmdlcxgMIAEoBRIUCgx0ZWFtX2NoYW5nZXMYDSABKAUSKwoHZGV0YWlscxgOIAMoCzIaLnJvc3Rlci52MS5SZWNvbmNpbGVDaGFuZ2UiPAoPUmVjb25jaWxlQ2hhbmdlEgwKBHZlcmIYASABKAkSDQoFbG9naW4YAiABKAkSDAoEdGVhbRgDIAEoCSItCg9HZXRBdWRpdFJlcXVlc3QSCwoDb3JnGAEgASgJEg0KBWxpbWl0GAIgASgFIjsKEEdldEF1ZGl0UmVzcG9uc2USJwoHcmVjb3JkcxgBIAMoCzIWLnJvc3Rlci52MS5BdWRpdFJlY29yZCLFAQoLQXVkaXRSZWNvcmQSCgoCYXQYASABKAkSCwoDb3JnGAIgASgJEgwKBGtpbmQYAyABKAkSEQoJY29uZmlybWVkGAQgASgIEg0KBWFjdG9yGAUgASgJEhMKC2FjdG9yX2VtYWlsGAYgASgJEg4KBmFkZGluZxgHIAMoCRIQCghyZW1vdmluZxgIIAMoCRInCgdjaGFuZ2VzGAkgAygLMhYucm9zdGVyLnYxLkF1ZGl0Q2hhbmdlEg0KBWVycm9yGAogASgJIkoKC0F1ZGl0Q2hhbmdlEgwKBHZlcmIYASABKAkSDwoHc3ViamVjdBgCIAEoCRIMCgR0ZWFtGAMgASgJEg4KBmRldGFpbBgEIAEoCTKJCQoNUm9zdGVyU2VydmljZRJJCgpHZXRWZXJzaW9uEhwucm9zdGVyLnYxLkdldFZlcnNpb25SZXF1ZXN0Gh0ucm9zdGVyLnYxLkdldFZlcnNpb25SZXNwb25zZRJMCgtHZXRTZXR0aW5ncxIdLnJvc3Rlci52MS5HZXRTZXR0aW5nc1JlcXVlc3QaHi5yb3N0ZXIudjEuR2V0U2V0dGluZ3NSZXNwb25zZRJGCglHZXRSb3N0ZXISGy5yb3N0ZXIudjEuR2V0Um9zdGVyUmVxdWVzdBocLnJvc3Rlci52MS5HZXRSb3N0ZXJSZXNwb25zZRJGCglHZXRTdGF0dXMSGy5yb3N0ZXIudjEuR2V0U3RhdHVzUmVxdWVzdBocLnJvc3Rlci52MS5HZXRTdGF0dXNSZXNwb25zZRJDCghHZXRBdWRpdBIaLnJvc3Rlci52MS5HZXRBdWRpdFJlcXVlc3QaGy5yb3N0ZXIudjEuR2V0QXVkaXRSZXNwb25zZRI6CgVHZXRNZRIXLnJvc3Rlci52MS5HZXRNZVJlcXVlc3QaGC5yb3N0ZXIudjEuR2V0TWVSZXNwb25zZRJDCghTdGFnZU9yZxIaLnJvc3Rlci52MS5TdGFnZU9yZ1JlcXVlc3QaGy5yb3N0ZXIudjEuU3RhZ2VPcmdSZXNwb25zZRJPCgxBZGREaXJlY3RvcnkSHi5yb3N0ZXIudjEuQWRkRGlyZWN0b3J5UmVxdWVzdBofLnJvc3Rlci52MS5BZGREaXJlY3RvcnlSZXNwb25zZRJYCg9EZWxldGVEaXJlY3RvcnkSIS5yb3N0ZXIudjEuRGVsZXRlRGlyZWN0b3J5UmVxdWVzdBoiLnJvc3Rlci52MS5EZWxldGVEaXJlY3RvcnlSZXNwb25zZRJGCglTZXRQYXVzZWQSGy5yb3N0ZXIudjEuU2V0UGF1c2VkUmVxdWVzdBocLnJvc3Rlci52MS5TZXRQYXVzZWRSZXNwb25zZRJPCgxSdW5SZWNvbmNpbGUSHi5yb3N0ZXIudjEuUnVuUmVjb25jaWxlUmVxdWVzdBofLnJvc3Rlci52MS5SdW5SZWNvbmNpbGVSZXNwb25zZRJkChNTZXRSZWNvbmNpbGVFbmFibGVkEiUucm9zdGVyLnYxLlNldFJlY29uY2lsZUVuYWJsZWRSZXF1ZXN0GiYucm9zdGVyLnYxLlNldFJlY29uY2lsZUVuYWJsZWRSZXNwb25zZRJGCglQdXRQZXJzb24SGy5yb3N0ZXIudjEuUHV0UGVyc29uUmVxdWVzdBocLnJvc3Rlci52MS5QdXRQZXJzb25SZXNwb25zZRJPCgxEZWxldGVQZXJzb24SHi5yb3N0ZXIudjEuRGVsZXRlUGVyc29uUmVxdWVzdBofLnJvc3Rlci52MS5EZWxldGVQZXJzb25SZXNwb25zZRJGCglHZXRQZXJzb24SGy5yb3N0ZXIudjEuR2V0UGVyc29uUmVxdWVzdBocLnJvc3Rlci52MS5HZXRQZXJzb25SZXNwb25zZUKaAQoNY29tLnJvc3Rlci52MUILUm9zdGVyUHJvdG9QAVo3Z2l0aHViLmNvbS90cnV2aXR5L2dpdGh1Yi1yb3N0ZXIvZ2VuL3Jvc3Rlci92MTtyb3N0ZXJ2MaICA1JYWKoCCVJvc3Rlci5WMcoCCVJvc3RlclxWMeICFVJvc3RlclxWMVxHUEJNZXRhZGF0YeoCClJvc3Rlcjo6VjFiBnByb3RvMw");
 
 /**
  * @generated from message roster.v1.GetPersonRequest
@@ -762,6 +762,47 @@ export type Person = Message<"roster.v1.Person"> & {
    * @generated from field: map<string, roster.v1.Membership> orgs = 6;
    */
   orgs: { [key: string]: Membership };
+
+  /**
+   * Primary display email — the address from the first directory that knew
+   * them. The join never keys on it; display only.
+   *
+   * @generated from field: string email = 7;
+   */
+  email: string;
+
+  /**
+   * Sources names the directories that currently know this person.
+   *
+   * @generated from field: repeated string sources = 8;
+   */
+  sources: string[];
+
+  /**
+   * ExpectedSources names the directories that SHOULD know them (derived from
+   * their email domains). A source in expected but not in sources is a person
+   * who has gone missing from a directory that ought to hold them.
+   *
+   * @generated from field: repeated string expected_sources = 9;
+   */
+  expectedSources: string[];
+
+  /**
+   * NoTeam is true when no group, member list, or pin resolves this person to
+   * any team in any org — mapped but inert (nothing will ever be granted).
+   *
+   * @generated from field: bool no_team = 10;
+   */
+  noTeam: boolean;
+
+  /**
+   * Directories is the per-source identity trace: which directory knows them,
+   * under which email, and whether that account is live there. Keyed by source
+   * name. The IdP(s) → mapping → org(s) trail starts here.
+   *
+   * @generated from field: map<string, roster.v1.DirectoryIdentity> directories = 11;
+   */
+  directories: { [key: string]: DirectoryIdentity };
 };
 
 /**
@@ -770,6 +811,30 @@ export type Person = Message<"roster.v1.Person"> & {
  */
 export const PersonSchema: GenMessage<Person> = /*@__PURE__*/
   messageDesc(file_roster_v1_roster, 30);
+
+/**
+ * DirectoryIdentity is how one directory knows a person.
+ *
+ * @generated from message roster.v1.DirectoryIdentity
+ */
+export type DirectoryIdentity = Message<"roster.v1.DirectoryIdentity"> & {
+  /**
+   * @generated from field: string email = 1;
+   */
+  email: string;
+
+  /**
+   * @generated from field: bool live = 2;
+   */
+  live: boolean;
+};
+
+/**
+ * Describes the message roster.v1.DirectoryIdentity.
+ * Use `create(DirectoryIdentitySchema)` to create a new message.
+ */
+export const DirectoryIdentitySchema: GenMessage<DirectoryIdentity> = /*@__PURE__*/
+  messageDesc(file_roster_v1_roster, 31);
 
 /**
  * @generated from message roster.v1.Membership
@@ -789,6 +854,34 @@ export type Membership = Message<"roster.v1.Membership"> & {
    * @generated from field: string role = 3;
    */
   role: string;
+
+  /**
+   * State is the per-org reconcile lifecycle: synced/pending/invited/leaving.
+   *
+   * @generated from field: string state = 4;
+   */
+  state: string;
+
+  /**
+   * Live is this person's liveness FOR THIS ORG (home-company rule).
+   *
+   * @generated from field: bool live = 5;
+   */
+  live: boolean;
+
+  /**
+   * Teams they currently belong to; DesiredTeams is what config says they
+   * should. The difference is exactly what a sync would change — it explains
+   * a "pending" state.
+   *
+   * @generated from field: repeated string teams = 6;
+   */
+  teams: string[];
+
+  /**
+   * @generated from field: repeated string desired_teams = 7;
+   */
+  desiredTeams: string[];
 };
 
 /**
@@ -796,7 +889,7 @@ export type Membership = Message<"roster.v1.Membership"> & {
  * Use `create(MembershipSchema)` to create a new message.
  */
 export const MembershipSchema: GenMessage<Membership> = /*@__PURE__*/
-  messageDesc(file_roster_v1_roster, 31);
+  messageDesc(file_roster_v1_roster, 32);
 
 /**
  * @generated from message roster.v1.GetStatusRequest
@@ -809,7 +902,7 @@ export type GetStatusRequest = Message<"roster.v1.GetStatusRequest"> & {
  * Use `create(GetStatusRequestSchema)` to create a new message.
  */
 export const GetStatusRequestSchema: GenMessage<GetStatusRequest> = /*@__PURE__*/
-  messageDesc(file_roster_v1_roster, 32);
+  messageDesc(file_roster_v1_roster, 33);
 
 /**
  * @generated from message roster.v1.GetStatusResponse
@@ -826,7 +919,7 @@ export type GetStatusResponse = Message<"roster.v1.GetStatusResponse"> & {
  * Use `create(GetStatusResponseSchema)` to create a new message.
  */
 export const GetStatusResponseSchema: GenMessage<GetStatusResponse> = /*@__PURE__*/
-  messageDesc(file_roster_v1_roster, 33);
+  messageDesc(file_roster_v1_roster, 34);
 
 /**
  * @generated from message roster.v1.ReconcileStatus
@@ -915,7 +1008,7 @@ export type ReconcileStatus = Message<"roster.v1.ReconcileStatus"> & {
  * Use `create(ReconcileStatusSchema)` to create a new message.
  */
 export const ReconcileStatusSchema: GenMessage<ReconcileStatus> = /*@__PURE__*/
-  messageDesc(file_roster_v1_roster, 34);
+  messageDesc(file_roster_v1_roster, 35);
 
 /**
  * ReconcileChange is one concrete action the plan would take, surfaced so the
@@ -952,7 +1045,7 @@ export type ReconcileChange = Message<"roster.v1.ReconcileChange"> & {
  * Use `create(ReconcileChangeSchema)` to create a new message.
  */
 export const ReconcileChangeSchema: GenMessage<ReconcileChange> = /*@__PURE__*/
-  messageDesc(file_roster_v1_roster, 35);
+  messageDesc(file_roster_v1_roster, 36);
 
 /**
  * @generated from message roster.v1.GetAuditRequest
@@ -978,7 +1071,7 @@ export type GetAuditRequest = Message<"roster.v1.GetAuditRequest"> & {
  * Use `create(GetAuditRequestSchema)` to create a new message.
  */
 export const GetAuditRequestSchema: GenMessage<GetAuditRequest> = /*@__PURE__*/
-  messageDesc(file_roster_v1_roster, 36);
+  messageDesc(file_roster_v1_roster, 37);
 
 /**
  * @generated from message roster.v1.GetAuditResponse
@@ -995,7 +1088,7 @@ export type GetAuditResponse = Message<"roster.v1.GetAuditResponse"> & {
  * Use `create(GetAuditResponseSchema)` to create a new message.
  */
 export const GetAuditResponseSchema: GenMessage<GetAuditResponse> = /*@__PURE__*/
-  messageDesc(file_roster_v1_roster, 37);
+  messageDesc(file_roster_v1_roster, 38);
 
 /**
  * @generated from message roster.v1.AuditRecord
@@ -1059,7 +1152,7 @@ export type AuditRecord = Message<"roster.v1.AuditRecord"> & {
  * Use `create(AuditRecordSchema)` to create a new message.
  */
 export const AuditRecordSchema: GenMessage<AuditRecord> = /*@__PURE__*/
-  messageDesc(file_roster_v1_roster, 38);
+  messageDesc(file_roster_v1_roster, 39);
 
 /**
  * @generated from message roster.v1.AuditChange
@@ -1091,7 +1184,7 @@ export type AuditChange = Message<"roster.v1.AuditChange"> & {
  * Use `create(AuditChangeSchema)` to create a new message.
  */
 export const AuditChangeSchema: GenMessage<AuditChange> = /*@__PURE__*/
-  messageDesc(file_roster_v1_roster, 39);
+  messageDesc(file_roster_v1_roster, 40);
 
 /**
  * RosterService is the read/console surface. Methods are added as the SPA

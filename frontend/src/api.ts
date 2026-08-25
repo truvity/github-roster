@@ -107,6 +107,15 @@ export interface Membership {
   invitationPending?: boolean;
   role?: string;
   state?: string;
+  live?: boolean;
+  teams?: string[];
+  desiredTeams?: string[];
+}
+
+// DirectoryIdentity is how one directory (IdP source) knows a person.
+export interface DirectoryIdentity {
+  email?: string;
+  live?: boolean;
 }
 
 export interface Person {
@@ -116,6 +125,11 @@ export interface Person {
   live?: boolean;
   state?: string;
   orgs?: Record<string, Membership>;
+  email?: string;
+  sources?: string[];
+  expectedSources?: string[];
+  noTeam?: boolean;
+  directories?: Record<string, DirectoryIdentity>;
 }
 
 // Candidate is an awaiting-approval worklist row. NEW carries a name (login to
@@ -151,7 +165,18 @@ export async function fetchRoster(signal?: AbortSignal): Promise<Roster> {
           member: m.member,
           invitationPending: m.invitationPending,
           role: m.role || undefined,
+          state: m.state || undefined,
+          live: m.live,
+          teams: m.teams,
+          desiredTeams: m.desiredTeams,
         }]),
+      ),
+      email: p.email || undefined,
+      sources: p.sources,
+      expectedSources: p.expectedSources,
+      noTeam: p.noTeam,
+      directories: Object.fromEntries(
+        Object.entries(p.directories).map(([src, d]) => [src, { email: d.email || undefined, live: d.live }]),
       ),
     })),
     candidates: resp.candidates.map((c) => ({

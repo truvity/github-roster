@@ -59,10 +59,20 @@ func (s *rosterConnect) GetSettings(
 ) (*connect.Response[rosterv1.GetSettingsResponse], error) {
 	data := s.deps.buildSettings(ctx)
 
+	orgs := protoOrgs(data.Orgs)
+	// Overlay the live enable flag so the Settings "loop enabled/disabled"
+	// badge matches what the operator set (and what Status shows), instead of
+	// the git day-0 default. Only the git-declared orgs have a reconcile loop;
+	// staged store orgs are display-only and born disabled.
+	for _, o := range orgs {
+		enabled, _ := s.liveControl(ctx, o.GetName(), o.GetReconcileEnabled(), false)
+		o.ReconcileEnabled = enabled
+	}
+
 	return connect.NewResponse(&rosterv1.GetSettingsResponse{
 		Sources:      protoSources(data.Sources),
 		StoreSources: protoSources(data.StoreSources),
-		Orgs:         protoOrgs(data.Orgs),
+		Orgs:         orgs,
 		StoreOrgs:    protoOrgs(data.StoreOrgs),
 	}), nil
 }
@@ -138,16 +148,30 @@ func (s *rosterConnect) GetRoster(
 				Member:            m.Member,
 				InvitationPending: m.InvitationPending,
 				Role:              string(m.Role),
+				State:             string(m.State),
+				Live:              m.Live,
+				Teams:             m.Teams,
+				DesiredTeams:      m.DesiredTeams,
 			}
 		}
 
+		dirs := make(map[string]*rosterv1.DirectoryIdentity, len(p.Directories))
+		for src, id := range p.Directories {
+			dirs[src] = &rosterv1.DirectoryIdentity{Email: id.Email, Live: id.Live}
+		}
+
 		people = append(people, &rosterv1.Person{
-			Name:   p.Name,
-			Github: p.GitHub,
-			Class:  string(p.Class),
-			Live:   p.Live,
-			State:  string(p.State),
-			Orgs:   orgs,
+			Name:            p.Name,
+			Github:          p.GitHub,
+			Class:           string(p.Class),
+			Live:            p.Live,
+			State:           string(p.State),
+			Orgs:            orgs,
+			Email:           p.Email,
+			Sources:         p.Sources,
+			ExpectedSources: p.ExpectedSources,
+			NoTeam:          p.NoTeam,
+			Directories:     dirs,
 		})
 	}
 

@@ -63,26 +63,86 @@ func TestAddDirectoryRejectsViewer(t *testing.T) {
 	}
 }
 
-func TestSetPausedNeedsBroker(t *testing.T) {
-	s := &rosterConnect{deps: &Deps{}} // no broker configured
+// fakeControl records the pause/enable writes the console makes.
+type fakeControl struct {
+	paused  map[string]bool
+	enabled map[string]bool
+}
+
+func newFakeControl() *fakeControl {
+	return &fakeControl{paused: map[string]bool{}, enabled: map[string]bool{}}
+}
+
+func (f *fakeControl) Paused(_ context.Context, org string) (bool, error) { return f.paused[org], nil }
+func (f *fakeControl) SetPaused(_ context.Context, org string, paused bool) error {
+	f.paused[org] = paused
+
+	return nil
+}
+
+func (f *fakeControl) EnabledOverride(_ context.Context, org string) (*bool, error) {
+	if v, ok := f.enabled[org]; ok {
+		return &v, nil
+	}
+
+	return nil, nil
+}
+func (f *fakeControl) SetEnabled(_ context.Context, org string, enabled bool) error {
+	f.enabled[org] = enabled
+
+	return nil
+}
+
+// The control write is the console's own — it must NOT need the broker (whose
+// role is read-only on SSM; routing the write through it was the AccessDenied
+// regression this guards against).
+func TestSetPausedWritesViaControlWithoutBroker(t *testing.T) {
+	ctrl := newFakeControl()
+	s := &rosterConnect{deps: &Deps{Control: ctrl}} // note: no Broker
+
+	if _, err := s.SetPaused(operatorCtx(), connect.NewRequest(&rosterv1.SetPausedRequest{Org: "acme", Paused: true})); err != nil {
+		t.Fatalf("SetPaused: %v", err)
+	}
+
+	if !ctrl.paused["acme"] {
+		t.Fatal("SetPaused did not write the flag via the control store")
+	}
+}
+
+func TestSetPausedNeedsControl(t *testing.T) {
+	s := &rosterConnect{deps: &Deps{}} // no control store
 
 	_, err := s.SetPaused(operatorCtx(), connect.NewRequest(&rosterv1.SetPausedRequest{Org: "acme", Paused: true}))
 	if connect.CodeOf(err) != connect.CodeUnavailable {
-		t.Fatalf("SetPaused without broker code = %v, want Unavailable", connect.CodeOf(err))
+		t.Fatalf("SetPaused without control code = %v, want Unavailable", connect.CodeOf(err))
+	}
+}
+
+func TestSetReconcileEnabledWritesViaControlWithoutBroker(t *testing.T) {
+	ctrl := newFakeControl()
+	s := &rosterConnect{deps: &Deps{Control: ctrl}} // no Broker
+
+	if _, err := s.SetReconcileEnabled(operatorCtx(), connect.NewRequest(&rosterv1.SetReconcileEnabledRequest{Org: "acme", Enabled: true})); err != nil {
+		t.Fatalf("SetReconcileEnabled: %v", err)
+	}
+
+	if !ctrl.enabled["acme"] {
+		t.Fatal("SetReconcileEnabled did not write the flag via the control store")
 	}
 }
 
 func TestSetReconcileEnabledGate(t *testing.T) {
-	s := &rosterConnect{deps: &Deps{}}
+	s := &rosterConnect{deps: &Deps{Control: newFakeControl()}}
 
-	// Viewer is refused before the broker is even consulted.
+	// Viewer is refused before the control store is even consulted.
 	viewer := auth.WithIdentity(context.Background(), auth.Identity{Role: auth.RoleViewer})
 	if _, err := s.SetReconcileEnabled(viewer, connect.NewRequest(&rosterv1.SetReconcileEnabledRequest{Org: "acme", Enabled: true})); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("viewer SetReconcileEnabled code = %v, want PermissionDenied", connect.CodeOf(err))
 	}
 
-	// Operator with no broker configured gets Unavailable.
-	if _, err := s.SetReconcileEnabled(operatorCtx(), connect.NewRequest(&rosterv1.SetReconcileEnabledRequest{Org: "acme", Enabled: true})); connect.CodeOf(err) != connect.CodeUnavailable {
-		t.Fatalf("SetReconcileEnabled without broker code = %v, want Unavailable", connect.CodeOf(err))
+	// Operator with no control store configured gets Unavailable.
+	bare := &rosterConnect{deps: &Deps{}}
+	if _, err := bare.SetReconcileEnabled(operatorCtx(), connect.NewRequest(&rosterv1.SetReconcileEnabledRequest{Org: "acme", Enabled: true})); connect.CodeOf(err) != connect.CodeUnavailable {
+		t.Fatalf("SetReconcileEnabled without control code = %v, want Unavailable", connect.CodeOf(err))
 	}
 }

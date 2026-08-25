@@ -410,8 +410,8 @@ func (s *rosterConnect) SetPaused(
 		return nil, err
 	}
 
-	if s.deps.Broker == nil {
-		return nil, connect.NewError(connect.CodeUnavailable, errors.New("no applier broker is configured"))
+	if s.deps.Control == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("no control store is configured"))
 	}
 
 	org := strings.TrimSpace(req.Msg.GetOrg())
@@ -419,8 +419,10 @@ func (s *rosterConnect) SetPaused(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("org is required"))
 	}
 
-	if err := s.deps.Broker.SetPaused(ctx, org, req.Msg.GetPaused(), auth.ForwardToken(req.Header().Get)); err != nil {
-		return nil, connect.NewError(connect.CodeUnavailable, err)
+	// The console writes the flag directly — it holds the SSM write grant.
+	// The broker's role is read-only, so routing this through it would fail.
+	if err := s.deps.Control.SetPaused(ctx, org, req.Msg.GetPaused()); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
 	return connect.NewResponse(&rosterv1.SetPausedResponse{}), nil
@@ -436,8 +438,8 @@ func (s *rosterConnect) SetReconcileEnabled(
 		return nil, err
 	}
 
-	if s.deps.Broker == nil {
-		return nil, connect.NewError(connect.CodeUnavailable, errors.New("no applier broker is configured"))
+	if s.deps.Control == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("no control store is configured"))
 	}
 
 	org := strings.TrimSpace(req.Msg.GetOrg())
@@ -445,8 +447,10 @@ func (s *rosterConnect) SetReconcileEnabled(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("org is required"))
 	}
 
-	if err := s.deps.Broker.SetReconcileEnabled(ctx, org, req.Msg.GetEnabled(), auth.ForwardToken(req.Header().Get)); err != nil {
-		return nil, connect.NewError(connect.CodeUnavailable, err)
+	// Written console-side (the write grant lives here); the broker only
+	// reads this flag on its next tick.
+	if err := s.deps.Control.SetEnabled(ctx, org, req.Msg.GetEnabled()); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
 	return connect.NewResponse(&rosterv1.SetReconcileEnabledResponse{}), nil

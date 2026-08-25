@@ -51,6 +51,12 @@ type Deps struct {
 	// DirStore holds operator-added directories (Settings writes; the
 	// broker's reconcile loop reads and applies them). Nil-safe.
 	DirStore configstore.DirectoryStore
+	// Control writes the per-org pause/enable flags. The operator flips them
+	// from the console, so the WRITE lives here (the console holds the SSM
+	// write grant); the broker's loop only READS them. Routing the write
+	// through the broker fails — its role is deliberately read-only on SSM.
+	// Nil-safe. [ControlStore]
+	Control configstore.ControlStore
 	// OrgStore lists operator-added organizations staged in the config store
 	// (Settings display) and stores App credentials from the manifest flow.
 	// Not yet consumed by the reconciler. Nil-safe.

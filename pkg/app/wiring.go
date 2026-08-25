@@ -45,6 +45,9 @@ type readLayers struct {
 	Audit audit.Sink
 	// DirStore holds operator-added directories.
 	DirStore configstore.DirectoryStore
+	// Control writes the per-org pause/enable flags (console-side, where the
+	// SSM write grant is).
+	Control configstore.ControlStore
 	// OrgStore lists operator-added organizations (Settings display) and
 	// stores App credentials from the manifest flow.
 	OrgStore configstore.OrgStore
@@ -225,6 +228,7 @@ func buildReadLayers(ctx context.Context, logger *slog.Logger, cfg *config.Confi
 		Mapping:  store,
 		DirStore: configstore.NewSSM(ssmClient, cfg.Mapping.SSMPrefix),
 		OrgStore: configstore.NewOrgSSM(ssmClient, cfg.Mapping.SSMPrefix),
+		Control:  configstore.NewSSMControl(ssmClient, cfg.Mapping.SSMPrefix),
 		Orgs:     make(map[string]server.OrgReader, len(cfg.Orgs)),
 		cfg:      cfg,
 	}

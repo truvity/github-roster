@@ -26,6 +26,28 @@ export async function fetchMe(signal?: AbortSignal): Promise<Me> {
   return { name: resp.name, email: resp.email, role: resp.role };
 }
 
+// stageOrg stages an operator-added organization in the config store (name +
+// one seed team, optional minimum-owners). Operator-only; the server rejects a
+// viewer. On success the org appears in Settings with a "Create GitHub App"
+// link.
+export interface StageOrgInput {
+  name: string;
+  minAdmins?: number;
+  team: string;
+  groups?: string[];
+  members?: string[];
+}
+
+export async function stageOrg(input: StageOrgInput): Promise<void> {
+  await rosterClient.stageOrg({
+    name: input.name,
+    minAdmins: input.minAdmins ?? 0,
+    team: input.team,
+    groups: input.groups ?? [],
+    members: input.members ?? [],
+  });
+}
+
 // Types mirror the console's JSON API (/api/roster). Kept minimal — the
 // fields the People view reads.
 export interface Membership {

@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   fetchRoster, fetchStatus, fetchAudit, flattenAudit,
-  fetchSettings, fetchVersion, fetchMe,
+  fetchSettings, fetchVersion, fetchMe, stageOrg,
   type Person, type ReconcileStatus, type Change, type Settings, type SettingsOrg,
 } from "./api";
 
@@ -19,15 +19,16 @@ function badge(state?: string): { label: string; cls: string } {
   }
 }
 
-// useAsync runs loader once and tracks {data,error}.
-function useAsync<T>(loader: (s: AbortSignal) => Promise<T>): { data: T | null; error: string } {
+// useAsync runs loader and tracks {data,error}. It re-runs whenever a value in
+// deps changes (default: once), so a mutation can bump a counter to refetch.
+function useAsync<T>(loader: (s: AbortSignal) => Promise<T>, deps: unknown[] = []): { data: T | null; error: string } {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState("");
   useEffect(() => {
     const ac = new AbortController();
     loader(ac.signal).then(setData).catch((e) => { if (e.name !== "AbortError") setError(String(e)); });
     return () => ac.abort();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, deps); // eslint-disable-line react-hooks/exhaustive-deps
   return { data, error };
 }
 
@@ -196,8 +197,47 @@ function OrgSection({ org: o, staged }: { org: SettingsOrg; staged?: boolean }) 
   );
 }
 
+// StageOrgForm stages a new organization in the config store (operator-only;
+// the server rejects a viewer). On success it calls onStaged to refresh the
+// list, where the org then shows a "Create GitHub App" link.
+function StageOrgForm({ onStaged }: { onStaged: () => void }) {
+  const [name, setName] = useState("");
+  const [team, setTeam] = useState("");
+  const [groups, setGroups] = useState("");
+  const [members, setMembers] = useState("");
+  const [minAdmins, setMinAdmins] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const csv = (s: string) => s.split(",").map((x) => x.trim()).filter(Boolean);
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    setErr(""); setBusy(true);
+    try {
+      await stageOrg({ name: name.trim(), team: team.trim(), groups: csv(groups), members: csv(members), minAdmins: minAdmins ? Number(minAdmins) : 0 });
+      setName(""); setTeam(""); setGroups(""); setMembers(""); setMinAdmins("");
+      onStaged();
+    } catch (e2) {
+      setErr(e2 instanceof Error ? e2.message : String(e2));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <form onSubmit={submit} style={{ marginTop: 16, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
+      <label>Organization login<br /><input value={name} onChange={(e) => setName(e.target.value)} placeholder="acme-inc" required /></label>
+      <label>Minimum owners<br /><input type="number" min="0" value={minAdmins} onChange={(e) => setMinAdmins(e.target.value)} style={{ width: 110 }} placeholder="0" /></label>
+      <label>Seed team<br /><input value={team} onChange={(e) => setTeam(e.target.value)} placeholder="engineering" required /></label>
+      <label>Groups (comma-separated)<br /><input value={groups} onChange={(e) => setGroups(e.target.value)} placeholder="eng@acme.com" /></label>
+      <label>Members (comma-separated)<br /><input value={members} onChange={(e) => setMembers(e.target.value)} placeholder="octocat" /></label>
+      <button type="submit" disabled={busy}>{busy ? "Staging…" : "Stage organization"}</button>
+      {err && <span className="banner">{err}</span>}
+    </form>
+  );
+}
+
 function SettingsView() {
-  const { data, error } = useAsync<Settings>(fetchSettings);
+  const [reload, setReload] = useState(0);
+  const { data, error } = useAsync<Settings>(fetchSettings, [reload]);
   if (error) return <div className="banner">{error}</div>;
   if (data === null) return <p className="muted">Loading…</p>;
   return (
@@ -226,10 +266,12 @@ function SettingsView() {
           {(data.sources ?? []).length === 0 && (data.storeSources ?? []).length === 0 && <tr><td colSpan={4} className="muted">No directories.</td></tr>}
         </tbody>
       </table>
-      <p className="muted">Add or remove directories on the classic Settings page; the loop uses them on its next pass.</p>
       <h2>Organizations</h2>
       {(data.orgs ?? []).map((o) => <OrgSection key={o.name} org={o} />)}
       {(data.storeOrgs ?? []).map((o) => <OrgSection key={`store-${o.name}`} org={o} staged />)}
+      <h3 style={{ marginTop: 20 }}>Stage an organization</h3>
+      <p className="muted">Adds an organization to the config store, born reconcile-disabled with no credentials. Once staged it shows a “Create GitHub App” link. At least one team (a group or a member) is required. Operator-only.</p>
+      <StageOrgForm onStaged={() => setReload((r) => r + 1)} />
     </>
   );
 }

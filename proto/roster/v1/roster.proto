@@ -37,7 +37,23 @@ service RosterService {
   // forwards it, so the SPA header can show who is logged in and whether they
   // may operate or only view.
   rpc GetMe(GetMeRequest) returns (GetMeResponse);
+
+  // StageOrg stages an operator-added organization in the config store (name,
+  // one seed team, optional minimum-owners), born reconcile-disabled and
+  // credential-less. Operator-only. It then shows a "Create GitHub App" link
+  // that starts the manifest flow. Replaces the retired SSR form.
+  rpc StageOrg(StageOrgRequest) returns (StageOrgResponse);
 }
+
+message StageOrgRequest {
+  string name = 1;
+  int32 min_admins = 2;
+  string team = 3;
+  repeated string groups = 4;
+  repeated string members = 5;
+}
+
+message StageOrgResponse {}
 
 message GetMeRequest {}
 

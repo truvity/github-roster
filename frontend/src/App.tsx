@@ -8,6 +8,17 @@ import {
 
 type Tab = "people" | "status" | "history" | "settings";
 
+const TABS: Tab[] = ["people", "status", "history", "settings"];
+
+// tabFromHash reads the active tab from the URL fragment (#status, …) so a
+// refresh, the back button, and shared deep links all land on the same view.
+// An unknown or empty fragment falls back to People.
+function tabFromHash(): Tab {
+  const h = (typeof location !== "undefined" ? location.hash.replace(/^#/, "") : "") as Tab;
+
+  return TABS.includes(h) ? h : "people";
+}
+
 function badge(state?: string): { label: string; cls: string } {
   switch (state) {
     case "synced": return { label: "synced", cls: "ok" };
@@ -517,13 +528,21 @@ function UserBadge() {
 }
 
 export function App() {
-  const [tab, setTab] = useState<Tab>("people");
+  const [tab, setTab] = useState<Tab>(tabFromHash);
+  // Keep state in sync with the URL fragment so the back/forward buttons and
+  // deep links work; the nav links are plain anchors (#status) that set it.
+  useEffect(() => {
+    const onHash = () => setTab(tabFromHash());
+    window.addEventListener("hashchange", onHash);
+
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
   const tabs: [Tab, string][] = [["people", "People"], ["status", "Status"], ["history", "History"], ["settings", "Settings"]];
   return (
     <main>
       <header style={{ display: "flex", alignItems: "center", gap: 16 }}>
         <span className="brand">roster</span>
-        <nav>{tabs.map(([k, l]) => <a key={k} className={tab === k ? "cur" : ""} onClick={() => setTab(k)}>{l}</a>)}</nav>
+        <nav>{tabs.map(([k, l]) => <a key={k} href={`#${k}`} className={tab === k ? "cur" : ""}>{l}</a>)}</nav>
         <span style={{ marginLeft: "auto" }}><UserBadge /></span>
       </header>
       <h1>{tabs.find(([k]) => k === tab)![1]}</h1>

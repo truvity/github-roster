@@ -1,10 +1,15 @@
 # Continuous reconciliation
 
-**Status:** proposed 2026-08-23. Supersedes the plan/apply flow in
+**Status:** proposed 2026-08-23; approval + removal-safety model refined
+2026-08-25 (Oleg). Supersedes the plan/apply flow in
 [overview.md](overview.md) (§"The two asymmetries") and the plan-hash API in
 [broker.md](broker.md); those documents describe what runs today and will be
 rewritten when this ships. This document describes the target the 0.17 line
-builds toward.
+builds toward. The 2026-08-25 refinement: approval is an explicit, editable,
+bulk-able per-person **Approve/Add** (recorded `approvedBy`/`approvedAt`) on
+the way in only; removals are automatic on the IdP leaver signal with **no**
+percentage circuit-breaker — the sole removal safety is that the loop removes
+only on an **authoritative** directory result.
 
 ## The one change
 
@@ -26,12 +31,23 @@ desired(person, org) = a mapping entry exists
                      ∧ teams = directory groups ∩ configured teams               (derived)
 ```
 
-**Adding a mapping entry is the approval. Suspension is the removal. Team
-membership follows groups and configuration.** Nothing else is approved,
-ever. The loop can only add someone who has an entry, and can only remove
-someone the directory reports gone — the same two asymmetries the current
-"removals-only document" encodes, now as properties of the data rather than a
-flag on a run.
+**Approving a person is the approval. Suspension is the removal. Team
+membership follows groups and configuration.** Approval is the *one* human
+gate, and it is on the way **in** only: an operator fills a person's data
+(their GitHub login, above all — the fact the directory cannot supply) and
+**blesses** them in a single **Approve/Add**, which writes the mapping entry
+stamped with `approvedBy`/`approvedAt`. The loop can only invite someone who
+has an approved entry; it removes someone the directory reports gone
+**without** any approval. Team membership follows groups and configuration.
+Nothing else is approved, ever.
+
+The entry *is* the stored approval — `approvedBy`/`approvedAt` are audit
+metadata on it, and git/IaC-declared people are approved by virtue of being
+declared. A candidate the join detects but nobody has approved (a `NEW` live
+person, or an `UNKNOWN` GitHub member) has no entry yet: it sits in the
+worklist as `awaiting-approval` until an operator approves it. Approving many
+at once is exactly approving them one-by-one — there is no batch object, only
+the per-person state change fanned out.
 
 ## Person state — computed, not stored
 
@@ -41,13 +57,20 @@ entry. Everything else is the directory or the loop.
 
 | State | Meaning | Waits on | Inline action |
 |---|---|---|---|
-| `NEW` | Live in a directory and in a team-backing group, but no mapping entry. (Today's `unmapped` warning, promoted to a row.) | operator | Add |
-| `PENDING` | Entry exists; GitHub does not match yet. Also where a synced person lands after a group or config change. | loop | Edit |
+| `NEW` | Live in a directory and in a team-backing group, but no mapping entry. Awaiting approval. | operator | Edit · **Approve/Add** |
+| `PENDING` | Approved entry exists; GitHub does not match yet. Also where a synced person lands after a group or config change. | loop | Edit |
 | `INVITED` | Organization invitation pending — never re-invited, never counted as absent. | the person | Edit |
 | `SYNCED` | Every organization and team matches desired. | — | Edit · Remove |
-| `LEAVING` | Suspended in an account that governs an org; still a member there. | loop | — |
+| `LEAVING` | Suspended in an account that governs an org; still a member there. Removed automatically — no approval. | loop | — |
 | `LEFT` | Removed from every org the suspension governs; the entry stays (history, and re-add on reactivation). | directory | Remove (tidy-up) |
-| `UNKNOWN` | In GitHub with no mapping entry (added by hand in the GitHub UI). Shown, never auto-removed. | operator | Add · Remove |
+| `UNKNOWN` | In GitHub with no mapping entry (added by hand in the GitHub UI). Awaiting approval; never auto-removed. | operator | Edit · **Adopt** |
+
+The `awaiting-approval` rows (`NEW` and `UNKNOWN`) are the worklist: every row
+is editable (fill/fix the GitHub login, name, class), and **Approve/Add**
+(NEW) or **Adopt** (UNKNOWN) is the single "data is filled + I bless this
+person to promote" action. **Bulk-approve** runs that same action across the
+selected rows. `Adopt` keeps an existing GitHub member (maps + approves →
+`SYNCED`); it never removes.
 
 Any state may additionally carry a **waiting reason** from a guard —
 `source stale`, `no seat`, `too many removals`, `team missing` — shown next
@@ -91,17 +114,22 @@ retried".
 
 | Guard | Stops | Because | Clears when |
 |---|---|---|---|
-| Stale source | removals of people that directory vouches for | A directory that did not answer must never read as "everyone left"; adds and team moves continue from the last good snapshot. | the source reads healthy again |
-| Too many removals (shrink breaker) | all removals in that org this tick | Mass suspension in the IdP looks identical to an IdP outage or a bad config. | an operator removes people explicitly (Remove bypasses it), or the count drops under the threshold |
+| Non-authoritative source | **every** removal governed by that source | This is the whole removal safety. Removals are unapproved, so the loop must remove a person **only** when the governing directory returned an *authoritative* answer. Anything less — no answer, timeout, partial/degraded, or a result the source itself flags as not-authoritative — reads as "nothing known," never "these people left." Adds and team moves continue from the last good snapshot. | the source reports authoritative again |
 | Minimum owners | any demotion or removal below `minAdmins` | The loop must never lock the organization. | owners change by reviewed configuration |
 | Team missing | team actions for a configured team absent on GitHub | Team creation is not this service's business. | the team is created |
 | No seat | that one invitation | GitHub refused (422). | seats are bought — retried automatically |
 | Pinned team | any change to a pinned team's members | Those are operator-edited by definition. | — |
 
-No "release" button is needed: each waiting action names its cause, and
-fixing the cause is the release. The one deliberate human override is
-per-person `Remove`, which bypasses the shrink breaker because a human
-clicked a name.
+There is **no shrink/percentage circuit-breaker.** A blunt threshold cannot
+tell a real mass-departure from an IdP glitch, and it blocks legitimate large
+changes; the correct control is to trust removals *only* on an authoritative
+directory result and hold otherwise. That makes detecting directory
+**authoritativeness** — not just "did it answer" but "is this answer complete
+and trustworthy" — the safety-critical contract the `DirectoryService` owes
+the loop (it carries the per-source health/Probe signal for exactly this).
+
+No "release" button is needed: each waiting action names its cause, and fixing
+the cause — or the source reading authoritative again — is the release.
 
 The per-organization `enabled` switch is the only on/off control. It is
 configuration — a reviewed change — because an unattended write path must be

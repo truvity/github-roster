@@ -687,6 +687,93 @@ func (s *rosterConnect) GetPerson(
 	}), nil
 }
 
+// PutOrgTeam creates or replaces one team↔group mapping on a STORE org — the
+// operator's half of the hybrid model. Git-declared orgs are the reviewed
+// baseline: editing one here is refused, not silently shadowed.
+func (s *rosterConnect) PutOrgTeam(
+	ctx context.Context,
+	req *connect.Request[rosterv1.PutOrgTeamRequest],
+) (*connect.Response[rosterv1.PutOrgTeamResponse], error) {
+	if err := requireOperatorCtx(ctx); err != nil {
+		return nil, err
+	}
+
+	if s.deps.OrgStore == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("no config store is configured"))
+	}
+
+	org := strings.TrimSpace(req.Msg.GetOrg())
+	team := strings.TrimSpace(req.Msg.GetTeam())
+	groups := trimmedNonEmpty(req.Msg.GetGroups())
+	members := trimmedNonEmpty(req.Msg.GetMembers())
+
+	if org == "" || team == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("an org and a team are required"))
+	}
+
+	if len(groups) == 0 && len(members) == 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument,
+			errors.New("at least one group or member is required (delete the team to unmap it)"))
+	}
+
+	if err := s.refuseGitOrg(org); err != nil {
+		return nil, err
+	}
+
+	if err := s.deps.OrgStore.PutTeam(ctx, org, team, config.Team{Groups: groups, Members: members}); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return connect.NewResponse(&rosterv1.PutOrgTeamResponse{}), nil
+}
+
+// DeleteOrgTeam removes one team mapping from a store org.
+func (s *rosterConnect) DeleteOrgTeam(
+	ctx context.Context,
+	req *connect.Request[rosterv1.DeleteOrgTeamRequest],
+) (*connect.Response[rosterv1.DeleteOrgTeamResponse], error) {
+	if err := requireOperatorCtx(ctx); err != nil {
+		return nil, err
+	}
+
+	if s.deps.OrgStore == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("no config store is configured"))
+	}
+
+	org := strings.TrimSpace(req.Msg.GetOrg())
+	team := strings.TrimSpace(req.Msg.GetTeam())
+
+	if org == "" || team == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("an org and a team are required"))
+	}
+
+	if err := s.refuseGitOrg(org); err != nil {
+		return nil, err
+	}
+
+	if err := s.deps.OrgStore.DeleteTeam(ctx, org, team); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return connect.NewResponse(&rosterv1.DeleteOrgTeamResponse{}), nil
+}
+
+// refuseGitOrg rejects mutations that target a git-declared organization: the
+// git layer is the reviewed baseline (a PR is the gate for those grants), and
+// the store must never shadow it.
+func (s *rosterConnect) refuseGitOrg(org string) error {
+	if s.deps.Config == nil {
+		return nil
+	}
+
+	if _, ok := s.deps.Config.Org(org); ok {
+		return connect.NewError(connect.CodeFailedPrecondition,
+			errors.New("organization "+org+" is git-declared; its teams are managed in git (a PR is the gate for those grants)"))
+	}
+
+	return nil
+}
+
 // reconcileChanges maps the broker's per-action detail list to the proto.
 func reconcileChanges(in []broker.ReconcileChange) []*rosterv1.ReconcileChange {
 	if len(in) == 0 {

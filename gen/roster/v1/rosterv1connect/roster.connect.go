@@ -75,6 +75,12 @@ const (
 	RosterServiceDeletePersonProcedure = "/roster.v1.RosterService/DeletePerson"
 	// RosterServiceGetPersonProcedure is the fully-qualified name of the RosterService's GetPerson RPC.
 	RosterServiceGetPersonProcedure = "/roster.v1.RosterService/GetPerson"
+	// RosterServicePutOrgTeamProcedure is the fully-qualified name of the RosterService's PutOrgTeam
+	// RPC.
+	RosterServicePutOrgTeamProcedure = "/roster.v1.RosterService/PutOrgTeam"
+	// RosterServiceDeleteOrgTeamProcedure is the fully-qualified name of the RosterService's
+	// DeleteOrgTeam RPC.
+	RosterServiceDeleteOrgTeamProcedure = "/roster.v1.RosterService/DeleteOrgTeam"
 )
 
 // RosterServiceClient is a client for the roster.v1.RosterService service.
@@ -128,6 +134,13 @@ type RosterServiceClient interface {
 	// pinned) so the operator's Edit form can prefill every field — the joined
 	// Person the roster shows omits emails/pinned. Operator-only.
 	GetPerson(context.Context, *connect.Request[v1.GetPersonRequest]) (*connect.Response[v1.GetPersonResponse], error)
+	// PutOrgTeam creates or replaces one team↔group mapping on an
+	// operator-added (store) organization. Git-declared orgs are the reviewed
+	// baseline and stay read-only here. Operator-only.
+	PutOrgTeam(context.Context, *connect.Request[v1.PutOrgTeamRequest]) (*connect.Response[v1.PutOrgTeamResponse], error)
+	// DeleteOrgTeam removes one team mapping from a store organization.
+	// Operator-only.
+	DeleteOrgTeam(context.Context, *connect.Request[v1.DeleteOrgTeamRequest]) (*connect.Response[v1.DeleteOrgTeamResponse], error)
 }
 
 // NewRosterServiceClient constructs a client for the roster.v1.RosterService service. By default,
@@ -231,6 +244,18 @@ func NewRosterServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(rosterServiceMethods.ByName("GetPerson")),
 			connect.WithClientOptions(opts...),
 		),
+		putOrgTeam: connect.NewClient[v1.PutOrgTeamRequest, v1.PutOrgTeamResponse](
+			httpClient,
+			baseURL+RosterServicePutOrgTeamProcedure,
+			connect.WithSchema(rosterServiceMethods.ByName("PutOrgTeam")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteOrgTeam: connect.NewClient[v1.DeleteOrgTeamRequest, v1.DeleteOrgTeamResponse](
+			httpClient,
+			baseURL+RosterServiceDeleteOrgTeamProcedure,
+			connect.WithSchema(rosterServiceMethods.ByName("DeleteOrgTeam")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -251,6 +276,8 @@ type rosterServiceClient struct {
 	putPerson           *connect.Client[v1.PutPersonRequest, v1.PutPersonResponse]
 	deletePerson        *connect.Client[v1.DeletePersonRequest, v1.DeletePersonResponse]
 	getPerson           *connect.Client[v1.GetPersonRequest, v1.GetPersonResponse]
+	putOrgTeam          *connect.Client[v1.PutOrgTeamRequest, v1.PutOrgTeamResponse]
+	deleteOrgTeam       *connect.Client[v1.DeleteOrgTeamRequest, v1.DeleteOrgTeamResponse]
 }
 
 // GetVersion calls roster.v1.RosterService.GetVersion.
@@ -328,6 +355,16 @@ func (c *rosterServiceClient) GetPerson(ctx context.Context, req *connect.Reques
 	return c.getPerson.CallUnary(ctx, req)
 }
 
+// PutOrgTeam calls roster.v1.RosterService.PutOrgTeam.
+func (c *rosterServiceClient) PutOrgTeam(ctx context.Context, req *connect.Request[v1.PutOrgTeamRequest]) (*connect.Response[v1.PutOrgTeamResponse], error) {
+	return c.putOrgTeam.CallUnary(ctx, req)
+}
+
+// DeleteOrgTeam calls roster.v1.RosterService.DeleteOrgTeam.
+func (c *rosterServiceClient) DeleteOrgTeam(ctx context.Context, req *connect.Request[v1.DeleteOrgTeamRequest]) (*connect.Response[v1.DeleteOrgTeamResponse], error) {
+	return c.deleteOrgTeam.CallUnary(ctx, req)
+}
+
 // RosterServiceHandler is an implementation of the roster.v1.RosterService service.
 type RosterServiceHandler interface {
 	// GetVersion returns the running build's identity — the same information the
@@ -379,6 +416,13 @@ type RosterServiceHandler interface {
 	// pinned) so the operator's Edit form can prefill every field — the joined
 	// Person the roster shows omits emails/pinned. Operator-only.
 	GetPerson(context.Context, *connect.Request[v1.GetPersonRequest]) (*connect.Response[v1.GetPersonResponse], error)
+	// PutOrgTeam creates or replaces one team↔group mapping on an
+	// operator-added (store) organization. Git-declared orgs are the reviewed
+	// baseline and stay read-only here. Operator-only.
+	PutOrgTeam(context.Context, *connect.Request[v1.PutOrgTeamRequest]) (*connect.Response[v1.PutOrgTeamResponse], error)
+	// DeleteOrgTeam removes one team mapping from a store organization.
+	// Operator-only.
+	DeleteOrgTeam(context.Context, *connect.Request[v1.DeleteOrgTeamRequest]) (*connect.Response[v1.DeleteOrgTeamResponse], error)
 }
 
 // NewRosterServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -478,6 +522,18 @@ func NewRosterServiceHandler(svc RosterServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(rosterServiceMethods.ByName("GetPerson")),
 		connect.WithHandlerOptions(opts...),
 	)
+	rosterServicePutOrgTeamHandler := connect.NewUnaryHandler(
+		RosterServicePutOrgTeamProcedure,
+		svc.PutOrgTeam,
+		connect.WithSchema(rosterServiceMethods.ByName("PutOrgTeam")),
+		connect.WithHandlerOptions(opts...),
+	)
+	rosterServiceDeleteOrgTeamHandler := connect.NewUnaryHandler(
+		RosterServiceDeleteOrgTeamProcedure,
+		svc.DeleteOrgTeam,
+		connect.WithSchema(rosterServiceMethods.ByName("DeleteOrgTeam")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/roster.v1.RosterService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case RosterServiceGetVersionProcedure:
@@ -510,6 +566,10 @@ func NewRosterServiceHandler(svc RosterServiceHandler, opts ...connect.HandlerOp
 			rosterServiceDeletePersonHandler.ServeHTTP(w, r)
 		case RosterServiceGetPersonProcedure:
 			rosterServiceGetPersonHandler.ServeHTTP(w, r)
+		case RosterServicePutOrgTeamProcedure:
+			rosterServicePutOrgTeamHandler.ServeHTTP(w, r)
+		case RosterServiceDeleteOrgTeamProcedure:
+			rosterServiceDeleteOrgTeamHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -577,4 +637,12 @@ func (UnimplementedRosterServiceHandler) DeletePerson(context.Context, *connect.
 
 func (UnimplementedRosterServiceHandler) GetPerson(context.Context, *connect.Request[v1.GetPersonRequest]) (*connect.Response[v1.GetPersonResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("roster.v1.RosterService.GetPerson is not implemented"))
+}
+
+func (UnimplementedRosterServiceHandler) PutOrgTeam(context.Context, *connect.Request[v1.PutOrgTeamRequest]) (*connect.Response[v1.PutOrgTeamResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("roster.v1.RosterService.PutOrgTeam is not implemented"))
+}
+
+func (UnimplementedRosterServiceHandler) DeleteOrgTeam(context.Context, *connect.Request[v1.DeleteOrgTeamRequest]) (*connect.Response[v1.DeleteOrgTeamResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("roster.v1.RosterService.DeleteOrgTeam is not implemented"))
 }

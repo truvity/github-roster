@@ -88,6 +88,17 @@ export async function addDirectory(input: { name: string; domains: string[]; end
   await rosterClient.addDirectory({ name: input.name, domains: input.domains, endpoint: input.endpoint, probeGroup: input.probeGroup ?? "" });
 }
 
+// putOrgTeam / deleteOrgTeam edit one team↔group mapping on an operator-added
+// (store) organization. Git-declared orgs are refused by the server — the git
+// layer stays the reviewed baseline.
+export async function putOrgTeam(input: { org: string; team: string; groups?: string[]; members?: string[] }): Promise<void> {
+  await rosterClient.putOrgTeam({ org: input.org, team: input.team, groups: input.groups ?? [], members: input.members ?? [] });
+}
+
+export async function deleteOrgTeam(org: string, team: string): Promise<void> {
+  await rosterClient.deleteOrgTeam({ org, team });
+}
+
 export async function deleteDirectory(name: string): Promise<void> {
   await rosterClient.deleteDirectory({ name });
 }

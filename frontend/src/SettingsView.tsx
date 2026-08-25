@@ -13,7 +13,7 @@ import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import { addDirectory, deleteDirectory, fetchSettings, stageOrg, type Settings, type SettingsDomain, type SettingsOrg } from "./api";
+import { addDirectory, deleteDirectory, deleteOrgTeam, fetchSettings, putOrgTeam, stageOrg, type Settings, type SettingsDomain, type SettingsOrg } from "./api";
 import { useAsync } from "./hooks";
 
 // DomainList renders a directory's domains, each with its probe group and its
@@ -38,7 +38,45 @@ function DomainList({ domains }: { domains?: SettingsDomain[] }) {
 
 // OrgSection renders one organization and its teams; `staged` marks a
 // store-added org (present in the config store, born disabled, not yet run).
-function OrgSection({ org: o, staged }: { org: SettingsOrg; staged?: boolean }) {
+// TeamEditor adds or replaces one team mapping on a staged org.
+function TeamEditor({ org, initial, onSaved }: { org: string; initial?: { name: string; groups?: string[]; members?: string[] }; onSaved: () => void }) {
+  const [team, setTeam] = useState(initial?.name ?? "");
+  const [groups, setGroups] = useState((initial?.groups ?? []).join(", "));
+  const [members, setMembers] = useState((initial?.members ?? []).join(", "));
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const csv = (v: string) => v.split(",").map((x) => x.trim()).filter(Boolean);
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    setErr(""); setBusy(true);
+    try {
+      await putOrgTeam({ org, team: team.trim(), groups: csv(groups), members: csv(members) });
+      setTeam(""); setGroups(""); setMembers("");
+      onSaved();
+    } catch (e2) {
+      setErr(e2 instanceof Error ? e2.message : String(e2));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Box component="form" onSubmit={submit} sx={{ mt: 1, display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
+      <TextField label="Team" value={team} onChange={(e) => setTeam(e.target.value)} required sx={{ width: 170 }} />
+      <TextField label="Groups (comma-separated)" value={groups} onChange={(e) => setGroups(e.target.value)} sx={{ width: 240 }} />
+      <TextField label="Members (comma-separated)" value={members} onChange={(e) => setMembers(e.target.value)} sx={{ width: 220 }} />
+      <Button type="submit" variant="outlined" disabled={busy}>{busy ? "Saving…" : initial ? "Save team" : "Add team"}</Button>
+      {err && <Alert severity="error">{err}</Alert>}
+    </Box>
+  );
+}
+
+function OrgSection({ org: o, staged, onChanged }: { org: SettingsOrg; staged?: boolean; onChanged?: () => void }) {
+  const [actErr, setActErr] = useState("");
+  const [editing, setEditing] = useState<string | null>(null);
+  const removeTeam = async (team: string) => {
+    setActErr("");
+    try { await deleteOrgTeam(o.name, team); onChanged?.(); } catch (e) { setActErr(e instanceof Error ? e.message : String(e)); }
+  };
   return (
     <Box component="section" sx={{ mt: 3 }}>
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
@@ -50,7 +88,7 @@ function OrgSection({ org: o, staged }: { org: SettingsOrg; staged?: boolean }) 
       </Box>
       <TableContainer component={Paper} variant="outlined">
         <Table size="small">
-          <TableHead><TableRow><TableCell>Team</TableCell><TableCell>Membership from</TableCell></TableRow></TableHead>
+          <TableHead><TableRow><TableCell>Team</TableCell><TableCell>Membership from</TableCell>{staged && <TableCell />}</TableRow></TableHead>
           <TableBody>
             {(o.teams ?? []).map((t) => (
               <TableRow key={t.name} hover>
@@ -60,12 +98,25 @@ function OrgSection({ org: o, staged }: { org: SettingsOrg; staged?: boolean }) 
                     {t.pinned ? "pinned (operator-edited)" : [...(t.groups ?? []), ...(t.members ?? []).map((m) => `+${m}`)].join(", ")}
                   </Typography>
                 </TableCell>
+                {staged && (
+                  <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
+                    <Button onClick={() => setEditing(editing === t.name ? null : t.name)}>{editing === t.name ? "Close" : "Edit"}</Button>
+                    <Button color="error" onClick={() => removeTeam(t.name)}>Delete</Button>
+                  </TableCell>
+                )}
               </TableRow>
             ))}
-            {(o.teams ?? []).length === 0 && <TableRow><TableCell colSpan={2}><Typography color="text.secondary">No teams.</Typography></TableCell></TableRow>}
+            {(o.teams ?? []).length === 0 && <TableRow><TableCell colSpan={staged ? 3 : 2}><Typography color="text.secondary">No teams.</Typography></TableCell></TableRow>}
           </TableBody>
         </Table>
       </TableContainer>
+      {actErr && <Alert severity="error" sx={{ mt: 1 }}>{actErr}</Alert>}
+      {staged && (
+        <TeamEditor org={o.name}
+          initial={editing ? { name: editing, groups: (o.teams ?? []).find((t) => t.name === editing)?.groups, members: (o.teams ?? []).find((t) => t.name === editing)?.members } : undefined}
+          key={editing ?? "new"}
+          onSaved={() => { setEditing(null); onChanged?.(); }} />
+      )}
       {staged && (
         <Typography variant="body2" sx={{ mt: 1 }}>
           <Link href={`/settings/orgs/create-app?org=${encodeURIComponent(o.name)}`}>Create GitHub App →</Link>{" "}
@@ -198,7 +249,7 @@ export function SettingsView() {
       <DirectoryForm onAdded={refresh} />
       <Typography variant="h2" sx={{ mt: 4 }}>Organizations</Typography>
       {(data.orgs ?? []).map((o) => <OrgSection key={o.name} org={o} />)}
-      {(data.storeOrgs ?? []).map((o) => <OrgSection key={`store-${o.name}`} org={o} staged />)}
+      {(data.storeOrgs ?? []).map((o) => <OrgSection key={`store-${o.name}`} org={o} staged onChanged={refresh} />)}
       <Typography variant="h3" sx={{ mt: 4 }}>Stage an organization</Typography>
       <Typography variant="body2" color="text.secondary">
         Adds an organization to the config store, born reconcile-disabled with no credentials. Once staged it shows a

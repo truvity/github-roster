@@ -75,7 +75,32 @@ service RosterService {
   // pinned) so the operator's Edit form can prefill every field — the joined
   // Person the roster shows omits emails/pinned. Operator-only.
   rpc GetPerson(GetPersonRequest) returns (GetPersonResponse);
+
+  // PutOrgTeam creates or replaces one team↔group mapping on an
+  // operator-added (store) organization. Git-declared orgs are the reviewed
+  // baseline and stay read-only here. Operator-only.
+  rpc PutOrgTeam(PutOrgTeamRequest) returns (PutOrgTeamResponse);
+
+  // DeleteOrgTeam removes one team mapping from a store organization.
+  // Operator-only.
+  rpc DeleteOrgTeam(DeleteOrgTeamRequest) returns (DeleteOrgTeamResponse);
 }
+
+message PutOrgTeamRequest {
+  string org = 1;
+  string team = 2;
+  repeated string groups = 3;
+  repeated string members = 4;
+}
+
+message PutOrgTeamResponse {}
+
+message DeleteOrgTeamRequest {
+  string org = 1;
+  string team = 2;
+}
+
+message DeleteOrgTeamResponse {}
 
 message GetPersonRequest {
   string name = 1;

@@ -5,6 +5,7 @@ package configstore
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strconv"
@@ -78,6 +79,12 @@ type OrgStore interface {
 	PutApp(ctx context.Context, org string, creds AppCredentials) error
 	// PutProvenance records how the org's App came to be (manual/roster).
 	PutProvenance(ctx context.Context, org, provenance string) error
+	// PutTeam creates or replaces one team's mapping on a STORE org — the
+	// operator's team↔group editor. Git-declared orgs are never touched
+	// through this store (the git layer is the reviewed baseline).
+	PutTeam(ctx context.Context, org, team string, cfg config.Team) error
+	// DeleteTeam removes one team's mapping from a store org.
+	DeleteTeam(ctx context.Context, org, team string) error
 }
 
 // OrgSSM reads organizations under <prefix>orgs/.
@@ -408,4 +415,77 @@ func (s *OrgSSM) PutProvenance(ctx context.Context, org, provenance string) erro
 	}
 
 	return s.putParam(ctx, s.prefix+org+"/"+fieldProvenance, provenance, types.ParameterTypeString)
+}
+
+// PutTeam creates or replaces one team's mapping on a store org. A field that
+// is now empty is deleted, not left behind — a stale groups parameter would
+// keep granting a membership the operator just took away.
+func (s *OrgSSM) PutTeam(ctx context.Context, org, team string, cfg config.Team) error {
+	org, team = strings.TrimSpace(org), strings.TrimSpace(team)
+	if org == "" || team == "" {
+		return fmt.Errorf("org and team are required")
+	}
+
+	if len(cfg.Groups) == 0 && len(cfg.Members) == 0 {
+		return fmt.Errorf("team %q: at least one group or member is required (delete the team to unmap it)", team)
+	}
+
+	base := s.prefix + org + "/" + segTeams + "/" + team + "/"
+
+	fields := map[string]string{}
+	if len(cfg.Groups) > 0 {
+		fields[fieldGroups] = strings.Join(cfg.Groups, ",")
+	}
+
+	if len(cfg.Members) > 0 {
+		fields[fieldMembers] = strings.Join(cfg.Members, ",")
+	}
+
+	for field, value := range fields {
+		if err := s.putParam(ctx, base+field, value, types.ParameterTypeString); err != nil {
+			return err
+		}
+	}
+
+	for _, field := range []string{fieldGroups, fieldMembers} {
+		if _, keep := fields[field]; keep {
+			continue
+		}
+
+		if err := s.deleteParam(ctx, base+field); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// DeleteTeam removes one team's mapping from a store org.
+func (s *OrgSSM) DeleteTeam(ctx context.Context, org, team string) error {
+	org, team = strings.TrimSpace(org), strings.TrimSpace(team)
+	if org == "" || team == "" {
+		return fmt.Errorf("org and team are required")
+	}
+
+	base := s.prefix + org + "/" + segTeams + "/" + team + "/"
+
+	for _, field := range []string{fieldGroups, fieldMembers} {
+		if err := s.deleteParam(ctx, base+field); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// deleteParam removes one parameter, tolerating absence.
+func (s *OrgSSM) deleteParam(ctx context.Context, name string) error {
+	_, err := s.client.DeleteParameter(ctx, &ssm.DeleteParameterInput{Name: aws.String(name)})
+
+	var notFound *types.ParameterNotFound
+	if err != nil && !errors.As(err, &notFound) {
+		return fmt.Errorf("delete %q: %w", name, err)
+	}
+
+	return nil
 }

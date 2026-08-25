@@ -768,7 +768,6 @@ func grantLiveForOrg(org *config.Org, entry mapping.Entry, l *liveness, personLi
 	return false
 }
 
-
 func membership(in Inputs, org *config.Org, entry mapping.Entry, l *liveness, isLive, displayOnly bool) Membership {
 	m := Membership{Live: isLive, DisplayOnly: displayOnly, DesiredTeams: desiredTeams(org, entry, l, isLive)}
 

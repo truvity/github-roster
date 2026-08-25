@@ -242,15 +242,17 @@ the access trail, not secrecy.
 | Key | Default | Meaning |
 |---|---|---|
 | `removalsInterval` | `1h` | how often unattended, removals-only runs happen; `0s` disables the loop (day-0 gating) |
-| `maxRemovalFraction` | `0.5` | refuse a run removing more than this share of an organization; `0` disables the guard |
 
 `removalsInterval` *is* the service's half of the revocation SLA: a leaver
 loses organization membership within one interval of being suspended in the
 directory. Shortening it shortens the SLA and costs a little API quota.
 
-`maxRemovalFraction` is the guard against a directory returning nonsense
-convincingly. It is a circuit breaker, not a policy: when it trips, an
-operator looks at why rather than raising the number.
+There is no removal percentage circuit-breaker. Removals follow the directory
+(the IdP leaver signal); the safety is upstream — a source whose read was not
+authoritative (a failed/absent fetch) has its removals held by the join, so
+the loop only removes on a trustworthy read. A blunt percentage threshold
+could not tell a real mass-departure from a glitch and blocked legitimate
+large changes.
 
 ## `reconcile`
 

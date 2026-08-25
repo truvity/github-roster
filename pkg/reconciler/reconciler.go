@@ -48,10 +48,6 @@ type Options struct {
 	// omitted the owners would propose removing them; this is the guard
 	// that makes that a refusal instead of an accident.
 	MinAdmins int
-	// MaxRemovalFraction refuses a plan removing more than this share of
-	// the organization's current members. The circuit breaker against a
-	// directory returning nonsense convincingly.
-	MaxRemovalFraction float64
 }
 
 // ActionKind is one kind of change.
@@ -113,14 +109,14 @@ func BuildPlan(doc *peribolos.Document, org string, state *orgstate.State, opts 
 
 	plan := &Plan{Org: org}
 
-	memberCount := planMembership(plan, cfg, state)
+	planMembership(plan, cfg, state)
 	if err := planTeams(plan, cfg, state); err != nil {
 		return nil, err
 	}
 
 	sortActions(plan.Actions)
 
-	if err := checkInvariants(plan, memberCount, opts); err != nil {
+	if err := checkInvariants(plan, opts); err != nil {
 		return nil, err
 	}
 
@@ -152,9 +148,8 @@ func desiredRoles(cfg peribolos.Org) map[string]desiredMember {
 	return desired
 }
 
-// planMembership fills the plan's organization-level actions and returns
-// the current member count, which the removal guard is measured against.
-func planMembership(plan *Plan, cfg peribolos.Org, state *orgstate.State) int {
+// planMembership fills the plan's organization-level actions.
+func planMembership(plan *Plan, cfg peribolos.Org, state *orgstate.State) {
 	desired := desiredRoles(cfg)
 
 	current := make(map[string]orgstate.Member, len(state.Members))
@@ -209,8 +204,6 @@ func planMembership(plan *Plan, cfg peribolos.Org, state *orgstate.State) int {
 			})
 		}
 	}
-
-	return len(current)
 }
 
 // planTeams fills the team actions for the teams the document names.
@@ -270,16 +263,21 @@ func planTeams(plan *Plan, cfg peribolos.Org, state *orgstate.State) error {
 }
 
 // checkInvariants is the last gate before the plan is trusted.
-func checkInvariants(plan *Plan, memberCount int, opts Options) error {
-	var adds, removals int
+//
+// There is no removal circuit-breaker: removals follow the directory (the IdP
+// leaver signal), and the safety is upstream — a source whose read was not
+// authoritative (a failed/absent fetch) has its removals held by the join
+// (see roster stale-source handling), so the loop only removes on a
+// trustworthy read. A blunt percentage threshold could not tell a real
+// mass-departure from a glitch and blocked legitimate large changes.
+func checkInvariants(plan *Plan, opts Options) error {
+	var adds int
 
 	for _, action := range plan.Actions {
 		switch action.Kind {
 		case ActionAddMember, ActionAddAdmin, ActionTeamAdd:
 			adds++
-		case ActionRemoveMember:
-			removals++
-		case ActionSetRole, ActionCancelInvite, ActionTeamRemove:
+		case ActionRemoveMember, ActionSetRole, ActionCancelInvite, ActionTeamRemove:
 		}
 	}
 
@@ -287,14 +285,6 @@ func checkInvariants(plan *Plan, memberCount int, opts Options) error {
 	// credential and re-checks rather than trusts.
 	if opts.Mode == peribolos.ModeRemovalsOnly && adds > 0 {
 		return fmt.Errorf("removals-only run computed %d additions; refusing", adds)
-	}
-
-	if opts.MaxRemovalFraction > 0 && memberCount > 0 {
-		fraction := float64(removals) / float64(memberCount)
-		if fraction > opts.MaxRemovalFraction {
-			return fmt.Errorf("%w: plan removes %d of %d members (%.0f%%), above the %.0f%% circuit breaker",
-				ErrGuard, removals, memberCount, fraction*100, opts.MaxRemovalFraction*100)
-		}
 	}
 
 	return nil

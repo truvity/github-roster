@@ -191,11 +191,6 @@ companies: {}
 			doc:      minimal + "\nschedule: {removalsInterval: -1s}\n",
 			contains: "removalsInterval must be zero (disabled) or positive",
 		},
-		{
-			name:     "removal fraction out of range",
-			doc:      minimal + "\nschedule: {maxRemovalFraction: 1.5}\n",
-			contains: "within [0,1]",
-		},
 	}
 
 	for _, tc := range cases {

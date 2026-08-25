@@ -188,8 +188,9 @@ func (c *Client) ReconcileStatus(ctx context.Context, token string) ([]Reconcile
 
 // RunReconcile triggers one reconcile pass (the Status page's "Sync now").
 func (c *Client) RunReconcile(ctx context.Context, token string) error {
-	var out []ReconcileStatus
-	return c.call(ctx, http.MethodPost, "/v1/reconcile", token, &out)
+	// The trigger returns at once ({"started": true}); the pass runs in the
+	// background and the caller watches ReconcileStatus until it lands.
+	return c.call(ctx, http.MethodPost, "/v1/reconcile", token, nil)
 }
 
 // SetPaused pauses or resumes an organization's reconcile loop.

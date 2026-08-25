@@ -67,6 +67,26 @@ export function StatusView() {
     setActErr(""); setBusy(key);
     try { await fn(); refresh(); } catch (e) { setActErr(e instanceof Error ? e.message : String(e)); } finally { setBusy(""); }
   };
+  // Sync now only TRIGGERS the pass (the broker runs it in the background —
+  // a full pass outlives the gateway timeout when run synchronously). Poll
+  // until any org's last-run timestamp advances, then refresh the table.
+  const syncNow = async () => {
+    setActErr(""); setBusy("run");
+    const before = (data ?? []).map((s) => s.at ?? "").join("|");
+    try {
+      await runReconcile();
+      for (let i = 0; i < 40; i++) {
+        await new Promise((r) => setTimeout(r, 3000));
+        const now = await fetchStatus();
+        if (now.map((s) => s.at ?? "").join("|") !== before) break;
+      }
+      refresh();
+    } catch (e) {
+      setActErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy("");
+    }
+  };
   if (error) return <Alert severity="error">{error}</Alert>;
   if (data === null) return <Typography color="text.secondary">Loading…</Typography>;
   const toggleEnabled = (s: ReconcileStatus) => {
@@ -76,7 +96,7 @@ export function StatusView() {
   return (
     <>
       <Box sx={{ mb: 2 }}>
-        <Button variant="contained" disabled={busy !== ""} onClick={() => act("run", runReconcile)}>
+        <Button variant="contained" disabled={busy !== ""} onClick={syncNow}>
           {busy === "run" ? "Reconciling…" : "Sync now"}
         </Button>
       </Box>

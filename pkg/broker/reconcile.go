@@ -305,21 +305,40 @@ func (d *Deps) handleReconcileStatus(c fiber.Ctx) error {
 	return c.JSON(d.ReconcileStatuses())
 }
 
-// handleRunReconcile triggers one reconcile pass on demand (the Status
-// page's "Sync now"). Disabled orgs only recompute their status; enabled
-// orgs apply — the same guarantees as the scheduled loop. A pass already
-// running answers 409, not a queue.
-func (d *Deps) handleRunReconcile(c fiber.Ctx) error {
-	err := d.RunReconcile(c.Context())
+// reconcileRunTimeout bounds one triggered pass. Generous: a pass reads
+// every directory and every org; the ticker loop imposes no bound of its
+// own and a stuck pass holds the apply lock either way, so this is a
+// backstop against a wedged network call, not a pacing device.
+const reconcileRunTimeout = 10 * time.Minute
 
-	switch {
-	case errors.Is(err, ErrSweepInProgress):
-		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": err.Error()})
-	case err != nil:
-		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{"error": err.Error()})
-	default:
-		return c.JSON(d.ReconcileStatuses())
+// handleRunReconcile triggers one reconcile pass on demand (the Status
+// page's "Sync now") and returns AT ONCE: a full pass reads every
+// directory and every organization (tens of seconds), which outlives the
+// gateway's route timeout — the synchronous version answered 200 to a
+// browser that had already been handed a 504. The trigger is the contract
+// now: the pass runs in the background with the same guarantees as the
+// scheduled loop, and the caller watches Status until the run lands. A
+// pass already running answers 409, not a queue.
+func (d *Deps) handleRunReconcile(c fiber.Ctx) error {
+	// Peek at the apply lock so an operator gets the honest 409 up front;
+	// the background pass re-acquires it. A trigger slipping between the
+	// two locks just finds the lock taken and logs ErrSweepInProgress —
+	// the same outcome, one tick later.
+	if !d.applyMu.TryLock() {
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": ErrSweepInProgress.Error()})
 	}
+	d.applyMu.Unlock()
+
+	go func() { //nolint:gosec // G118: deliberately DETACHED from the request context — outliving the trigger request is the point of the async hand-off
+		ctx, cancel := context.WithTimeout(context.Background(), reconcileRunTimeout)
+		defer cancel()
+
+		if err := d.RunReconcile(ctx); err != nil && !errors.Is(err, ErrSweepInProgress) {
+			d.Logger.ErrorContext(ctx, "triggered reconcile pass failed", "error", err)
+		}
+	}()
+
+	return c.JSON(fiber.Map{"started": true})
 }
 
 func (d *Deps) setPaused(c fiber.Ctx, paused bool) error {

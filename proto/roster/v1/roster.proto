@@ -187,10 +187,21 @@ message GetSettingsResponse {
 
 message DirectorySource {
   string name = 1;
-  repeated string domains = 2;
+  // The old flat fields: `repeated string domains = 2` and
+  // `string probe_group = 4` became per-domain DomainInfo entries.
+  reserved 2, 4;
   // Set when the source reads through a DirectoryService (google-group-sync).
   string endpoint = 3;
-  string probe_group = 4;
+  // Domains this source serves, each with its own probe and sync switch.
+  repeated DomainInfo domains = 5;
+}
+
+// DomainInfo is one email domain of a directory: its own health canary and
+// its own sync switch (a non-synced domain is shown, never granted from).
+message DomainInfo {
+  string domain = 1;
+  string probe_group = 2;
+  bool sync = 3;
 }
 
 message Org {

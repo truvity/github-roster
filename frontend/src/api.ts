@@ -319,7 +319,9 @@ export function flattenAudit(records: AuditRecord[]): Change[] {
 
 export interface SettingsTeam { name: string; groups?: string[]; members?: string[]; pinned?: boolean }
 export interface SettingsOrg { name: string; company: string; minAdmins: number; reconcileEnabled: boolean; provenance?: string; teams?: SettingsTeam[] }
-export interface SettingsSource { name: string; domains?: string[]; endpoint?: string; probeGroup?: string }
+// SettingsDomain is one email domain of a directory: its own probe and sync.
+export interface SettingsDomain { domain: string; probeGroup?: string; sync?: boolean }
+export interface SettingsSource { name: string; domains?: SettingsDomain[]; endpoint?: string }
 export interface Settings { sources?: SettingsSource[]; storeSources?: SettingsSource[]; orgs?: SettingsOrg[]; storeOrgs?: SettingsOrg[] }
 
 // fetchSettings now reads over ConnectRPC (was GET /api/settings), mapping the
@@ -328,11 +330,12 @@ export interface Settings { sources?: SettingsSource[]; storeSources?: SettingsS
 export async function fetchSettings(signal?: AbortSignal): Promise<Settings> {
   const resp = await rosterClient.getSettings({}, { signal });
 
-  const source = (s: { name: string; domains: string[]; endpoint: string; probeGroup: string }): SettingsSource => ({
+  const source = (s: { name: string; domains: { domain: string; probeGroup: string; sync: boolean }[]; endpoint: string }): SettingsSource => ({
     name: s.name,
-    domains: s.domains.length ? s.domains : undefined,
+    domains: s.domains.length
+      ? s.domains.map((d) => ({ domain: d.domain, probeGroup: d.probeGroup || undefined, sync: d.sync }))
+      : undefined,
     endpoint: s.endpoint || undefined,
-    probeGroup: s.probeGroup || undefined,
   });
 
   const org = (o: { name: string; company: string; minAdmins: number; reconcileEnabled: boolean; provenance: string; teams: { name: string; groups: string[]; members: string[]; pinned: boolean }[] }): SettingsOrg => ({

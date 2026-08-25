@@ -34,7 +34,7 @@ func TestRosterConnectGetVersion(t *testing.T) {
 func TestRosterConnectGetSettings(t *testing.T) {
 	deps := &Deps{Config: &config.Config{
 		Sources: []config.Source{
-			{Name: "acme", Domains: []string{"acme.example"}, Endpoint: "http://ggs-acme"},
+			{Name: "acme", Domains: []config.Domain{{Name: "acme.example"}}, Endpoint: "http://ggs-acme"},
 		},
 		Orgs: []config.Org{{
 			Name: "org1", Company: "co", MinAdmins: 2, ReconcileEnabled: true,

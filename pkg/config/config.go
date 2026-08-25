@@ -138,6 +138,41 @@ type Roles struct {
 	Operator string `yaml:"operator"`
 }
 
+// Domain is one email domain a directory serves, with its own health probe
+// and its own sync switch. Per-domain rather than per-directory because one
+// Workspace (one service account) may serve several domains that deserve
+// independent probing — and some domains are shown without being synced.
+type Domain struct {
+	// Name is the email domain, e.g. "trustform.io".
+	Name string `yaml:"domain"`
+	// ProbeGroup is this domain's health canary: a group that always
+	// exists there (its all@, typically). See Directory docs. Optional.
+	ProbeGroup string `yaml:"probeGroup,omitempty"`
+	// Sync gates reconciliation for this domain. Unset means true. A
+	// non-synced domain's people are still read and SHOWN (read-only)
+	// but are never used to grant anything.
+	Sync *bool `yaml:"sync,omitempty"`
+}
+
+// Syncs reports the sync switch with its default: a domain syncs unless
+// explicitly turned off.
+func (d Domain) Syncs() bool { return d.Sync == nil || *d.Sync }
+
+// UnmarshalYAML accepts either the full mapping form
+// ({domain: x, probeGroup: g, sync: false}) or a bare scalar ("x") as
+// shorthand for a synced domain with no probe — so a simple directory reads
+// as simply as before the per-domain model existed.
+func (d *Domain) UnmarshalYAML(node *yaml.Node) error {
+	if node.Kind == yaml.ScalarNode {
+		return node.Decode(&d.Name)
+	}
+
+	// A local alias sheds the method set, or Decode would recurse forever.
+	type plain Domain
+
+	return node.Decode((*plain)(d))
+}
+
 // Source is one corporate directory: who exists, who is suspended, and who
 // is in which group.
 type Source struct {
@@ -145,16 +180,38 @@ type Source struct {
 	// SSMPrefix holds the directory credentials — a service-account key and
 	// the admin subject to impersonate.
 	SSMPrefix string `yaml:"ssmPrefix"`
-	// Domains restricts the source to these email domains. A directory may
-	// serve several domains while this instance is only responsible for
-	// some of them, and reading the rest would import people the service
-	// has no business managing.
-	Domains []string `yaml:"domains"`
-	// ProbeGroup is the source's health canary — see Directory.ProbeGroup.
-	ProbeGroup string `yaml:"probeGroup,omitempty"`
+	// Domains restricts the source to these email domains, each with its
+	// own probe and sync switch. A directory may serve several domains
+	// while this instance is only responsible for some of them, and
+	// reading the rest would import people the service has no business
+	// managing.
+	Domains []Domain `yaml:"domains"`
 	// Endpoint, when set, uses a DirectoryService instead of the
 	// in-process Google reader — see Directory.Endpoint.
 	Endpoint string `yaml:"endpoint,omitempty"`
+}
+
+// DomainNames lists the source's domains as plain strings — the read scope.
+func (s *Source) DomainNames() []string {
+	out := make([]string, 0, len(s.Domains))
+	for _, d := range s.Domains {
+		out = append(out, d.Name)
+	}
+
+	return out
+}
+
+// ProbeGroups lists every configured per-domain canary.
+func (s *Source) ProbeGroups() []string {
+	var out []string
+
+	for _, d := range s.Domains {
+		if d.ProbeGroup != "" {
+			out = append(out, d.ProbeGroup)
+		}
+	}
+
+	return out
 }
 
 // Company is one company: a directory, and optionally the GitHub
@@ -175,21 +232,29 @@ type Directory struct {
 	// SSMPrefix holds the directory credentials — a service-account key
 	// and the admin subject to impersonate.
 	SSMPrefix string `yaml:"ssmPrefix"`
-	// Domains restricts the source to these email domains. A directory
-	// may serve several domains while this instance is only responsible
-	// for some of them.
-	Domains []string `yaml:"domains"`
+	// Domains restricts the source to these email domains, each entry
+	// carrying its own probe group (health canary — a group that always
+	// exists there, its all@ typically; when set, the source stays
+	// healthy as long as users and the probe read, and a mapped group
+	// answering 404 becomes a per-group absence whose teams fail safe
+	// individually) and its own sync switch (unset = true; a non-synced
+	// domain's people are shown read-only, never granted from).
+	Domains []Domain `yaml:"domains"`
 	// Endpoint, when set, points this directory at a DirectoryService
 	// (google-group-sync over ConnectRPC) instead of reading the directory
 	// in-process. The service then holds no directory credential for this
 	// source — only the endpoint. Empty keeps the in-process Google reader.
 	Endpoint string `yaml:"endpoint,omitempty"`
-	// ProbeGroup is the health canary: a group that always exists (the
-	// directory's all@, typically). When set, the source is healthy as
-	// long as users and the probe read — and a mapped group answering
-	// 404 becomes a per-group absence whose teams fail safe
-	// individually, instead of poisoning the whole source. Optional.
-	ProbeGroup string `yaml:"probeGroup,omitempty"`
+}
+
+// DomainNames lists the directory's domains as plain strings.
+func (d Directory) DomainNames() []string {
+	out := make([]string, 0, len(d.Domains))
+	for _, dom := range d.Domains {
+		out = append(out, dom.Name)
+	}
+
+	return out
 }
 
 // CompanyGitHub is the organization a company owns, plus the credentials
@@ -404,11 +469,10 @@ func (c *Config) derive() {
 		company := c.Companies[code]
 
 		c.Sources = append(c.Sources, Source{
-			Name:       code,
-			SSMPrefix:  company.Directory.SSMPrefix,
-			Domains:    company.Directory.Domains,
-			ProbeGroup: company.Directory.ProbeGroup,
-			Endpoint:   company.Directory.Endpoint,
+			Name:      code,
+			SSMPrefix: company.Directory.SSMPrefix,
+			Domains:   company.Directory.Domains,
+			Endpoint:  company.Directory.Endpoint,
 		})
 
 		if gh := company.GitHub; gh != nil {
@@ -567,14 +631,22 @@ func (c *Config) validateCompanies() error {
 			return fmt.Errorf("companies[%q].directory.domains is required: name the domains this company's directory is responsible for", code)
 		}
 
-		if probe := company.Directory.ProbeGroup; probe != "" {
-			domain, ok := emailDomain(probe)
-			if !ok {
-				return fmt.Errorf("companies[%q].directory.probeGroup %q is not a group address", code, probe)
+		for i, d := range company.Directory.Domains {
+			if d.Name == "" {
+				return fmt.Errorf("companies[%q].directory.domains[%d].domain is required", code, i)
 			}
 
-			if !containsFold(company.Directory.Domains, domain) {
-				return fmt.Errorf("companies[%q].directory.probeGroup %q is outside the directory's domains %v", code, probe, company.Directory.Domains)
+			if probe := d.ProbeGroup; probe != "" {
+				domain, ok := emailDomain(probe)
+				if !ok {
+					return fmt.Errorf("companies[%q].directory.domains[%q].probeGroup %q is not a group address", code, d.Name, probe)
+				}
+
+				// Each domain's canary lives IN that domain: a probe in a
+				// sibling domain would prove the wrong thing.
+				if !strings.EqualFold(domain, d.Name) {
+					return fmt.Errorf("companies[%q].directory.domains[%q].probeGroup %q is outside its domain", code, d.Name, probe)
+				}
 			}
 		}
 
@@ -631,12 +703,12 @@ func (c *Config) validateTeamInvariant(code string, gh *CompanyGitHub) error {
 				return fmt.Errorf("companies[%q].github.teams[%q]: partner company %q is not configured", code, name, m[1])
 			}
 
-			if err := groupsMatch(team.Groups, m[2], partner.Directory.Domains); err != nil {
+			if err := groupsMatch(team.Groups, m[2], partner.Directory.DomainNames()); err != nil {
 				return fmt.Errorf("companies[%q].github.teams[%q]: %w", code, name, err)
 			}
 
 		case teamPattern.MatchString(name):
-			if err := groupsMatch(team.Groups, name, own.Directory.Domains); err != nil {
+			if err := groupsMatch(team.Groups, name, own.Directory.DomainNames()); err != nil {
 				return fmt.Errorf("companies[%q].github.teams[%q]: %w", code, name, err)
 			}
 
@@ -839,13 +911,3 @@ func emailDomain(address string) (string, bool) {
 	return domain, true
 }
 
-// containsFold reports whether list contains value, case-insensitively.
-func containsFold(list []string, value string) bool {
-	for _, item := range list {
-		if strings.EqualFold(item, value) {
-			return true
-		}
-	}
-
-	return false
-}

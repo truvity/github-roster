@@ -117,11 +117,24 @@ func sourcesFrom(byName map[string]map[string]string) []config.Source {
 			continue
 		}
 
+		// The store keeps domains as a CSV plus one probe group; expand to
+		// the per-domain form, attaching the probe to the domain it lives in.
+		probe := fields[fieldProbeGroup]
+		domainCfgs := make([]config.Domain, 0, len(domains))
+
+		for _, d := range domains {
+			dc := config.Domain{Name: d}
+			if probe != "" && strings.HasSuffix(strings.ToLower(probe), "@"+strings.ToLower(d)) {
+				dc.ProbeGroup = probe
+			}
+
+			domainCfgs = append(domainCfgs, dc)
+		}
+
 		out = append(out, config.Source{
-			Name:       name,
-			Domains:    domains,
-			Endpoint:   endpoint,
-			ProbeGroup: fields[fieldProbeGroup],
+			Name:     name,
+			Domains:  domainCfgs,
+			Endpoint: endpoint,
 		})
 	}
 
@@ -182,10 +195,15 @@ func (s *SSM) Put(ctx context.Context, src config.Source) error {
 		return fmt.Errorf("directory %q: an endpoint and at least one domain are required", src.Name)
 	}
 
+	probe := ""
+	if probes := src.ProbeGroups(); len(probes) > 0 {
+		probe = probes[0]
+	}
+
 	fields := map[string]string{
 		fieldEndpoint:   src.Endpoint,
-		fieldDomains:    strings.Join(src.Domains, ","),
-		fieldProbeGroup: src.ProbeGroup,
+		fieldDomains:    strings.Join(src.DomainNames(), ","),
+		fieldProbeGroup: probe,
 	}
 
 	for field, value := range fields {

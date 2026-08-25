@@ -72,7 +72,6 @@ func TestRoleFor(t *testing.T) {
 	}
 }
 
-// Providers disagree about whether a single group is a string or a
 func TestRolePermissions(t *testing.T) {
 	t.Parallel()
 

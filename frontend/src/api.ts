@@ -140,6 +140,10 @@ export interface Candidate {
   github: string;
   org?: string;
   detail?: string;
+  // IdP identity behind a NEW candidate — how the join found them.
+  email?: string;
+  sources?: string[];
+  directories?: Record<string, DirectoryIdentity>;
 }
 
 export interface Roster {
@@ -181,6 +185,10 @@ export async function fetchRoster(signal?: AbortSignal): Promise<Roster> {
     })),
     candidates: resp.candidates.map((c) => ({
       kind: c.kind, name: c.name, github: c.github, org: c.org || undefined, detail: c.detail || undefined,
+      email: c.email || undefined, sources: c.sources,
+      directories: Object.fromEntries(
+        Object.entries(c.directories).map(([src, d]) => [src, { email: d.email || undefined, live: d.live }]),
+      ),
     })),
   };
 }

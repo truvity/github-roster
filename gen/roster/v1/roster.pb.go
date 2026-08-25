@@ -1538,8 +1538,14 @@ type Candidate struct {
 	// Github is set for UNKNOWN (the member login); empty for NEW.
 	Github string `protobuf:"bytes,3,opt,name=github,proto3" json:"github,omitempty"`
 	// Org is set for UNKNOWN (the organization the member was found in).
-	Org           string `protobuf:"bytes,4,opt,name=org,proto3" json:"org,omitempty"`
-	Detail        string `protobuf:"bytes,5,opt,name=detail,proto3" json:"detail,omitempty"`
+	Org    string `protobuf:"bytes,4,opt,name=org,proto3" json:"org,omitempty"`
+	Detail string `protobuf:"bytes,5,opt,name=detail,proto3" json:"detail,omitempty"`
+	// The IdP identity behind a NEW candidate — how the join found them:
+	// primary email, the directories that know them, and the per-source
+	// address + liveness. Empty for UNKNOWN (GitHub is the only source).
+	Email         string                        `protobuf:"bytes,6,opt,name=email,proto3" json:"email,omitempty"`
+	Sources       []string                      `protobuf:"bytes,7,rep,name=sources,proto3" json:"sources,omitempty"`
+	Directories   map[string]*DirectoryIdentity `protobuf:"bytes,8,rep,name=directories,proto3" json:"directories,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1607,6 +1613,27 @@ func (x *Candidate) GetDetail() string {
 		return x.Detail
 	}
 	return ""
+}
+
+func (x *Candidate) GetEmail() string {
+	if x != nil {
+		return x.Email
+	}
+	return ""
+}
+
+func (x *Candidate) GetSources() []string {
+	if x != nil {
+		return x.Sources
+	}
+	return nil
+}
+
+func (x *Candidate) GetDirectories() map[string]*DirectoryIdentity {
+	if x != nil {
+		return x.Directories
+	}
+	return nil
 }
 
 type Person struct {
@@ -2570,13 +2597,19 @@ const file_roster_v1_roster_proto_rawDesc = "" +
 	"\x06people\x18\x01 \x03(\v2\x11.roster.v1.PersonR\x06people\x124\n" +
 	"\n" +
 	"candidates\x18\x02 \x03(\v2\x14.roster.v1.CandidateR\n" +
-	"candidates\"u\n" +
+	"candidates\"\xcc\x02\n" +
 	"\tCandidate\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
 	"\x06github\x18\x03 \x01(\tR\x06github\x12\x10\n" +
 	"\x03org\x18\x04 \x01(\tR\x03org\x12\x16\n" +
-	"\x06detail\x18\x05 \x01(\tR\x06detail\"\x8d\x04\n" +
+	"\x06detail\x18\x05 \x01(\tR\x06detail\x12\x14\n" +
+	"\x05email\x18\x06 \x01(\tR\x05email\x12\x18\n" +
+	"\asources\x18\a \x03(\tR\asources\x12G\n" +
+	"\vdirectories\x18\b \x03(\v2%.roster.v1.Candidate.DirectoriesEntryR\vdirectories\x1a\\\n" +
+	"\x10DirectoriesEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x122\n" +
+	"\x05value\x18\x02 \x01(\v2\x1c.roster.v1.DirectoryIdentityR\x05value:\x028\x01\"\x8d\x04\n" +
 	"\x06Person\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x16\n" +
 	"\x06github\x18\x02 \x01(\tR\x06github\x12\x14\n" +
@@ -2686,7 +2719,7 @@ func file_roster_v1_roster_proto_rawDescGZIP() []byte {
 	return file_roster_v1_roster_proto_rawDescData
 }
 
-var file_roster_v1_roster_proto_msgTypes = make([]protoimpl.MessageInfo, 43)
+var file_roster_v1_roster_proto_msgTypes = make([]protoimpl.MessageInfo, 44)
 var file_roster_v1_roster_proto_goTypes = []any{
 	(*GetPersonRequest)(nil),            // 0: roster.v1.GetPersonRequest
 	(*GetPersonResponse)(nil),           // 1: roster.v1.GetPersonResponse
@@ -2729,8 +2762,9 @@ var file_roster_v1_roster_proto_goTypes = []any{
 	(*GetAuditResponse)(nil),            // 38: roster.v1.GetAuditResponse
 	(*AuditRecord)(nil),                 // 39: roster.v1.AuditRecord
 	(*AuditChange)(nil),                 // 40: roster.v1.AuditChange
-	nil,                                 // 41: roster.v1.Person.OrgsEntry
-	nil,                                 // 42: roster.v1.Person.DirectoriesEntry
+	nil,                                 // 41: roster.v1.Candidate.DirectoriesEntry
+	nil,                                 // 42: roster.v1.Person.OrgsEntry
+	nil,                                 // 43: roster.v1.Person.DirectoriesEntry
 }
 var file_roster_v1_roster_proto_depIdxs = []int32{
 	24, // 0: roster.v1.GetSettingsResponse.sources:type_name -> roster.v1.DirectorySource
@@ -2740,49 +2774,51 @@ var file_roster_v1_roster_proto_depIdxs = []int32{
 	26, // 4: roster.v1.Org.teams:type_name -> roster.v1.Team
 	30, // 5: roster.v1.GetRosterResponse.people:type_name -> roster.v1.Person
 	29, // 6: roster.v1.GetRosterResponse.candidates:type_name -> roster.v1.Candidate
-	41, // 7: roster.v1.Person.orgs:type_name -> roster.v1.Person.OrgsEntry
-	42, // 8: roster.v1.Person.directories:type_name -> roster.v1.Person.DirectoriesEntry
-	35, // 9: roster.v1.GetStatusResponse.statuses:type_name -> roster.v1.ReconcileStatus
-	36, // 10: roster.v1.ReconcileStatus.details:type_name -> roster.v1.ReconcileChange
-	39, // 11: roster.v1.GetAuditResponse.records:type_name -> roster.v1.AuditRecord
-	40, // 12: roster.v1.AuditRecord.changes:type_name -> roster.v1.AuditChange
-	32, // 13: roster.v1.Person.OrgsEntry.value:type_name -> roster.v1.Membership
-	31, // 14: roster.v1.Person.DirectoriesEntry.value:type_name -> roster.v1.DirectoryIdentity
-	20, // 15: roster.v1.RosterService.GetVersion:input_type -> roster.v1.GetVersionRequest
-	22, // 16: roster.v1.RosterService.GetSettings:input_type -> roster.v1.GetSettingsRequest
-	27, // 17: roster.v1.RosterService.GetRoster:input_type -> roster.v1.GetRosterRequest
-	33, // 18: roster.v1.RosterService.GetStatus:input_type -> roster.v1.GetStatusRequest
-	37, // 19: roster.v1.RosterService.GetAudit:input_type -> roster.v1.GetAuditRequest
-	18, // 20: roster.v1.RosterService.GetMe:input_type -> roster.v1.GetMeRequest
-	16, // 21: roster.v1.RosterService.StageOrg:input_type -> roster.v1.StageOrgRequest
-	6,  // 22: roster.v1.RosterService.AddDirectory:input_type -> roster.v1.AddDirectoryRequest
-	8,  // 23: roster.v1.RosterService.DeleteDirectory:input_type -> roster.v1.DeleteDirectoryRequest
-	10, // 24: roster.v1.RosterService.SetPaused:input_type -> roster.v1.SetPausedRequest
-	14, // 25: roster.v1.RosterService.RunReconcile:input_type -> roster.v1.RunReconcileRequest
-	12, // 26: roster.v1.RosterService.SetReconcileEnabled:input_type -> roster.v1.SetReconcileEnabledRequest
-	2,  // 27: roster.v1.RosterService.PutPerson:input_type -> roster.v1.PutPersonRequest
-	4,  // 28: roster.v1.RosterService.DeletePerson:input_type -> roster.v1.DeletePersonRequest
-	0,  // 29: roster.v1.RosterService.GetPerson:input_type -> roster.v1.GetPersonRequest
-	21, // 30: roster.v1.RosterService.GetVersion:output_type -> roster.v1.GetVersionResponse
-	23, // 31: roster.v1.RosterService.GetSettings:output_type -> roster.v1.GetSettingsResponse
-	28, // 32: roster.v1.RosterService.GetRoster:output_type -> roster.v1.GetRosterResponse
-	34, // 33: roster.v1.RosterService.GetStatus:output_type -> roster.v1.GetStatusResponse
-	38, // 34: roster.v1.RosterService.GetAudit:output_type -> roster.v1.GetAuditResponse
-	19, // 35: roster.v1.RosterService.GetMe:output_type -> roster.v1.GetMeResponse
-	17, // 36: roster.v1.RosterService.StageOrg:output_type -> roster.v1.StageOrgResponse
-	7,  // 37: roster.v1.RosterService.AddDirectory:output_type -> roster.v1.AddDirectoryResponse
-	9,  // 38: roster.v1.RosterService.DeleteDirectory:output_type -> roster.v1.DeleteDirectoryResponse
-	11, // 39: roster.v1.RosterService.SetPaused:output_type -> roster.v1.SetPausedResponse
-	15, // 40: roster.v1.RosterService.RunReconcile:output_type -> roster.v1.RunReconcileResponse
-	13, // 41: roster.v1.RosterService.SetReconcileEnabled:output_type -> roster.v1.SetReconcileEnabledResponse
-	3,  // 42: roster.v1.RosterService.PutPerson:output_type -> roster.v1.PutPersonResponse
-	5,  // 43: roster.v1.RosterService.DeletePerson:output_type -> roster.v1.DeletePersonResponse
-	1,  // 44: roster.v1.RosterService.GetPerson:output_type -> roster.v1.GetPersonResponse
-	30, // [30:45] is the sub-list for method output_type
-	15, // [15:30] is the sub-list for method input_type
-	15, // [15:15] is the sub-list for extension type_name
-	15, // [15:15] is the sub-list for extension extendee
-	0,  // [0:15] is the sub-list for field type_name
+	41, // 7: roster.v1.Candidate.directories:type_name -> roster.v1.Candidate.DirectoriesEntry
+	42, // 8: roster.v1.Person.orgs:type_name -> roster.v1.Person.OrgsEntry
+	43, // 9: roster.v1.Person.directories:type_name -> roster.v1.Person.DirectoriesEntry
+	35, // 10: roster.v1.GetStatusResponse.statuses:type_name -> roster.v1.ReconcileStatus
+	36, // 11: roster.v1.ReconcileStatus.details:type_name -> roster.v1.ReconcileChange
+	39, // 12: roster.v1.GetAuditResponse.records:type_name -> roster.v1.AuditRecord
+	40, // 13: roster.v1.AuditRecord.changes:type_name -> roster.v1.AuditChange
+	31, // 14: roster.v1.Candidate.DirectoriesEntry.value:type_name -> roster.v1.DirectoryIdentity
+	32, // 15: roster.v1.Person.OrgsEntry.value:type_name -> roster.v1.Membership
+	31, // 16: roster.v1.Person.DirectoriesEntry.value:type_name -> roster.v1.DirectoryIdentity
+	20, // 17: roster.v1.RosterService.GetVersion:input_type -> roster.v1.GetVersionRequest
+	22, // 18: roster.v1.RosterService.GetSettings:input_type -> roster.v1.GetSettingsRequest
+	27, // 19: roster.v1.RosterService.GetRoster:input_type -> roster.v1.GetRosterRequest
+	33, // 20: roster.v1.RosterService.GetStatus:input_type -> roster.v1.GetStatusRequest
+	37, // 21: roster.v1.RosterService.GetAudit:input_type -> roster.v1.GetAuditRequest
+	18, // 22: roster.v1.RosterService.GetMe:input_type -> roster.v1.GetMeRequest
+	16, // 23: roster.v1.RosterService.StageOrg:input_type -> roster.v1.StageOrgRequest
+	6,  // 24: roster.v1.RosterService.AddDirectory:input_type -> roster.v1.AddDirectoryRequest
+	8,  // 25: roster.v1.RosterService.DeleteDirectory:input_type -> roster.v1.DeleteDirectoryRequest
+	10, // 26: roster.v1.RosterService.SetPaused:input_type -> roster.v1.SetPausedRequest
+	14, // 27: roster.v1.RosterService.RunReconcile:input_type -> roster.v1.RunReconcileRequest
+	12, // 28: roster.v1.RosterService.SetReconcileEnabled:input_type -> roster.v1.SetReconcileEnabledRequest
+	2,  // 29: roster.v1.RosterService.PutPerson:input_type -> roster.v1.PutPersonRequest
+	4,  // 30: roster.v1.RosterService.DeletePerson:input_type -> roster.v1.DeletePersonRequest
+	0,  // 31: roster.v1.RosterService.GetPerson:input_type -> roster.v1.GetPersonRequest
+	21, // 32: roster.v1.RosterService.GetVersion:output_type -> roster.v1.GetVersionResponse
+	23, // 33: roster.v1.RosterService.GetSettings:output_type -> roster.v1.GetSettingsResponse
+	28, // 34: roster.v1.RosterService.GetRoster:output_type -> roster.v1.GetRosterResponse
+	34, // 35: roster.v1.RosterService.GetStatus:output_type -> roster.v1.GetStatusResponse
+	38, // 36: roster.v1.RosterService.GetAudit:output_type -> roster.v1.GetAuditResponse
+	19, // 37: roster.v1.RosterService.GetMe:output_type -> roster.v1.GetMeResponse
+	17, // 38: roster.v1.RosterService.StageOrg:output_type -> roster.v1.StageOrgResponse
+	7,  // 39: roster.v1.RosterService.AddDirectory:output_type -> roster.v1.AddDirectoryResponse
+	9,  // 40: roster.v1.RosterService.DeleteDirectory:output_type -> roster.v1.DeleteDirectoryResponse
+	11, // 41: roster.v1.RosterService.SetPaused:output_type -> roster.v1.SetPausedResponse
+	15, // 42: roster.v1.RosterService.RunReconcile:output_type -> roster.v1.RunReconcileResponse
+	13, // 43: roster.v1.RosterService.SetReconcileEnabled:output_type -> roster.v1.SetReconcileEnabledResponse
+	3,  // 44: roster.v1.RosterService.PutPerson:output_type -> roster.v1.PutPersonResponse
+	5,  // 45: roster.v1.RosterService.DeletePerson:output_type -> roster.v1.DeletePersonResponse
+	1,  // 46: roster.v1.RosterService.GetPerson:output_type -> roster.v1.GetPersonResponse
+	32, // [32:47] is the sub-list for method output_type
+	17, // [17:32] is the sub-list for method input_type
+	17, // [17:17] is the sub-list for extension type_name
+	17, // [17:17] is the sub-list for extension extendee
+	0,  // [0:17] is the sub-list for field type_name
 }
 
 func init() { file_roster_v1_roster_proto_init() }
@@ -2796,7 +2832,7 @@ func file_roster_v1_roster_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_roster_v1_roster_proto_rawDesc), len(file_roster_v1_roster_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   43,
+			NumMessages:   44,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -304,6 +304,14 @@ type Warning struct {
 	Org string `json:"org,omitempty"`
 	// Detail is a human-readable explanation.
 	Detail string `json:"detail"`
+	// Email, Sources and Directories carry the IdP identity behind an
+	// unmapped-person warning — how the join found them: which directories
+	// know them, under which address, live or suspended. The operator
+	// approving a candidate needs this provenance; without it a "new"
+	// row is just a bare name.
+	Email       string                       `json:"email,omitempty"`
+	Sources     []string                     `json:"sources,omitempty"`
+	Directories map[string]DirectoryIdentity `json:"directories,omitempty"`
 }
 
 // Inputs are everything the join reads.
@@ -833,9 +841,12 @@ func unmappedWarnings(live map[string]*liveness, covered map[string]bool) []Warn
 		}
 
 		warnings = append(warnings, Warning{
-			Kind:    WarnUnmapped,
-			Subject: name,
-			Detail:  "live in " + strings.Join(l.sources, ", ") + " but has no mapping entry, so nothing is granted",
+			Kind:        WarnUnmapped,
+			Subject:     name,
+			Detail:      "live in " + strings.Join(l.sources, ", ") + " but has no mapping entry, so nothing is granted",
+			Email:       l.email,
+			Sources:     l.sources,
+			Directories: l.directories,
 		})
 	}
 

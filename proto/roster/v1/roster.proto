@@ -234,6 +234,12 @@ message Candidate {
   // Org is set for UNKNOWN (the organization the member was found in).
   string org = 4;
   string detail = 5;
+  // The IdP identity behind a NEW candidate — how the join found them:
+  // primary email, the directories that know them, and the per-source
+  // address + liveness. Empty for UNKNOWN (GitHub is the only source).
+  string email = 6;
+  repeated string sources = 7;
+  map<string, DirectoryIdentity> directories = 8;
 }
 
 message Person {

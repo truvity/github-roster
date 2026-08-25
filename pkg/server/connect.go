@@ -181,8 +181,14 @@ func (s *rosterConnect) GetRoster(
 
 		switch w.Kind {
 		case roster.WarnUnmapped: // NEW: name known, login needed
+			wdirs := make(map[string]*rosterv1.DirectoryIdentity, len(w.Directories))
+			for src, id := range w.Directories {
+				wdirs[src] = &rosterv1.DirectoryIdentity{Email: id.Email, Live: id.Live}
+			}
+
 			candidates = append(candidates, &rosterv1.Candidate{
 				Kind: "new", Name: w.Subject, Detail: w.Detail,
+				Email: w.Email, Sources: w.Sources, Directories: wdirs,
 			})
 		case roster.WarnUnknownMember: // UNKNOWN: login known, name needed
 			candidates = append(candidates, &rosterv1.Candidate{

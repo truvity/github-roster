@@ -15,8 +15,8 @@ import (
 
 	rosterv1 "github.com/truvity/github-roster/gen/roster/v1"
 	"github.com/truvity/github-roster/gen/roster/v1/rosterv1connect"
-	"github.com/truvity/github-roster/pkg/broker"
 	"github.com/truvity/github-roster/pkg/auth"
+	"github.com/truvity/github-roster/pkg/broker"
 	"github.com/truvity/github-roster/pkg/config"
 	"github.com/truvity/github-roster/pkg/mapping"
 	"github.com/truvity/github-roster/pkg/roster"

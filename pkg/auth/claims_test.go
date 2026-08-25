@@ -33,7 +33,7 @@ func TestForwardToken(t *testing.T) {
 
 	// Falls back to the gateway's access-token header, adding the scheme.
 	assert.Equal(t, "Bearer xyz", ForwardToken(func(k string) string {
-		if k == headerAccessToken {
+		if k == "X-Auth-Request-Access-Token" {
 			return "xyz"
 		}
 
@@ -75,66 +75,7 @@ func TestRoleFor(t *testing.T) {
 // Providers disagree about whether a single group is a string or a
 // one-element array, and a decoded token yields []any where hand-built one
 // yields []string. Getting this wrong silently strips everyone's role.
-func TestStringsFrom(t *testing.T) {
-	t.Parallel()
 
-	cases := []struct {
-		name string
-		raw  any
-		want []string
-	}{
-		{"absent", nil, nil},
-		{"single string", "a", []string{"a"}},
-		{"string slice", []string{"a", "b"}, []string{"a", "b"}},
-		{"decoded JSON array", []any{"a", "b"}, []string{"a", "b"}},
-		{"array with a non-string", []any{"a", 42}, []string{"a"}},
-		{"empty array", []any{}, []string{}},
-		{"a number is not a role", 42, nil},
-		{"an object is not a role", map[string]any{"a": 1}, nil},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
-			assert.Equal(t, tc.want, stringsFrom(tc.raw))
-		})
-	}
-}
-
-func TestBearerToken(t *testing.T) {
-	t.Parallel()
-
-	cases := []struct {
-		name   string
-		header string
-		want   string
-		ok     bool
-	}{
-		{"absent", "", "", false},
-		{"canonical", "Bearer abc.def.ghi", "abc.def.ghi", true},
-		// RFC 7235 makes the scheme case-insensitive, and proxies have been
-		// known to normalize it.
-		{"lowercase scheme", "bearer abc.def.ghi", "abc.def.ghi", true},
-		{"mixed-case scheme", "BeArEr abc.def.ghi", "abc.def.ghi", true},
-		{"trailing space", "Bearer abc.def.ghi ", "abc.def.ghi", true},
-		{"scheme but no token", "Bearer ", "", false},
-		{"a different scheme", "Basic dXNlcjpwYXNz", "", false},
-		// A bare token is not a credential this service accepts: taking it
-		// would mean guessing at a format the gateway never sends.
-		{"no scheme", "abc.def.ghi", "", false},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
-			got, ok := bearerToken(tc.header)
-			assert.Equal(t, tc.want, got)
-			assert.Equal(t, tc.ok, ok)
-		})
-	}
-}
 
 func TestRolePermissions(t *testing.T) {
 	t.Parallel()

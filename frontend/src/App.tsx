@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
 import AppBar from "@mui/material/AppBar";
 import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import Chip from "@mui/material/Chip";
 import Container from "@mui/material/Container";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
+import { UserBadge as SharedUserBadge, signOutUrl } from "@truvity/gateway-auth/react";
 import { fetchMe, fetchVersion } from "./api";
 import { useAsync } from "./hooks";
 import { PeopleView } from "./PeopleView";
@@ -35,23 +34,12 @@ function VersionBadge() {
   return <Typography variant="caption" color="text.secondary" title="via ConnectRPC">{data.version}{commit}</Typography>;
 }
 
-// UserBadge shows the signed-in caller and role, with a sign-out link. Sign
-// out goes to the oauth2-proxy gateway endpoint, which clears the session
-// cookie; the next request re-runs the OIDC login.
+// UserBadge is the fleet-shared console header block (@truvity/gateway-auth):
+// this app only fetches its own Me and hands it over. Sign out goes through
+// signOutUrl so the gateway's proxy prefix is honored.
 function UserBadge() {
   const { data } = useAsync(fetchMe);
-  if (!data) return null;
-  const name = data.name || data.email || "signed in";
-  return (
-    <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-      <Box sx={{ textAlign: "right", lineHeight: 1.15 }}>
-        <Typography variant="body2">{name}</Typography>
-        {data.name && data.email && <Typography variant="caption" color="text.secondary">{data.email}</Typography>}
-      </Box>
-      {data.role && <Chip label={data.role} color={data.role === "operator" ? "success" : "default"} variant="outlined" />}
-      <Button href="/oauth2/sign_out" variant="outlined" title="Clear the session and sign out">Sign out</Button>
-    </Box>
-  );
+  return <SharedUserBadge me={data} signOutHref={signOutUrl()} />;
 }
 
 export function App() {

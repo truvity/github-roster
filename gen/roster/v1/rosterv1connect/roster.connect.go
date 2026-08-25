@@ -65,6 +65,11 @@ const (
 	// RosterServiceRunReconcileProcedure is the fully-qualified name of the RosterService's
 	// RunReconcile RPC.
 	RosterServiceRunReconcileProcedure = "/roster.v1.RosterService/RunReconcile"
+	// RosterServicePutPersonProcedure is the fully-qualified name of the RosterService's PutPerson RPC.
+	RosterServicePutPersonProcedure = "/roster.v1.RosterService/PutPerson"
+	// RosterServiceDeletePersonProcedure is the fully-qualified name of the RosterService's
+	// DeletePerson RPC.
+	RosterServiceDeletePersonProcedure = "/roster.v1.RosterService/DeletePerson"
 )
 
 // RosterServiceClient is a client for the roster.v1.RosterService service.
@@ -105,6 +110,12 @@ type RosterServiceClient interface {
 	// RunReconcile triggers an immediate reconcile pass on the broker instead of
 	// waiting for the next tick. Operator-only.
 	RunReconcile(context.Context, *connect.Request[v1.RunReconcileRequest]) (*connect.Response[v1.RunReconcileResponse], error)
+	// PutPerson creates or updates a roster mapping entry — the Approve/Add
+	// (NEW), Adopt (UNKNOWN) and Edit actions. Operator-only. Creating (or
+	// first-blessing) an entry stamps approvedBy/approvedAt; edits preserve them.
+	PutPerson(context.Context, *connect.Request[v1.PutPersonRequest]) (*connect.Response[v1.PutPersonResponse], error)
+	// DeletePerson removes a mapping entry (the operator "Remove"). Operator-only.
+	DeletePerson(context.Context, *connect.Request[v1.DeletePersonRequest]) (*connect.Response[v1.DeletePersonResponse], error)
 }
 
 // NewRosterServiceClient constructs a client for the roster.v1.RosterService service. By default,
@@ -184,6 +195,18 @@ func NewRosterServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(rosterServiceMethods.ByName("RunReconcile")),
 			connect.WithClientOptions(opts...),
 		),
+		putPerson: connect.NewClient[v1.PutPersonRequest, v1.PutPersonResponse](
+			httpClient,
+			baseURL+RosterServicePutPersonProcedure,
+			connect.WithSchema(rosterServiceMethods.ByName("PutPerson")),
+			connect.WithClientOptions(opts...),
+		),
+		deletePerson: connect.NewClient[v1.DeletePersonRequest, v1.DeletePersonResponse](
+			httpClient,
+			baseURL+RosterServiceDeletePersonProcedure,
+			connect.WithSchema(rosterServiceMethods.ByName("DeletePerson")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -200,6 +223,8 @@ type rosterServiceClient struct {
 	deleteDirectory *connect.Client[v1.DeleteDirectoryRequest, v1.DeleteDirectoryResponse]
 	setPaused       *connect.Client[v1.SetPausedRequest, v1.SetPausedResponse]
 	runReconcile    *connect.Client[v1.RunReconcileRequest, v1.RunReconcileResponse]
+	putPerson       *connect.Client[v1.PutPersonRequest, v1.PutPersonResponse]
+	deletePerson    *connect.Client[v1.DeletePersonRequest, v1.DeletePersonResponse]
 }
 
 // GetVersion calls roster.v1.RosterService.GetVersion.
@@ -257,6 +282,16 @@ func (c *rosterServiceClient) RunReconcile(ctx context.Context, req *connect.Req
 	return c.runReconcile.CallUnary(ctx, req)
 }
 
+// PutPerson calls roster.v1.RosterService.PutPerson.
+func (c *rosterServiceClient) PutPerson(ctx context.Context, req *connect.Request[v1.PutPersonRequest]) (*connect.Response[v1.PutPersonResponse], error) {
+	return c.putPerson.CallUnary(ctx, req)
+}
+
+// DeletePerson calls roster.v1.RosterService.DeletePerson.
+func (c *rosterServiceClient) DeletePerson(ctx context.Context, req *connect.Request[v1.DeletePersonRequest]) (*connect.Response[v1.DeletePersonResponse], error) {
+	return c.deletePerson.CallUnary(ctx, req)
+}
+
 // RosterServiceHandler is an implementation of the roster.v1.RosterService service.
 type RosterServiceHandler interface {
 	// GetVersion returns the running build's identity — the same information the
@@ -295,6 +330,12 @@ type RosterServiceHandler interface {
 	// RunReconcile triggers an immediate reconcile pass on the broker instead of
 	// waiting for the next tick. Operator-only.
 	RunReconcile(context.Context, *connect.Request[v1.RunReconcileRequest]) (*connect.Response[v1.RunReconcileResponse], error)
+	// PutPerson creates or updates a roster mapping entry — the Approve/Add
+	// (NEW), Adopt (UNKNOWN) and Edit actions. Operator-only. Creating (or
+	// first-blessing) an entry stamps approvedBy/approvedAt; edits preserve them.
+	PutPerson(context.Context, *connect.Request[v1.PutPersonRequest]) (*connect.Response[v1.PutPersonResponse], error)
+	// DeletePerson removes a mapping entry (the operator "Remove"). Operator-only.
+	DeletePerson(context.Context, *connect.Request[v1.DeletePersonRequest]) (*connect.Response[v1.DeletePersonResponse], error)
 }
 
 // NewRosterServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -370,6 +411,18 @@ func NewRosterServiceHandler(svc RosterServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(rosterServiceMethods.ByName("RunReconcile")),
 		connect.WithHandlerOptions(opts...),
 	)
+	rosterServicePutPersonHandler := connect.NewUnaryHandler(
+		RosterServicePutPersonProcedure,
+		svc.PutPerson,
+		connect.WithSchema(rosterServiceMethods.ByName("PutPerson")),
+		connect.WithHandlerOptions(opts...),
+	)
+	rosterServiceDeletePersonHandler := connect.NewUnaryHandler(
+		RosterServiceDeletePersonProcedure,
+		svc.DeletePerson,
+		connect.WithSchema(rosterServiceMethods.ByName("DeletePerson")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/roster.v1.RosterService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case RosterServiceGetVersionProcedure:
@@ -394,6 +447,10 @@ func NewRosterServiceHandler(svc RosterServiceHandler, opts ...connect.HandlerOp
 			rosterServiceSetPausedHandler.ServeHTTP(w, r)
 		case RosterServiceRunReconcileProcedure:
 			rosterServiceRunReconcileHandler.ServeHTTP(w, r)
+		case RosterServicePutPersonProcedure:
+			rosterServicePutPersonHandler.ServeHTTP(w, r)
+		case RosterServiceDeletePersonProcedure:
+			rosterServiceDeletePersonHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -445,4 +502,12 @@ func (UnimplementedRosterServiceHandler) SetPaused(context.Context, *connect.Req
 
 func (UnimplementedRosterServiceHandler) RunReconcile(context.Context, *connect.Request[v1.RunReconcileRequest]) (*connect.Response[v1.RunReconcileResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("roster.v1.RosterService.RunReconcile is not implemented"))
+}
+
+func (UnimplementedRosterServiceHandler) PutPerson(context.Context, *connect.Request[v1.PutPersonRequest]) (*connect.Response[v1.PutPersonResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("roster.v1.RosterService.PutPerson is not implemented"))
+}
+
+func (UnimplementedRosterServiceHandler) DeletePerson(context.Context, *connect.Request[v1.DeletePersonRequest]) (*connect.Response[v1.DeletePersonResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("roster.v1.RosterService.DeletePerson is not implemented"))
 }

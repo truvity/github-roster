@@ -38,7 +38,7 @@ type Deps struct {
 
 	// The read layers. Optional in tests, which drive the pages that do
 	// not need them.
-	Mapping     mapping.Reader
+	Mapping     mapping.Store
 	Directories *directory.Set
 	// Orgs is one read-only GitHub reader per managed organization.
 	Orgs map[string]OrgReader

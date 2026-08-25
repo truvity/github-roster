@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   fetchRoster, fetchStatus, fetchAudit, flattenAudit,
   fetchSettings, fetchVersion, fetchMe, stageOrg,
-  addDirectory, deleteDirectory, setPaused, runReconcile,
+  addDirectory, deleteDirectory, setPaused, runReconcile, putPerson, deletePerson,
   type Person, type ReconcileStatus, type Change, type Settings, type SettingsOrg,
 } from "./api";
 
@@ -46,8 +46,52 @@ function peopleMatches(p: Person, preset: Preset, q: string): boolean {
   }
 }
 
+// PersonForm adds (or re-approves) a roster mapping entry — the operator fills
+// the data and blesses the person in one action (approvedBy/At are stamped
+// server-side). Editing an existing name replaces its entry.
+function PersonForm({ onSaved }: { onSaved: () => void }) {
+  const [name, setName] = useState("");
+  const [github, setGithub] = useState("");
+  const [k8s, setK8s] = useState("");
+  const [cls, setCls] = useState("employee");
+  const [emails, setEmails] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    setErr(""); setBusy(true);
+    try {
+      await putPerson({ name: name.trim(), github: github.trim(), k8s: k8s.trim(), class: cls, emails: emails.split(",").map((x) => x.trim()).filter(Boolean) });
+      setName(""); setGithub(""); setK8s(""); setEmails("");
+      onSaved();
+    } catch (e2) {
+      setErr(e2 instanceof Error ? e2.message : String(e2));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <form onSubmit={submit} style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
+      <label>Name<br /><input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ada Lovelace" required /></label>
+      <label>GitHub login<br /><input value={github} onChange={(e) => setGithub(e.target.value)} placeholder="ada" required /></label>
+      <label>Namespace (k8s)<br /><input value={k8s} onChange={(e) => setK8s(e.target.value)} placeholder="alovelace" /></label>
+      <label>Class<br /><select value={cls} onChange={(e) => setCls(e.target.value)}><option value="employee">employee</option><option value="bot">bot</option></select></label>
+      <label>Emails (comma-separated)<br /><input value={emails} onChange={(e) => setEmails(e.target.value)} style={{ width: 240 }} placeholder="ada@acme.com" /></label>
+      <button type="submit" disabled={busy}>{busy ? "Saving…" : "Approve / Add"}</button>
+      {err && <span className="banner">{err}</span>}
+    </form>
+  );
+}
+
 function PeopleView() {
-  const { data: people, error } = useAsync((s) => fetchRoster(s).then((r) => r.people ?? []));
+  const [reload, setReload] = useState(0);
+  const [actErr, setActErr] = useState("");
+  const { data: people, error } = useAsync((s) => fetchRoster(s).then((r) => r.people ?? []), [reload]);
+  const refresh = () => setReload((r) => r + 1);
+  const remove = async (name: string) => {
+    setActErr("");
+    try { await deletePerson(name); refresh(); } catch (e) { setActErr(e instanceof Error ? e.message : String(e)); }
+  };
   const [preset, setPreset] = useState<Preset>("all");
   const [q, setQ] = useState("");
   const orgs = useMemo(() => {
@@ -68,8 +112,9 @@ function PeopleView() {
         {presets.map(([k, l]) => <button key={k} className={preset === k ? "chip cur" : "chip"} onClick={() => setPreset(k)}>{l}</button>)}
         <input placeholder="name or login…" value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
+      {actErr && <div className="banner">{actErr}</div>}
       <table>
-        <thead><tr><th>Name</th><th>GitHub</th><th>State</th>{orgs.map((o) => <th key={o}>{o}</th>)}</tr></thead>
+        <thead><tr><th>Name</th><th>GitHub</th><th>State</th>{orgs.map((o) => <th key={o}>{o}</th>)}<th></th></tr></thead>
         <tbody>
           {rows.map((p) => {
             const b = badge(p.state);
@@ -82,12 +127,16 @@ function PeopleView() {
                   const ob = badge(s);
                   return <td key={o}>{s ? <span className={`badge ${ob.cls}`}>{ob.label}</span> : <span className="muted">—</span>}</td>;
                 })}
+                <td><button className="chip" onClick={() => remove(p.name)} title="Remove from the roster">Remove</button></td>
               </tr>
             );
           })}
-          {rows.length === 0 && <tr><td colSpan={3 + orgs.length} className="muted">Nobody matches.</td></tr>}
+          {rows.length === 0 && <tr><td colSpan={4 + orgs.length} className="muted">Nobody matches.</td></tr>}
         </tbody>
       </table>
+      <h3 style={{ marginTop: 18 }}>Approve / add a person</h3>
+      <p className="muted">Fill the person's data (their GitHub login above all) and bless them in one action — the reconcile loop invites them. Operator-only.</p>
+      <PersonForm onSaved={refresh} />
     </>
   );
 }

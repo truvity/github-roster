@@ -48,6 +48,26 @@ export async function stageOrg(input: StageOrgInput): Promise<void> {
   });
 }
 
+// Person (mapping) mutations — Approve/Add, Adopt, Edit, Remove. Operator-only.
+export interface PersonInput {
+  name: string;
+  github: string;
+  emails?: string[];
+  k8s?: string;
+  class?: string;
+  pinned?: string[];
+}
+
+export async function putPerson(p: PersonInput): Promise<void> {
+  await rosterClient.putPerson({
+    name: p.name, github: p.github, emails: p.emails ?? [], k8s: p.k8s ?? "", class: p.class ?? "", pinned: p.pinned ?? [],
+  });
+}
+
+export async function deletePerson(name: string): Promise<void> {
+  await rosterClient.deletePerson({ name });
+}
+
 // Operational mutations (operator-only; the server rejects a viewer).
 export async function addDirectory(input: { name: string; domains: string[]; endpoint: string; probeGroup?: string }): Promise<void> {
   await rosterClient.addDirectory({ name: input.name, domains: input.domains, endpoint: input.endpoint, probeGroup: input.probeGroup ?? "" });

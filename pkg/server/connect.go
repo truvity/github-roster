@@ -17,6 +17,7 @@ import (
 	"github.com/truvity/github-roster/gen/roster/v1/rosterv1connect"
 	"github.com/truvity/github-roster/pkg/auth"
 	"github.com/truvity/github-roster/pkg/config"
+	"github.com/truvity/github-roster/pkg/mapping"
 )
 
 // rfc3339 formats a timestamp for the wire (empty for the zero time), matching
@@ -420,6 +421,98 @@ func (s *rosterConnect) RunReconcile(
 	}
 
 	return connect.NewResponse(&rosterv1.RunReconcileResponse{}), nil
+}
+
+// PutPerson creates or updates a mapping entry — Approve/Add, Adopt, Edit. The
+// entry's existence is the approval; a first bless stamps approvedBy/approvedAt
+// from the caller, an edit of an already-approved person preserves them.
+func (s *rosterConnect) PutPerson(
+	ctx context.Context,
+	req *connect.Request[rosterv1.PutPersonRequest],
+) (*connect.Response[rosterv1.PutPersonResponse], error) {
+	if err := requireOperatorCtx(ctx); err != nil {
+		return nil, err
+	}
+
+	if s.deps.Mapping == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("no mapping store is configured"))
+	}
+
+	m := req.Msg
+	name := strings.TrimSpace(m.GetName())
+	if name == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name is required"))
+	}
+
+	entry := mapping.Entry{
+		Name:   name,
+		GitHub: strings.TrimSpace(m.GetGithub()),
+		Emails: trimmedNonEmpty(m.GetEmails()),
+		K8s:    strings.TrimSpace(m.GetK8S()),
+		Class:  mapping.Class(strings.TrimSpace(m.GetClass())),
+		Pinned: trimmedNonEmpty(m.GetPinned()),
+	}
+
+	// Preserve the original approval on an edit; stamp it on a first bless.
+	if existing, err := s.deps.Mapping.Get(ctx, name); err == nil && existing.ApprovedBy != "" {
+		entry.ApprovedBy = existing.ApprovedBy
+		entry.ApprovedAt = existing.ApprovedAt
+	} else {
+		id, _ := auth.FromContext(ctx)
+		entry.ApprovedBy = approver(id)
+		entry.ApprovedAt = time.Now().UTC().Format(time.RFC3339)
+	}
+
+	if err := mapping.ValidateEntry(entry); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	if err := s.deps.Mapping.Put(ctx, entry); err != nil {
+		// The store re-checks cross-entry invariants (duplicate login/email);
+		// surface those to the operator too.
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	return connect.NewResponse(&rosterv1.PutPersonResponse{}), nil
+}
+
+// DeletePerson removes a mapping entry (the operator "Remove").
+func (s *rosterConnect) DeletePerson(
+	ctx context.Context,
+	req *connect.Request[rosterv1.DeletePersonRequest],
+) (*connect.Response[rosterv1.DeletePersonResponse], error) {
+	if err := requireOperatorCtx(ctx); err != nil {
+		return nil, err
+	}
+
+	if s.deps.Mapping == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("no mapping store is configured"))
+	}
+
+	name := strings.TrimSpace(req.Msg.GetName())
+	if name == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name is required"))
+	}
+
+	if err := s.deps.Mapping.Delete(ctx, name); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return connect.NewResponse(&rosterv1.DeletePersonResponse{}), nil
+}
+
+// approver names who blessed a person, preferring the most human identifier.
+func approver(id auth.Identity) string {
+	switch {
+	case id.Email != "":
+		return id.Email
+	case id.Name != "":
+		return id.Name
+	case id.Subject != "":
+		return id.Subject
+	default:
+		return "operator"
+	}
 }
 
 // trimmedNonEmpty trims each value and drops the empties.

@@ -27,8 +27,14 @@ type ReconcileStatus struct {
 	At   time.Time `json:"at"`
 	Next time.Time `json:"next"`
 	// Actions is what desired state differs from GitHub by — what the loop
-	// would do (disabled) or did (enabled).
-	Actions int `json:"actions"`
+	// would do (disabled) or did (enabled). Adds/Removes/RoleChanges/
+	// TeamChanges break that total down so the operator sees WHAT would
+	// change, not just how many.
+	Actions     int `json:"actions"`
+	Adds        int `json:"adds,omitempty"`
+	Removes     int `json:"removes,omitempty"`
+	RoleChanges int `json:"roleChanges,omitempty"`
+	TeamChanges int `json:"teamChanges,omitempty"`
 	// Applied is true when the loop executed the actions (enabled + a
 	// clean plan).
 	Applied bool `json:"applied"`
@@ -139,6 +145,18 @@ func (d *Deps) reconcileOrg(ctx context.Context, cfgOrg *config.Org, next time.T
 	}
 
 	st.Actions = len(entry.Plan.Actions)
+	for i := range entry.Plan.Actions {
+		switch entry.Plan.Actions[i].Kind {
+		case reconciler.ActionAddMember, reconciler.ActionAddAdmin:
+			st.Adds++
+		case reconciler.ActionRemoveMember, reconciler.ActionCancelInvite:
+			st.Removes++
+		case reconciler.ActionSetRole:
+			st.RoleChanges++
+		case reconciler.ActionTeamAdd, reconciler.ActionTeamRemove:
+			st.TeamChanges++
+		}
+	}
 
 	if d.Control != nil {
 		if paused, perr := d.Control.Paused(ctx, cfgOrg.Name); perr != nil {
@@ -147,11 +165,21 @@ func (d *Deps) reconcileOrg(ctx context.Context, cfgOrg *config.Org, next time.T
 		} else {
 			st.Paused = paused
 		}
+
+		// The operator's UI enable/disable decision overrides the config
+		// day-0 default when set, so a born-disabled org can be turned on
+		// (or off) from the console after its dry-run is reviewed.
+		if override, oerr := d.Control.EnabledOverride(ctx, cfgOrg.Name); oerr != nil {
+			d.Logger.WarnContext(ctx, "reconcile: enabled override unreadable; using config default",
+				"org", cfgOrg.Name, "error", oerr)
+		} else if override != nil {
+			st.Enabled = *override
+		}
 	}
 
 	// Disabled, paused, or nothing to do: report and stop. A dry pass
 	// writes no audit record — the trail records actions, not heartbeats.
-	if !cfgOrg.ReconcileEnabled || st.Paused || st.Actions == 0 {
+	if !st.Enabled || st.Paused || st.Actions == 0 {
 		d.setReconcileStatus(st)
 
 		return
@@ -272,3 +300,27 @@ func (d *Deps) handlePause(c fiber.Ctx) error { return d.setPaused(c, true) }
 
 // handleUnpause resumes it.
 func (d *Deps) handleUnpause(c fiber.Ctx) error { return d.setPaused(c, false) }
+
+// setEnabled writes the operator's enable/disable decision for an org.
+func (d *Deps) setEnabled(c fiber.Ctx, enabled bool) error {
+	if d.Control == nil {
+		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{"error": "no control store configured"})
+	}
+
+	org := c.Params("org")
+	if _, ok := d.Config.Org(org); !ok {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "unknown organization"})
+	}
+
+	if err := d.Control.SetEnabled(c.Context(), org, enabled); err != nil {
+		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.JSON(fiber.Map{"org": org, "enabled": enabled})
+}
+
+// handleEnable turns the reconcile loop on for an org.
+func (d *Deps) handleEnable(c fiber.Ctx) error { return d.setEnabled(c, true) }
+
+// handleDisable turns it off.
+func (d *Deps) handleDisable(c fiber.Ctx) error { return d.setEnabled(c, false) }

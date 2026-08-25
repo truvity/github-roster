@@ -151,6 +151,10 @@ export interface ReconcileStatus {
   paused?: boolean;
   at?: string;
   actions?: number;
+  adds?: number;
+  removes?: number;
+  roleChanges?: number;
+  teamChanges?: number;
   applied?: boolean;
   held?: boolean;
   reason?: string;
@@ -169,11 +173,19 @@ export async function fetchStatus(signal?: AbortSignal): Promise<ReconcileStatus
     paused: s.paused,
     at: s.at || undefined,
     actions: s.actions,
+    adds: s.adds,
+    removes: s.removes,
+    roleChanges: s.roleChanges,
+    teamChanges: s.teamChanges,
     applied: s.applied,
     held: s.held,
     reason: s.reason || undefined,
     error: s.error || undefined,
   }));
+}
+
+export async function setReconcileEnabled(org: string, enabled: boolean): Promise<void> {
+  await rosterClient.setReconcileEnabled({ org, enabled });
 }
 
 export interface AuditChange {

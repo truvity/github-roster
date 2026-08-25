@@ -65,6 +65,9 @@ const (
 	// RosterServiceRunReconcileProcedure is the fully-qualified name of the RosterService's
 	// RunReconcile RPC.
 	RosterServiceRunReconcileProcedure = "/roster.v1.RosterService/RunReconcile"
+	// RosterServiceSetReconcileEnabledProcedure is the fully-qualified name of the RosterService's
+	// SetReconcileEnabled RPC.
+	RosterServiceSetReconcileEnabledProcedure = "/roster.v1.RosterService/SetReconcileEnabled"
 	// RosterServicePutPersonProcedure is the fully-qualified name of the RosterService's PutPerson RPC.
 	RosterServicePutPersonProcedure = "/roster.v1.RosterService/PutPerson"
 	// RosterServiceDeletePersonProcedure is the fully-qualified name of the RosterService's
@@ -110,6 +113,9 @@ type RosterServiceClient interface {
 	// RunReconcile triggers an immediate reconcile pass on the broker instead of
 	// waiting for the next tick. Operator-only.
 	RunReconcile(context.Context, *connect.Request[v1.RunReconcileRequest]) (*connect.Response[v1.RunReconcileResponse], error)
+	// SetReconcileEnabled turns an organization's reconcile loop on or off — the
+	// operator's UI override of the config day-0 default. Operator-only.
+	SetReconcileEnabled(context.Context, *connect.Request[v1.SetReconcileEnabledRequest]) (*connect.Response[v1.SetReconcileEnabledResponse], error)
 	// PutPerson creates or updates a roster mapping entry — the Approve/Add
 	// (NEW), Adopt (UNKNOWN) and Edit actions. Operator-only. Creating (or
 	// first-blessing) an entry stamps approvedBy/approvedAt; edits preserve them.
@@ -195,6 +201,12 @@ func NewRosterServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(rosterServiceMethods.ByName("RunReconcile")),
 			connect.WithClientOptions(opts...),
 		),
+		setReconcileEnabled: connect.NewClient[v1.SetReconcileEnabledRequest, v1.SetReconcileEnabledResponse](
+			httpClient,
+			baseURL+RosterServiceSetReconcileEnabledProcedure,
+			connect.WithSchema(rosterServiceMethods.ByName("SetReconcileEnabled")),
+			connect.WithClientOptions(opts...),
+		),
 		putPerson: connect.NewClient[v1.PutPersonRequest, v1.PutPersonResponse](
 			httpClient,
 			baseURL+RosterServicePutPersonProcedure,
@@ -212,19 +224,20 @@ func NewRosterServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 
 // rosterServiceClient implements RosterServiceClient.
 type rosterServiceClient struct {
-	getVersion      *connect.Client[v1.GetVersionRequest, v1.GetVersionResponse]
-	getSettings     *connect.Client[v1.GetSettingsRequest, v1.GetSettingsResponse]
-	getRoster       *connect.Client[v1.GetRosterRequest, v1.GetRosterResponse]
-	getStatus       *connect.Client[v1.GetStatusRequest, v1.GetStatusResponse]
-	getAudit        *connect.Client[v1.GetAuditRequest, v1.GetAuditResponse]
-	getMe           *connect.Client[v1.GetMeRequest, v1.GetMeResponse]
-	stageOrg        *connect.Client[v1.StageOrgRequest, v1.StageOrgResponse]
-	addDirectory    *connect.Client[v1.AddDirectoryRequest, v1.AddDirectoryResponse]
-	deleteDirectory *connect.Client[v1.DeleteDirectoryRequest, v1.DeleteDirectoryResponse]
-	setPaused       *connect.Client[v1.SetPausedRequest, v1.SetPausedResponse]
-	runReconcile    *connect.Client[v1.RunReconcileRequest, v1.RunReconcileResponse]
-	putPerson       *connect.Client[v1.PutPersonRequest, v1.PutPersonResponse]
-	deletePerson    *connect.Client[v1.DeletePersonRequest, v1.DeletePersonResponse]
+	getVersion          *connect.Client[v1.GetVersionRequest, v1.GetVersionResponse]
+	getSettings         *connect.Client[v1.GetSettingsRequest, v1.GetSettingsResponse]
+	getRoster           *connect.Client[v1.GetRosterRequest, v1.GetRosterResponse]
+	getStatus           *connect.Client[v1.GetStatusRequest, v1.GetStatusResponse]
+	getAudit            *connect.Client[v1.GetAuditRequest, v1.GetAuditResponse]
+	getMe               *connect.Client[v1.GetMeRequest, v1.GetMeResponse]
+	stageOrg            *connect.Client[v1.StageOrgRequest, v1.StageOrgResponse]
+	addDirectory        *connect.Client[v1.AddDirectoryRequest, v1.AddDirectoryResponse]
+	deleteDirectory     *connect.Client[v1.DeleteDirectoryRequest, v1.DeleteDirectoryResponse]
+	setPaused           *connect.Client[v1.SetPausedRequest, v1.SetPausedResponse]
+	runReconcile        *connect.Client[v1.RunReconcileRequest, v1.RunReconcileResponse]
+	setReconcileEnabled *connect.Client[v1.SetReconcileEnabledRequest, v1.SetReconcileEnabledResponse]
+	putPerson           *connect.Client[v1.PutPersonRequest, v1.PutPersonResponse]
+	deletePerson        *connect.Client[v1.DeletePersonRequest, v1.DeletePersonResponse]
 }
 
 // GetVersion calls roster.v1.RosterService.GetVersion.
@@ -282,6 +295,11 @@ func (c *rosterServiceClient) RunReconcile(ctx context.Context, req *connect.Req
 	return c.runReconcile.CallUnary(ctx, req)
 }
 
+// SetReconcileEnabled calls roster.v1.RosterService.SetReconcileEnabled.
+func (c *rosterServiceClient) SetReconcileEnabled(ctx context.Context, req *connect.Request[v1.SetReconcileEnabledRequest]) (*connect.Response[v1.SetReconcileEnabledResponse], error) {
+	return c.setReconcileEnabled.CallUnary(ctx, req)
+}
+
 // PutPerson calls roster.v1.RosterService.PutPerson.
 func (c *rosterServiceClient) PutPerson(ctx context.Context, req *connect.Request[v1.PutPersonRequest]) (*connect.Response[v1.PutPersonResponse], error) {
 	return c.putPerson.CallUnary(ctx, req)
@@ -330,6 +348,9 @@ type RosterServiceHandler interface {
 	// RunReconcile triggers an immediate reconcile pass on the broker instead of
 	// waiting for the next tick. Operator-only.
 	RunReconcile(context.Context, *connect.Request[v1.RunReconcileRequest]) (*connect.Response[v1.RunReconcileResponse], error)
+	// SetReconcileEnabled turns an organization's reconcile loop on or off — the
+	// operator's UI override of the config day-0 default. Operator-only.
+	SetReconcileEnabled(context.Context, *connect.Request[v1.SetReconcileEnabledRequest]) (*connect.Response[v1.SetReconcileEnabledResponse], error)
 	// PutPerson creates or updates a roster mapping entry — the Approve/Add
 	// (NEW), Adopt (UNKNOWN) and Edit actions. Operator-only. Creating (or
 	// first-blessing) an entry stamps approvedBy/approvedAt; edits preserve them.
@@ -411,6 +432,12 @@ func NewRosterServiceHandler(svc RosterServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(rosterServiceMethods.ByName("RunReconcile")),
 		connect.WithHandlerOptions(opts...),
 	)
+	rosterServiceSetReconcileEnabledHandler := connect.NewUnaryHandler(
+		RosterServiceSetReconcileEnabledProcedure,
+		svc.SetReconcileEnabled,
+		connect.WithSchema(rosterServiceMethods.ByName("SetReconcileEnabled")),
+		connect.WithHandlerOptions(opts...),
+	)
 	rosterServicePutPersonHandler := connect.NewUnaryHandler(
 		RosterServicePutPersonProcedure,
 		svc.PutPerson,
@@ -447,6 +474,8 @@ func NewRosterServiceHandler(svc RosterServiceHandler, opts ...connect.HandlerOp
 			rosterServiceSetPausedHandler.ServeHTTP(w, r)
 		case RosterServiceRunReconcileProcedure:
 			rosterServiceRunReconcileHandler.ServeHTTP(w, r)
+		case RosterServiceSetReconcileEnabledProcedure:
+			rosterServiceSetReconcileEnabledHandler.ServeHTTP(w, r)
 		case RosterServicePutPersonProcedure:
 			rosterServicePutPersonHandler.ServeHTTP(w, r)
 		case RosterServiceDeletePersonProcedure:
@@ -502,6 +531,10 @@ func (UnimplementedRosterServiceHandler) SetPaused(context.Context, *connect.Req
 
 func (UnimplementedRosterServiceHandler) RunReconcile(context.Context, *connect.Request[v1.RunReconcileRequest]) (*connect.Response[v1.RunReconcileResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("roster.v1.RosterService.RunReconcile is not implemented"))
+}
+
+func (UnimplementedRosterServiceHandler) SetReconcileEnabled(context.Context, *connect.Request[v1.SetReconcileEnabledRequest]) (*connect.Response[v1.SetReconcileEnabledResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("roster.v1.RosterService.SetReconcileEnabled is not implemented"))
 }
 
 func (UnimplementedRosterServiceHandler) PutPerson(context.Context, *connect.Request[v1.PutPersonRequest]) (*connect.Response[v1.PutPersonResponse], error) {

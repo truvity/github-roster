@@ -188,15 +188,19 @@ func (s *rosterConnect) GetStatus(
 	for i := range statuses {
 		st := &statuses[i]
 		out = append(out, &rosterv1.ReconcileStatus{
-			Org:     st.Org,
-			Enabled: st.Enabled,
-			Paused:  st.Paused,
-			At:      rfc3339(st.At),
-			Actions: int32(st.Actions), //nolint:gosec // small action count
-			Applied: st.Applied,
-			Held:    st.Held,
-			Reason:  st.Reason,
-			Error:   st.Error,
+			Org:         st.Org,
+			Enabled:     st.Enabled,
+			Paused:      st.Paused,
+			At:          rfc3339(st.At),
+			Actions:     int32(st.Actions),     //nolint:gosec // small action count
+			Adds:        int32(st.Adds),        //nolint:gosec // small count
+			Removes:     int32(st.Removes),     //nolint:gosec // small count
+			RoleChanges: int32(st.RoleChanges), //nolint:gosec // small count
+			TeamChanges: int32(st.TeamChanges), //nolint:gosec // small count
+			Applied:     st.Applied,
+			Held:        st.Held,
+			Reason:      st.Reason,
+			Error:       st.Error,
 		})
 	}
 
@@ -418,6 +422,32 @@ func (s *rosterConnect) SetPaused(
 	}
 
 	return connect.NewResponse(&rosterv1.SetPausedResponse{}), nil
+}
+
+// SetReconcileEnabled turns an organization's reconcile loop on or off via the
+// broker (the operator's UI override of the config day-0 default).
+func (s *rosterConnect) SetReconcileEnabled(
+	ctx context.Context,
+	req *connect.Request[rosterv1.SetReconcileEnabledRequest],
+) (*connect.Response[rosterv1.SetReconcileEnabledResponse], error) {
+	if err := requireOperatorCtx(ctx); err != nil {
+		return nil, err
+	}
+
+	if s.deps.Broker == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("no applier broker is configured"))
+	}
+
+	org := strings.TrimSpace(req.Msg.GetOrg())
+	if org == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("org is required"))
+	}
+
+	if err := s.deps.Broker.SetReconcileEnabled(ctx, org, req.Msg.GetEnabled(), auth.ForwardToken(req.Header().Get)); err != nil {
+		return nil, connect.NewError(connect.CodeUnavailable, err)
+	}
+
+	return connect.NewResponse(&rosterv1.SetReconcileEnabledResponse{}), nil
 }
 
 // RunReconcile triggers an immediate reconcile pass on the broker.

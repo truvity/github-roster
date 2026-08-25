@@ -58,7 +58,32 @@ service RosterService {
   // RunReconcile triggers an immediate reconcile pass on the broker instead of
   // waiting for the next tick. Operator-only.
   rpc RunReconcile(RunReconcileRequest) returns (RunReconcileResponse);
+
+  // PutPerson creates or updates a roster mapping entry — the Approve/Add
+  // (NEW), Adopt (UNKNOWN) and Edit actions. Operator-only. Creating (or
+  // first-blessing) an entry stamps approvedBy/approvedAt; edits preserve them.
+  rpc PutPerson(PutPersonRequest) returns (PutPersonResponse);
+
+  // DeletePerson removes a mapping entry (the operator "Remove"). Operator-only.
+  rpc DeletePerson(DeletePersonRequest) returns (DeletePersonResponse);
 }
+
+message PutPersonRequest {
+  string name = 1;
+  string github = 2;
+  repeated string emails = 3;
+  string k8s = 4;
+  string class = 5;
+  repeated string pinned = 6;
+}
+
+message PutPersonResponse {}
+
+message DeletePersonRequest {
+  string name = 1;
+}
+
+message DeletePersonResponse {}
 
 message AddDirectoryRequest {
   string name = 1;

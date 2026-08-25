@@ -15,7 +15,7 @@ require (
 	github.com/neilotoole/slogt/v2 v2.0.0
 	github.com/samber/slog-fiber v1.22.2
 	github.com/stretchr/testify v1.12.0
-	github.com/truvity/gateway-auth v0.5.0
+	github.com/truvity/gateway-auth v0.5.2
 	github.com/truvity/google-group-sync v0.13.0
 	github.com/urfave/cli/v3 v3.11.0
 	github.com/valyala/fasthttp v1.73.0

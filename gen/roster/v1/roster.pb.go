@@ -1711,6 +1711,9 @@ type Person struct {
 	// NoTeam is true when no group, member list, or pin resolves this person to
 	// any team in any org — mapped but inert (nothing will ever be granted).
 	NoTeam bool `protobuf:"varint,10,opt,name=no_team,json=noTeam,proto3" json:"no_team,omitempty"`
+	// DisplayOnly: every identity lives in a display-only (sync: false)
+	// domain — shown, never granted from, never removed because of it.
+	DisplayOnly bool `protobuf:"varint,12,opt,name=display_only,json=displayOnly,proto3" json:"display_only,omitempty"`
 	// Directories is the per-source identity trace: which directory knows them,
 	// under which email, and whether that account is live there. Keyed by source
 	// name. The IdP(s) → mapping → org(s) trail starts here.
@@ -1819,6 +1822,13 @@ func (x *Person) GetNoTeam() bool {
 	return false
 }
 
+func (x *Person) GetDisplayOnly() bool {
+	if x != nil {
+		return x.DisplayOnly
+	}
+	return false
+}
+
 func (x *Person) GetDirectories() map[string]*DirectoryIdentity {
 	if x != nil {
 		return x.Directories
@@ -1891,8 +1901,10 @@ type Membership struct {
 	// Teams they currently belong to; DesiredTeams is what config says they
 	// should. The difference is exactly what a sync would change — it explains
 	// a "pending" state.
-	Teams         []string `protobuf:"bytes,6,rep,name=teams,proto3" json:"teams,omitempty"`
-	DesiredTeams  []string `protobuf:"bytes,7,rep,name=desired_teams,json=desiredTeams,proto3" json:"desired_teams,omitempty"`
+	Teams        []string `protobuf:"bytes,6,rep,name=teams,proto3" json:"teams,omitempty"`
+	DesiredTeams []string `protobuf:"bytes,7,rep,name=desired_teams,json=desiredTeams,proto3" json:"desired_teams,omitempty"`
+	// DisplayOnly mirrors the person-level flag for this org's row.
+	DisplayOnly   bool `protobuf:"varint,8,opt,name=display_only,json=displayOnly,proto3" json:"display_only,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1974,6 +1986,13 @@ func (x *Membership) GetDesiredTeams() []string {
 		return x.DesiredTeams
 	}
 	return nil
+}
+
+func (x *Membership) GetDisplayOnly() bool {
+	if x != nil {
+		return x.DisplayOnly
+	}
+	return false
 }
 
 type GetStatusRequest struct {
@@ -2668,7 +2687,7 @@ const file_roster_v1_roster_proto_rawDesc = "" +
 	"\vdirectories\x18\b \x03(\v2%.roster.v1.Candidate.DirectoriesEntryR\vdirectories\x1a\\\n" +
 	"\x10DirectoriesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x122\n" +
-	"\x05value\x18\x02 \x01(\v2\x1c.roster.v1.DirectoryIdentityR\x05value:\x028\x01\"\x8d\x04\n" +
+	"\x05value\x18\x02 \x01(\v2\x1c.roster.v1.DirectoryIdentityR\x05value:\x028\x01\"\xb0\x04\n" +
 	"\x06Person\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x16\n" +
 	"\x06github\x18\x02 \x01(\tR\x06github\x12\x14\n" +
@@ -2680,7 +2699,8 @@ const file_roster_v1_roster_proto_rawDesc = "" +
 	"\asources\x18\b \x03(\tR\asources\x12)\n" +
 	"\x10expected_sources\x18\t \x03(\tR\x0fexpectedSources\x12\x17\n" +
 	"\ano_team\x18\n" +
-	" \x01(\bR\x06noTeam\x12D\n" +
+	" \x01(\bR\x06noTeam\x12!\n" +
+	"\fdisplay_only\x18\f \x01(\bR\vdisplayOnly\x12D\n" +
 	"\vdirectories\x18\v \x03(\v2\".roster.v1.Person.DirectoriesEntryR\vdirectories\x1aN\n" +
 	"\tOrgsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12+\n" +
@@ -2690,7 +2710,7 @@ const file_roster_v1_roster_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\v2\x1c.roster.v1.DirectoryIdentityR\x05value:\x028\x01\"=\n" +
 	"\x11DirectoryIdentity\x12\x14\n" +
 	"\x05email\x18\x01 \x01(\tR\x05email\x12\x12\n" +
-	"\x04live\x18\x02 \x01(\bR\x04live\"\xcc\x01\n" +
+	"\x04live\x18\x02 \x01(\bR\x04live\"\xef\x01\n" +
 	"\n" +
 	"Membership\x12\x16\n" +
 	"\x06member\x18\x01 \x01(\bR\x06member\x12-\n" +
@@ -2699,7 +2719,8 @@ const file_roster_v1_roster_proto_rawDesc = "" +
 	"\x05state\x18\x04 \x01(\tR\x05state\x12\x12\n" +
 	"\x04live\x18\x05 \x01(\bR\x04live\x12\x14\n" +
 	"\x05teams\x18\x06 \x03(\tR\x05teams\x12#\n" +
-	"\rdesired_teams\x18\a \x03(\tR\fdesiredTeams\"\x12\n" +
+	"\rdesired_teams\x18\a \x03(\tR\fdesiredTeams\x12!\n" +
+	"\fdisplay_only\x18\b \x01(\bR\vdisplayOnly\"\x12\n" +
 	"\x10GetStatusRequest\"K\n" +
 	"\x11GetStatusResponse\x126\n" +
 	"\bstatuses\x18\x01 \x03(\v2\x1a.roster.v1.ReconcileStatusR\bstatuses\"\x85\x03\n" +

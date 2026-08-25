@@ -194,6 +194,17 @@ func removalsOnlyMembers(in Inputs, people map[string]roster.Person, current []s
 			continue
 		}
 
+		// Known only to display-only (sync: false) domains: their
+		// suspension is data this deployment chose not to act on.
+		if person.DisplayOnly {
+			keep = append(keep, login)
+			result.Notes = append(result.Notes,
+				fmt.Sprintf("%s (%s) is known only to display-only domains — left alone",
+					login, person.Name))
+
+			continue
+		}
+
 		if skipped := onlyKnownBy(&person, in.UnhealthySources); skipped != "" {
 			keep = append(keep, login)
 			result.Notes = append(result.Notes,
@@ -239,6 +250,18 @@ func fullMembers(in Inputs, people map[string]roster.Person, current []string, r
 		}
 
 		switch {
+		case person.DisplayOnly:
+			// Known only to display-only (sync: false) domains: shown,
+			// never acted on. A member is kept — their (possibly
+			// suspended) display identity must not read as a leaver —
+			// and nothing is granted; only an explicit pin or member
+			// list reaches DesiredTeams for them.
+			if membership.Member {
+				desired = append(desired, person.GitHub)
+				result.Notes = append(result.Notes,
+					fmt.Sprintf("%s (%s) is known only to display-only domains — left alone",
+						person.GitHub, person.Name))
+			}
 		case membership.Live:
 			// A person live FOR THIS ORG belongs if they are already a
 			// member or the configuration puts them in a team. Suspended

@@ -110,6 +110,7 @@ export interface Membership {
   live?: boolean;
   teams?: string[];
   desiredTeams?: string[];
+  displayOnly?: boolean;
 }
 
 // DirectoryIdentity is how one directory (IdP source) knows a person.
@@ -129,6 +130,7 @@ export interface Person {
   sources?: string[];
   expectedSources?: string[];
   noTeam?: boolean;
+  displayOnly?: boolean;
   directories?: Record<string, DirectoryIdentity>;
 }
 
@@ -173,12 +175,14 @@ export async function fetchRoster(signal?: AbortSignal): Promise<Roster> {
           live: m.live,
           teams: m.teams,
           desiredTeams: m.desiredTeams,
+          displayOnly: m.displayOnly,
         }]),
       ),
       email: p.email || undefined,
       sources: p.sources,
       expectedSources: p.expectedSources,
       noTeam: p.noTeam,
+      displayOnly: p.displayOnly,
       directories: Object.fromEntries(
         Object.entries(p.directories).map(([src, d]) => [src, { email: d.email || undefined, live: d.live }]),
       ),

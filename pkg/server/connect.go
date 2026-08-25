@@ -161,6 +161,7 @@ func (s *rosterConnect) GetRoster(
 				Live:              m.Live,
 				Teams:             m.Teams,
 				DesiredTeams:      m.DesiredTeams,
+				DisplayOnly:       m.DisplayOnly,
 			}
 		}
 
@@ -180,6 +181,7 @@ func (s *rosterConnect) GetRoster(
 			Sources:         p.Sources,
 			ExpectedSources: p.ExpectedSources,
 			NoTeam:          p.NoTeam,
+			DisplayOnly:     p.DisplayOnly,
 			Directories:     dirs,
 		})
 	}

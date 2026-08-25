@@ -272,6 +272,9 @@ message Person {
   // NoTeam is true when no group, member list, or pin resolves this person to
   // any team in any org — mapped but inert (nothing will ever be granted).
   bool no_team = 10;
+  // DisplayOnly: every identity lives in a display-only (sync: false)
+  // domain — shown, never granted from, never removed because of it.
+  bool display_only = 12;
   // Directories is the per-source identity trace: which directory knows them,
   // under which email, and whether that account is live there. Keyed by source
   // name. The IdP(s) → mapping → org(s) trail starts here.
@@ -297,6 +300,8 @@ message Membership {
   // a "pending" state.
   repeated string teams = 6;
   repeated string desired_teams = 7;
+  // DisplayOnly mirrors the person-level flag for this org's row.
+  bool display_only = 8;
 }
 
 message GetStatusRequest {}

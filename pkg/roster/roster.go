@@ -78,6 +78,10 @@ type Person struct {
 	Directories map[string]DirectoryIdentity `json:"directories,omitempty"`
 	// Orgs is this person's GitHub standing, keyed by organization.
 	Orgs map[string]Membership `json:"orgs"`
+	// DisplayOnly is true when the directories know this person but every
+	// identity lives in a display-only (sync: false) domain: shown, never
+	// granted from, never removed because of it.
+	DisplayOnly bool `json:"displayOnly,omitempty"`
 	// NoTeam is true when the configuration resolves this person to no
 	// team in any organization — the mapping identifies them, but no
 	// group, member list or pin claims them, so no sync will ever
@@ -132,6 +136,8 @@ type Membership struct {
 	// derived from the fields above (see [MembershipState]). It is computed
 	// on every join, never stored — the People page reads it directly.
 	State MembershipState `json:"state,omitempty"`
+	// DisplayOnly mirrors the person-level flag for this org's row.
+	DisplayOnly bool `json:"displayOnly,omitempty"`
 }
 
 // MembershipState is where a person sits in the reconcile lifecycle for one
@@ -155,6 +161,9 @@ const (
 	// StateLeaving: suspended for this org but still a member — the loop
 	// (or an operator sync) will remove them.
 	StateLeaving MembershipState = "leaving"
+	// StateDisplayOnly: a member whose only identities live in
+	// display-only domains. Shown; the loop neither grants nor removes.
+	StateDisplayOnly MembershipState = "display-only"
 )
 
 // PersonState is a person's overall reconcile lifecycle, folded from their
@@ -178,6 +187,8 @@ const (
 	PersonInvited PersonState = "invited"
 	// PersonSynced: every org matches desired.
 	PersonSynced PersonState = "synced"
+	// PersonDisplayOnly: known only to display-only domains.
+	PersonDisplayOnly PersonState = "display-only"
 	// PersonNone: mapped but desired nowhere and not otherwise notable.
 	PersonNone PersonState = ""
 )
@@ -189,7 +200,7 @@ func personState(p *Person) PersonState {
 		return PersonBot
 	}
 
-	var sawLeaving, sawPending, sawInvited, sawSynced bool
+	var sawLeaving, sawPending, sawInvited, sawSynced, sawDisplay bool
 
 	for _, m := range p.Orgs {
 		switch m.State {
@@ -201,6 +212,8 @@ func personState(p *Person) PersonState {
 			sawInvited = true
 		case StateSynced:
 			sawSynced = true
+		case StateDisplayOnly:
+			sawDisplay = true
 		case StateNone:
 		}
 	}
@@ -218,7 +231,13 @@ func personState(p *Person) PersonState {
 		return PersonInvited
 	case sawSynced:
 		return PersonSynced
+	case sawDisplay:
+		return PersonDisplayOnly
 	default:
+		if p.DisplayOnly && p.Live {
+			return PersonDisplayOnly
+		}
+
 		return PersonNone
 	}
 }
@@ -226,6 +245,10 @@ func personState(p *Person) PersonState {
 // membershipState derives the lifecycle state from a resolved Membership.
 func membershipState(m Membership) MembershipState {
 	switch {
+	case m.DisplayOnly && m.Member:
+		return StateDisplayOnly
+	case m.DisplayOnly:
+		return StateNone
 	case m.InvitationPending:
 		return StateInvited
 	case m.Member && !m.Live:
@@ -371,7 +394,18 @@ func Join(in Inputs) *Roster {
 
 	sort.Strings(r.AbsentGroups)
 
-	live, liveByEmail := livenessIndexes(in.Snapshots)
+	// syncedDomain answers whether a domain participates in reconciliation.
+	// Unknown domains default to synced: the switch is an explicit opt-out,
+	// and a group living in an unconfigured domain was never grantable
+	// anyway (its source is not read).
+	syncedDomain := syncedDomains(in.Config)
+	syncs := func(domain string) bool {
+		v, ok := syncedDomain[strings.ToLower(domain)]
+
+		return !ok || v
+	}
+
+	live, liveByEmail := livenessIndexes(in.Snapshots, syncs)
 
 	// covered marks directory names some entry accounts for — by its own
 	// name or through an email match — so a directory spelling a name
@@ -379,7 +413,7 @@ func Join(in Inputs) *Roster {
 	covered := make(map[string]bool, len(in.Entries))
 
 	for i := range in.Entries {
-		person, claimed := join(in, in.Entries[i], live, liveByEmail)
+		person, claimed := join(in, in.Entries[i], live, liveByEmail, syncs)
 		person.State = personState(&person)
 		r.People = append(r.People, person)
 		covered[in.Entries[i].Name] = true
@@ -403,6 +437,13 @@ type liveness struct {
 	// name is the display name the directories know this person under.
 	name string
 	live bool
+	// syncedLive / hasSynced are the GRANT tier: the OR of liveness across
+	// identities in SYNCED domains only, and whether any such identity
+	// exists. A person whose accounts all live in display-only domains has
+	// hasSynced=false — visible, but no grant or removal may derive from
+	// them (the same inaction an unanswered directory gets).
+	syncedLive bool
+	hasSynced  bool
 	// email is the display anchor, preferring a LIVE account's address —
 	// emailLive records whether the current pick is one, so a suspended
 	// account seen first cannot hold the slot.
@@ -427,7 +468,7 @@ type liveness struct {
 // what the suspension signal means. Each ACCOUNT still carries its own
 // state: per-org standing (liveForOrg) and group grants read the account,
 // not the OR.
-func livenessIndexes(snapshots []*directory.Snapshot) (byNameIdx, byEmailIdx map[string]*liveness) {
+func livenessIndexes(snapshots []*directory.Snapshot, syncs func(domain string) bool) (byNameIdx, byEmailIdx map[string]*liveness) {
 	byName := map[string]*liveness{}
 	byEmail := map[string]*liveness{}
 
@@ -467,6 +508,12 @@ func livenessIndexes(snapshots []*directory.Snapshot) (byNameIdx, byEmailIdx map
 			l.sources = appendUnique(l.sources, snap.Source)
 			l.directories[snap.Source] = DirectoryIdentity{Email: user.Email, Live: user.Live}
 
+			// Grant tier: only identities in synced domains count.
+			if syncs(emailDomainOf(user.Email)) {
+				l.hasSynced = true
+				l.syncedLive = l.syncedLive || user.Live
+			}
+
 			if l.email == "" || (user.Live && !l.emailLive) {
 				l.email = user.Email
 				l.emailLive = user.Live
@@ -477,9 +524,13 @@ func livenessIndexes(snapshots []*directory.Snapshot) (byNameIdx, byEmailIdx map
 			// directory keeps listing it — group membership routinely
 			// outlives suspension. A live account's memberships still
 			// count, cross-company ones included.
+			// A group in a display-only domain grants nothing: its
+			// membership is data this deployment chose not to act on.
 			if user.Live {
 				for group := range memberOf[strings.ToLower(user.Email)] {
-					l.groups[group] = true
+					if syncs(emailDomainOf(group)) {
+						l.groups[group] = true
+					}
 				}
 			}
 		}
@@ -516,7 +567,7 @@ func groupsByMember(snapshots ...*directory.Snapshot) map[string]map[string]bool
 
 // join builds one person from their mapping entry and what the directories
 // and GitHub say about them.
-func join(in Inputs, entry mapping.Entry, live, liveByEmail map[string]*liveness) (person Person, claimed []string) {
+func join(in Inputs, entry mapping.Entry, live, liveByEmail map[string]*liveness, syncs func(string) bool) (person Person, claimed []string) {
 	person = Person{
 		Name:   entry.Name,
 		GitHub: entry.GitHub,
@@ -550,10 +601,17 @@ func join(in Inputs, entry mapping.Entry, live, liveByEmail map[string]*liveness
 		person.Live = true
 	}
 
+	// DisplayOnly: the directories know this person, but every identity
+	// lives in a display-only (sync: false) domain. They are shown; no
+	// grant or removal may derive from them.
+	person.DisplayOnly = entry.Class != mapping.ClassBot && resolved != nil && !resolved.hasSynced
+
 	for i := range in.Config.Orgs {
 		org := &in.Config.Orgs[i]
 
-		person.Orgs[org.Name] = membership(in, org, entry, resolved, liveForOrg(org, resolved, person.Live))
+		isLive := grantLiveForOrg(org, entry, resolved, person.Live, syncs)
+
+		person.Orgs[org.Name] = membership(in, org, entry, resolved, isLive, person.DisplayOnly)
 	}
 
 	person.NoTeam = true
@@ -629,6 +687,8 @@ func resolveLiveness(entry mapping.Entry, live, liveByEmail map[string]*liveness
 
 	for _, l := range records {
 		merged.live = merged.live || l.live
+		merged.syncedLive = merged.syncedLive || l.syncedLive
+		merged.hasSynced = merged.hasSynced || l.hasSynced
 		merged.sources = append(merged.sources, l.sources...)
 
 		if merged.email == "" || (l.emailLive && !merged.emailLive) {
@@ -655,6 +715,59 @@ func resolveLiveness(entry mapping.Entry, live, liveByEmail map[string]*liveness
 // the org's company (a partner, or a bot with no directory record at
 // all) resolves from their home directory, which the person-level value
 // already is.
+// syncedDomains maps each configured domain (lowercased) to its sync switch.
+func syncedDomains(cfg *config.Config) map[string]bool {
+	out := map[string]bool{}
+
+	if cfg == nil {
+		return out
+	}
+
+	for i := range cfg.Sources {
+		for _, d := range cfg.Sources[i].Domains {
+			out[strings.ToLower(d.Name)] = d.Syncs()
+		}
+	}
+
+	return out
+}
+
+// emailDomainOf returns the domain of an address, empty when malformed.
+func emailDomainOf(email string) string {
+	_, domain, ok := strings.Cut(email, "@")
+	if !ok {
+		return ""
+	}
+
+	return domain
+}
+
+// grantLiveForOrg is the GRANT-tier counterpart of liveForOrg: the liveness
+// that gates invitations and removals for one org. The home-company rule
+// still governs — but only through identities in SYNCED domains. An identity
+// in a display-only domain is skipped entirely; a person with no synced
+// identity at all resolves false here and is protected from removal by
+// their DisplayOnly flag instead.
+func grantLiveForOrg(org *config.Org, entry mapping.Entry, l *liveness, personLive bool, syncs func(string) bool) bool {
+	if entry.Class == mapping.ClassBot {
+		return true
+	}
+
+	if l == nil {
+		return personLive
+	}
+
+	if id, ok := l.directories[org.Company]; ok && syncs(emailDomainOf(id.Email)) {
+		return id.Live
+	}
+
+	if l.hasSynced {
+		return l.syncedLive
+	}
+
+	return false
+}
+
 func liveForOrg(org *config.Org, l *liveness, personLive bool) bool {
 	if l == nil {
 		return personLive
@@ -667,8 +780,17 @@ func liveForOrg(org *config.Org, l *liveness, personLive bool) bool {
 	return personLive
 }
 
-func membership(in Inputs, org *config.Org, entry mapping.Entry, l *liveness, isLive bool) Membership {
-	m := Membership{Live: isLive, DesiredTeams: desiredTeams(org, entry, l, isLive)}
+func membership(in Inputs, org *config.Org, entry mapping.Entry, l *liveness, isLive, displayOnly bool) Membership {
+	m := Membership{Live: isLive, DisplayOnly: displayOnly, DesiredTeams: desiredTeams(org, entry, l, isLive)}
+
+	// A display-only person's badge shows the DISPLAY truth (their account
+	// is live somewhere we read), while isLive=false above already keeps
+	// every grant off. The state machine below routes them to display-only
+	// instead of leaving, so the false grant-liveness cannot read as a
+	// leaver either.
+	if displayOnly && l != nil {
+		m.Live = l.live
+	}
 
 	state := in.Orgs[org.Name]
 	if state == nil {

@@ -78,6 +78,14 @@ type Entry struct {
 	// lives.
 	Pinned []string `json:"pinned,omitempty"`
 
+	// ApprovedBy and ApprovedAt record who blessed this person and when —
+	// the audit of the one human gate (Approve/Add). The entry's existence
+	// is the approval; these are metadata on it. Empty for git/IaC-declared
+	// people (approved by virtue of being declared) and for entries written
+	// before approval was tracked.
+	ApprovedBy string `json:"approvedBy,omitempty"`
+	ApprovedAt string `json:"approvedAt,omitempty"`
+
 	// Revision is the store's opaque version for this entry, for display
 	// and for optimistic concurrency. Empty when a store has no versioning.
 	Revision string `json:"revision,omitempty"`

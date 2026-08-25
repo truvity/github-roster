@@ -29,6 +29,8 @@ const (
 	fieldK8s        = "k8s"
 	fieldClass      = "class"
 	fieldPinned     = "pinned"
+	fieldApprovedBy = "approvedBy"
+	fieldApprovedAt = "approvedAt"
 	pinnedSeparator = ","
 )
 
@@ -202,6 +204,14 @@ func (s *SSM) Put(ctx context.Context, entry Entry) error {
 		values[fieldPinned] = strings.Join(entry.Pinned, pinnedSeparator)
 	}
 
+	if entry.ApprovedBy != "" {
+		values[fieldApprovedBy] = entry.ApprovedBy
+	}
+
+	if entry.ApprovedAt != "" {
+		values[fieldApprovedAt] = entry.ApprovedAt
+	}
+
 	for field, value := range values {
 		_, err := s.client.PutParameter(ctx, &ssm.PutParameterInput{
 			Name:      aws.String(path + field),
@@ -217,7 +227,7 @@ func (s *SSM) Put(ctx context.Context, entry Entry) error {
 	// Fields that are now empty must be removed, not left behind: a stale
 	// `pinned` parameter would keep granting a team membership the operator
 	// just took away.
-	for _, field := range []string{fieldK8s, fieldEmails, fieldPinned} {
+	for _, field := range []string{fieldK8s, fieldEmails, fieldPinned, fieldApprovedBy, fieldApprovedAt} {
 		if _, keep := values[field]; keep {
 			continue
 		}
@@ -234,7 +244,7 @@ func (s *SSM) Put(ctx context.Context, entry Entry) error {
 func (s *SSM) Delete(ctx context.Context, name string) error {
 	path := s.personPath(name)
 
-	for _, field := range []string{fieldName, fieldGitHub, fieldEmails, fieldK8s, fieldClass, fieldPinned} {
+	for _, field := range []string{fieldName, fieldGitHub, fieldEmails, fieldK8s, fieldClass, fieldPinned, fieldApprovedBy, fieldApprovedAt} {
 		if err := s.deleteParameter(ctx, path+field); err != nil {
 			return err
 		}
@@ -277,10 +287,12 @@ func (s *SSM) splitName(full string) (slug, field string, ok bool) {
 // anyway. Failing the whole listing would hide every other person instead.
 func entryFrom(fields map[string]types.Parameter) Entry {
 	entry := Entry{
-		Name:   value(fields, fieldName),
-		GitHub: value(fields, fieldGitHub),
-		K8s:    value(fields, fieldK8s),
-		Class:  Class(value(fields, fieldClass)),
+		Name:       value(fields, fieldName),
+		GitHub:     value(fields, fieldGitHub),
+		K8s:        value(fields, fieldK8s),
+		Class:      Class(value(fields, fieldClass)),
+		ApprovedBy: value(fields, fieldApprovedBy),
+		ApprovedAt: value(fields, fieldApprovedAt),
 	}
 
 	if emails := value(fields, fieldEmails); emails != "" {

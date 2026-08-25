@@ -54,6 +54,17 @@ const (
 	RosterServiceGetMeProcedure = "/roster.v1.RosterService/GetMe"
 	// RosterServiceStageOrgProcedure is the fully-qualified name of the RosterService's StageOrg RPC.
 	RosterServiceStageOrgProcedure = "/roster.v1.RosterService/StageOrg"
+	// RosterServiceAddDirectoryProcedure is the fully-qualified name of the RosterService's
+	// AddDirectory RPC.
+	RosterServiceAddDirectoryProcedure = "/roster.v1.RosterService/AddDirectory"
+	// RosterServiceDeleteDirectoryProcedure is the fully-qualified name of the RosterService's
+	// DeleteDirectory RPC.
+	RosterServiceDeleteDirectoryProcedure = "/roster.v1.RosterService/DeleteDirectory"
+	// RosterServiceSetPausedProcedure is the fully-qualified name of the RosterService's SetPaused RPC.
+	RosterServiceSetPausedProcedure = "/roster.v1.RosterService/SetPaused"
+	// RosterServiceRunReconcileProcedure is the fully-qualified name of the RosterService's
+	// RunReconcile RPC.
+	RosterServiceRunReconcileProcedure = "/roster.v1.RosterService/RunReconcile"
 )
 
 // RosterServiceClient is a client for the roster.v1.RosterService service.
@@ -83,6 +94,17 @@ type RosterServiceClient interface {
 	// credential-less. Operator-only. It then shows a "Create GitHub App" link
 	// that starts the manifest flow. Replaces the retired SSR form.
 	StageOrg(context.Context, *connect.Request[v1.StageOrgRequest]) (*connect.Response[v1.StageOrgResponse], error)
+	// AddDirectory stores an operator-added resolver-backed directory; the
+	// reconcile loop uses it on its next pass. Operator-only.
+	AddDirectory(context.Context, *connect.Request[v1.AddDirectoryRequest]) (*connect.Response[v1.AddDirectoryResponse], error)
+	// DeleteDirectory removes an operator-added directory. Operator-only.
+	DeleteDirectory(context.Context, *connect.Request[v1.DeleteDirectoryRequest]) (*connect.Response[v1.DeleteDirectoryResponse], error)
+	// SetPaused pauses or resumes the reconcile loop for one organization
+	// (forwarded to the broker, which holds the control flag). Operator-only.
+	SetPaused(context.Context, *connect.Request[v1.SetPausedRequest]) (*connect.Response[v1.SetPausedResponse], error)
+	// RunReconcile triggers an immediate reconcile pass on the broker instead of
+	// waiting for the next tick. Operator-only.
+	RunReconcile(context.Context, *connect.Request[v1.RunReconcileRequest]) (*connect.Response[v1.RunReconcileResponse], error)
 }
 
 // NewRosterServiceClient constructs a client for the roster.v1.RosterService service. By default,
@@ -138,18 +160,46 @@ func NewRosterServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(rosterServiceMethods.ByName("StageOrg")),
 			connect.WithClientOptions(opts...),
 		),
+		addDirectory: connect.NewClient[v1.AddDirectoryRequest, v1.AddDirectoryResponse](
+			httpClient,
+			baseURL+RosterServiceAddDirectoryProcedure,
+			connect.WithSchema(rosterServiceMethods.ByName("AddDirectory")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteDirectory: connect.NewClient[v1.DeleteDirectoryRequest, v1.DeleteDirectoryResponse](
+			httpClient,
+			baseURL+RosterServiceDeleteDirectoryProcedure,
+			connect.WithSchema(rosterServiceMethods.ByName("DeleteDirectory")),
+			connect.WithClientOptions(opts...),
+		),
+		setPaused: connect.NewClient[v1.SetPausedRequest, v1.SetPausedResponse](
+			httpClient,
+			baseURL+RosterServiceSetPausedProcedure,
+			connect.WithSchema(rosterServiceMethods.ByName("SetPaused")),
+			connect.WithClientOptions(opts...),
+		),
+		runReconcile: connect.NewClient[v1.RunReconcileRequest, v1.RunReconcileResponse](
+			httpClient,
+			baseURL+RosterServiceRunReconcileProcedure,
+			connect.WithSchema(rosterServiceMethods.ByName("RunReconcile")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // rosterServiceClient implements RosterServiceClient.
 type rosterServiceClient struct {
-	getVersion  *connect.Client[v1.GetVersionRequest, v1.GetVersionResponse]
-	getSettings *connect.Client[v1.GetSettingsRequest, v1.GetSettingsResponse]
-	getRoster   *connect.Client[v1.GetRosterRequest, v1.GetRosterResponse]
-	getStatus   *connect.Client[v1.GetStatusRequest, v1.GetStatusResponse]
-	getAudit    *connect.Client[v1.GetAuditRequest, v1.GetAuditResponse]
-	getMe       *connect.Client[v1.GetMeRequest, v1.GetMeResponse]
-	stageOrg    *connect.Client[v1.StageOrgRequest, v1.StageOrgResponse]
+	getVersion      *connect.Client[v1.GetVersionRequest, v1.GetVersionResponse]
+	getSettings     *connect.Client[v1.GetSettingsRequest, v1.GetSettingsResponse]
+	getRoster       *connect.Client[v1.GetRosterRequest, v1.GetRosterResponse]
+	getStatus       *connect.Client[v1.GetStatusRequest, v1.GetStatusResponse]
+	getAudit        *connect.Client[v1.GetAuditRequest, v1.GetAuditResponse]
+	getMe           *connect.Client[v1.GetMeRequest, v1.GetMeResponse]
+	stageOrg        *connect.Client[v1.StageOrgRequest, v1.StageOrgResponse]
+	addDirectory    *connect.Client[v1.AddDirectoryRequest, v1.AddDirectoryResponse]
+	deleteDirectory *connect.Client[v1.DeleteDirectoryRequest, v1.DeleteDirectoryResponse]
+	setPaused       *connect.Client[v1.SetPausedRequest, v1.SetPausedResponse]
+	runReconcile    *connect.Client[v1.RunReconcileRequest, v1.RunReconcileResponse]
 }
 
 // GetVersion calls roster.v1.RosterService.GetVersion.
@@ -187,6 +237,26 @@ func (c *rosterServiceClient) StageOrg(ctx context.Context, req *connect.Request
 	return c.stageOrg.CallUnary(ctx, req)
 }
 
+// AddDirectory calls roster.v1.RosterService.AddDirectory.
+func (c *rosterServiceClient) AddDirectory(ctx context.Context, req *connect.Request[v1.AddDirectoryRequest]) (*connect.Response[v1.AddDirectoryResponse], error) {
+	return c.addDirectory.CallUnary(ctx, req)
+}
+
+// DeleteDirectory calls roster.v1.RosterService.DeleteDirectory.
+func (c *rosterServiceClient) DeleteDirectory(ctx context.Context, req *connect.Request[v1.DeleteDirectoryRequest]) (*connect.Response[v1.DeleteDirectoryResponse], error) {
+	return c.deleteDirectory.CallUnary(ctx, req)
+}
+
+// SetPaused calls roster.v1.RosterService.SetPaused.
+func (c *rosterServiceClient) SetPaused(ctx context.Context, req *connect.Request[v1.SetPausedRequest]) (*connect.Response[v1.SetPausedResponse], error) {
+	return c.setPaused.CallUnary(ctx, req)
+}
+
+// RunReconcile calls roster.v1.RosterService.RunReconcile.
+func (c *rosterServiceClient) RunReconcile(ctx context.Context, req *connect.Request[v1.RunReconcileRequest]) (*connect.Response[v1.RunReconcileResponse], error) {
+	return c.runReconcile.CallUnary(ctx, req)
+}
+
 // RosterServiceHandler is an implementation of the roster.v1.RosterService service.
 type RosterServiceHandler interface {
 	// GetVersion returns the running build's identity — the same information the
@@ -214,6 +284,17 @@ type RosterServiceHandler interface {
 	// credential-less. Operator-only. It then shows a "Create GitHub App" link
 	// that starts the manifest flow. Replaces the retired SSR form.
 	StageOrg(context.Context, *connect.Request[v1.StageOrgRequest]) (*connect.Response[v1.StageOrgResponse], error)
+	// AddDirectory stores an operator-added resolver-backed directory; the
+	// reconcile loop uses it on its next pass. Operator-only.
+	AddDirectory(context.Context, *connect.Request[v1.AddDirectoryRequest]) (*connect.Response[v1.AddDirectoryResponse], error)
+	// DeleteDirectory removes an operator-added directory. Operator-only.
+	DeleteDirectory(context.Context, *connect.Request[v1.DeleteDirectoryRequest]) (*connect.Response[v1.DeleteDirectoryResponse], error)
+	// SetPaused pauses or resumes the reconcile loop for one organization
+	// (forwarded to the broker, which holds the control flag). Operator-only.
+	SetPaused(context.Context, *connect.Request[v1.SetPausedRequest]) (*connect.Response[v1.SetPausedResponse], error)
+	// RunReconcile triggers an immediate reconcile pass on the broker instead of
+	// waiting for the next tick. Operator-only.
+	RunReconcile(context.Context, *connect.Request[v1.RunReconcileRequest]) (*connect.Response[v1.RunReconcileResponse], error)
 }
 
 // NewRosterServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -265,6 +346,30 @@ func NewRosterServiceHandler(svc RosterServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(rosterServiceMethods.ByName("StageOrg")),
 		connect.WithHandlerOptions(opts...),
 	)
+	rosterServiceAddDirectoryHandler := connect.NewUnaryHandler(
+		RosterServiceAddDirectoryProcedure,
+		svc.AddDirectory,
+		connect.WithSchema(rosterServiceMethods.ByName("AddDirectory")),
+		connect.WithHandlerOptions(opts...),
+	)
+	rosterServiceDeleteDirectoryHandler := connect.NewUnaryHandler(
+		RosterServiceDeleteDirectoryProcedure,
+		svc.DeleteDirectory,
+		connect.WithSchema(rosterServiceMethods.ByName("DeleteDirectory")),
+		connect.WithHandlerOptions(opts...),
+	)
+	rosterServiceSetPausedHandler := connect.NewUnaryHandler(
+		RosterServiceSetPausedProcedure,
+		svc.SetPaused,
+		connect.WithSchema(rosterServiceMethods.ByName("SetPaused")),
+		connect.WithHandlerOptions(opts...),
+	)
+	rosterServiceRunReconcileHandler := connect.NewUnaryHandler(
+		RosterServiceRunReconcileProcedure,
+		svc.RunReconcile,
+		connect.WithSchema(rosterServiceMethods.ByName("RunReconcile")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/roster.v1.RosterService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case RosterServiceGetVersionProcedure:
@@ -281,6 +386,14 @@ func NewRosterServiceHandler(svc RosterServiceHandler, opts ...connect.HandlerOp
 			rosterServiceGetMeHandler.ServeHTTP(w, r)
 		case RosterServiceStageOrgProcedure:
 			rosterServiceStageOrgHandler.ServeHTTP(w, r)
+		case RosterServiceAddDirectoryProcedure:
+			rosterServiceAddDirectoryHandler.ServeHTTP(w, r)
+		case RosterServiceDeleteDirectoryProcedure:
+			rosterServiceDeleteDirectoryHandler.ServeHTTP(w, r)
+		case RosterServiceSetPausedProcedure:
+			rosterServiceSetPausedHandler.ServeHTTP(w, r)
+		case RosterServiceRunReconcileProcedure:
+			rosterServiceRunReconcileHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -316,4 +429,20 @@ func (UnimplementedRosterServiceHandler) GetMe(context.Context, *connect.Request
 
 func (UnimplementedRosterServiceHandler) StageOrg(context.Context, *connect.Request[v1.StageOrgRequest]) (*connect.Response[v1.StageOrgResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("roster.v1.RosterService.StageOrg is not implemented"))
+}
+
+func (UnimplementedRosterServiceHandler) AddDirectory(context.Context, *connect.Request[v1.AddDirectoryRequest]) (*connect.Response[v1.AddDirectoryResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("roster.v1.RosterService.AddDirectory is not implemented"))
+}
+
+func (UnimplementedRosterServiceHandler) DeleteDirectory(context.Context, *connect.Request[v1.DeleteDirectoryRequest]) (*connect.Response[v1.DeleteDirectoryResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("roster.v1.RosterService.DeleteDirectory is not implemented"))
+}
+
+func (UnimplementedRosterServiceHandler) SetPaused(context.Context, *connect.Request[v1.SetPausedRequest]) (*connect.Response[v1.SetPausedResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("roster.v1.RosterService.SetPaused is not implemented"))
+}
+
+func (UnimplementedRosterServiceHandler) RunReconcile(context.Context, *connect.Request[v1.RunReconcileRequest]) (*connect.Response[v1.RunReconcileResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("roster.v1.RosterService.RunReconcile is not implemented"))
 }

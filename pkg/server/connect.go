@@ -278,8 +278,8 @@ func (s *rosterConnect) StageOrg(
 	ctx context.Context,
 	req *connect.Request[rosterv1.StageOrgRequest],
 ) (*connect.Response[rosterv1.StageOrgResponse], error) {
-	if id, ok := auth.FromContext(ctx); !ok || !id.Role.CanOperate() {
-		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("operator role required"))
+	if err := requireOperatorCtx(ctx); err != nil {
+		return nil, err
 	}
 
 	if s.deps.OrgStore == nil {
@@ -308,6 +308,118 @@ func (s *rosterConnect) StageOrg(
 	}
 
 	return connect.NewResponse(&rosterv1.StageOrgResponse{}), nil
+}
+
+// requireOperatorCtx returns an error unless the caller (from the request
+// context, set by the auth middleware) may operate. Shared by the mutations.
+func requireOperatorCtx(ctx context.Context) error {
+	if id, ok := auth.FromContext(ctx); !ok || !id.Role.CanOperate() {
+		return connect.NewError(connect.CodePermissionDenied, errors.New("operator role required"))
+	}
+
+	return nil
+}
+
+// AddDirectory stores an operator-added resolver-backed directory.
+func (s *rosterConnect) AddDirectory(
+	ctx context.Context,
+	req *connect.Request[rosterv1.AddDirectoryRequest],
+) (*connect.Response[rosterv1.AddDirectoryResponse], error) {
+	if err := requireOperatorCtx(ctx); err != nil {
+		return nil, err
+	}
+
+	if s.deps.DirStore == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("no config store is configured"))
+	}
+
+	m := req.Msg
+	name := strings.TrimSpace(m.GetName())
+	endpoint := strings.TrimSpace(m.GetEndpoint())
+	domains := trimmedNonEmpty(m.GetDomains())
+
+	if name == "" || endpoint == "" || len(domains) == 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument,
+			errors.New("a name, an endpoint and at least one domain are required"))
+	}
+
+	src := config.Source{Name: name, Endpoint: endpoint, Domains: domains, ProbeGroup: strings.TrimSpace(m.GetProbeGroup())}
+	if err := s.deps.DirStore.Put(ctx, src); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return connect.NewResponse(&rosterv1.AddDirectoryResponse{}), nil
+}
+
+// DeleteDirectory removes an operator-added directory.
+func (s *rosterConnect) DeleteDirectory(
+	ctx context.Context,
+	req *connect.Request[rosterv1.DeleteDirectoryRequest],
+) (*connect.Response[rosterv1.DeleteDirectoryResponse], error) {
+	if err := requireOperatorCtx(ctx); err != nil {
+		return nil, err
+	}
+
+	if s.deps.DirStore == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("no config store is configured"))
+	}
+
+	name := strings.TrimSpace(req.Msg.GetName())
+	if name == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name is required"))
+	}
+
+	if err := s.deps.DirStore.Delete(ctx, name); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return connect.NewResponse(&rosterv1.DeleteDirectoryResponse{}), nil
+}
+
+// SetPaused pauses or resumes an organization's reconcile loop via the broker,
+// forwarding the caller's token so the broker authorizes the human.
+func (s *rosterConnect) SetPaused(
+	ctx context.Context,
+	req *connect.Request[rosterv1.SetPausedRequest],
+) (*connect.Response[rosterv1.SetPausedResponse], error) {
+	if err := requireOperatorCtx(ctx); err != nil {
+		return nil, err
+	}
+
+	if s.deps.Broker == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("no applier broker is configured"))
+	}
+
+	org := strings.TrimSpace(req.Msg.GetOrg())
+	if org == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("org is required"))
+	}
+
+	if err := s.deps.Broker.SetPaused(ctx, org, req.Msg.GetPaused(), auth.ForwardToken(req.Header().Get)); err != nil {
+		return nil, connect.NewError(connect.CodeUnavailable, err)
+	}
+
+	return connect.NewResponse(&rosterv1.SetPausedResponse{}), nil
+}
+
+// RunReconcile triggers an immediate reconcile pass on the broker.
+func (s *rosterConnect) RunReconcile(
+	ctx context.Context,
+	req *connect.Request[rosterv1.RunReconcileRequest],
+) (*connect.Response[rosterv1.RunReconcileResponse], error) {
+	if err := requireOperatorCtx(ctx); err != nil {
+		return nil, err
+	}
+
+	if s.deps.Broker == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("no applier broker is configured"))
+	}
+
+	if err := s.deps.Broker.RunReconcile(ctx, auth.ForwardToken(req.Header().Get)); err != nil {
+		return nil, connect.NewError(connect.CodeUnavailable, err)
+	}
+
+	return connect.NewResponse(&rosterv1.RunReconcileResponse{}), nil
 }
 
 // trimmedNonEmpty trims each value and drops the empties.

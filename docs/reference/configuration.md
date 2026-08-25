@@ -110,8 +110,7 @@ One corporate directory each.
 | `name` | yes | unique; appears in the UI and in audit records |
 | `ssmPrefix` | when in-process | holds the directory credentials (service-account key, admin subject); not needed when `endpoint` is set |
 | `endpoint` | no | a DirectoryService URL (google-group-sync over ConnectRPC); when set, this source reads through it and holds **no** directory credential |
-| `domains` | yes | the email domains this source is responsible for |
-| `probeGroup` | no | health canary: a group that always exists (the directory's `all@`, typically) |
+| `domains` | yes | the email domains this source is responsible for — per-domain entries, each with its own probe and sync switch (see below) |
 
 `endpoint` moves the Google credential out of this service: instead of a
 service-account key under `ssmPrefix`, the source calls a DirectoryService
@@ -124,6 +123,23 @@ scope. Set either `ssmPrefix` (in-process reader) or `endpoint` (resolver).
 `domains` is required rather than defaulted to "all". A directory may serve
 domains this instance has no business managing, and reading them would
 import people it should never act on.
+
+Each domain entry is either a bare scalar — shorthand for a synced domain
+with no probe — or a mapping with its own knobs:
+
+```yaml
+domains:
+  - domain: trustform.io          # full form
+    probeGroup: all@trustform.io  # this domain's canary (must live IN it)
+  - domain: datagrid.solutions    # full form, canary-less, sync on
+  - other.example                 # scalar shorthand: synced, no probe
+```
+
+Per-domain rather than per-directory because one Workspace (one service
+account) may serve several domains that deserve independent canaries.
+`sync: false` marks a domain display-only: its people are read and shown
+but never granted from (enforced from the Stage-2 release; until then the
+flag is stored and displayed).
 
 `probeGroup` changes what a missing group means. Without it, any error on
 any mapped group fails the whole fetch — the safe reading when nothing

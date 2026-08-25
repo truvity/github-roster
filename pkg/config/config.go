@@ -910,4 +910,3 @@ func emailDomain(address string) (string, bool) {
 
 	return domain, true
 }
-

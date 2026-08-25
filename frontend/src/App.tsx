@@ -459,13 +459,15 @@ function VersionBadge() {
 function UserBadge() {
   const { data } = useAsync(fetchMe);
   if (!data) return null;
-  const who = data.name && data.email ? `${data.name} <${data.email}>` : (data.name || data.email);
+  const name = data.name || data.email || "signed in";
   return (
-    <span className="user muted">
-      {who && <>{who} </>}
+    <span className="user" style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+      <span style={{ display: "inline-flex", flexDirection: "column", lineHeight: 1.15, textAlign: "right" }}>
+        <span>{name}</span>
+        {data.name && data.email ? <span className="muted" style={{ fontSize: "0.8em" }}>{data.email}</span> : null}
+      </span>
       {data.role && <span className={`badge ${data.role === "operator" ? "ok" : "muted"}`}>{data.role}</span>}
-      {" · "}
-      <a href="/oauth2/sign_out" title="Sign out">sign out</a>
+      <a href="/oauth2/sign_out" className="chip" title="Clear the session and sign out">Sign out</a>
     </span>
   );
 }
@@ -475,17 +477,19 @@ export function App() {
   const tabs: [Tab, string][] = [["people", "People"], ["status", "Status"], ["history", "History"], ["settings", "Settings"]];
   return (
     <main>
-      <header>
+      <header style={{ display: "flex", alignItems: "center", gap: 16 }}>
         <span className="brand">roster</span>
         <nav>{tabs.map(([k, l]) => <a key={k} className={tab === k ? "cur" : ""} onClick={() => setTab(k)}>{l}</a>)}</nav>
-        <VersionBadge />
-        <UserBadge />
+        <span style={{ marginLeft: "auto" }}><UserBadge /></span>
       </header>
       <h1>{tabs.find(([k]) => k === tab)![1]}</h1>
       {tab === "people" && <PeopleView />}
       {tab === "status" && <StatusView />}
       {tab === "history" && <HistoryView />}
       {tab === "settings" && <SettingsView />}
+      <footer style={{ marginTop: 40, paddingTop: 12, borderTop: "1px solid var(--border, #eee)", textAlign: "center", fontSize: "0.85em" }}>
+        <VersionBadge />
+      </footer>
     </main>
   );
 }

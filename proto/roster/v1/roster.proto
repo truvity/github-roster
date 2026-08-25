@@ -43,7 +43,48 @@ service RosterService {
   // credential-less. Operator-only. It then shows a "Create GitHub App" link
   // that starts the manifest flow. Replaces the retired SSR form.
   rpc StageOrg(StageOrgRequest) returns (StageOrgResponse);
+
+  // AddDirectory stores an operator-added resolver-backed directory; the
+  // reconcile loop uses it on its next pass. Operator-only.
+  rpc AddDirectory(AddDirectoryRequest) returns (AddDirectoryResponse);
+
+  // DeleteDirectory removes an operator-added directory. Operator-only.
+  rpc DeleteDirectory(DeleteDirectoryRequest) returns (DeleteDirectoryResponse);
+
+  // SetPaused pauses or resumes the reconcile loop for one organization
+  // (forwarded to the broker, which holds the control flag). Operator-only.
+  rpc SetPaused(SetPausedRequest) returns (SetPausedResponse);
+
+  // RunReconcile triggers an immediate reconcile pass on the broker instead of
+  // waiting for the next tick. Operator-only.
+  rpc RunReconcile(RunReconcileRequest) returns (RunReconcileResponse);
 }
+
+message AddDirectoryRequest {
+  string name = 1;
+  repeated string domains = 2;
+  string endpoint = 3;
+  string probe_group = 4;
+}
+
+message AddDirectoryResponse {}
+
+message DeleteDirectoryRequest {
+  string name = 1;
+}
+
+message DeleteDirectoryResponse {}
+
+message SetPausedRequest {
+  string org = 1;
+  bool paused = 2;
+}
+
+message SetPausedResponse {}
+
+message RunReconcileRequest {}
+
+message RunReconcileResponse {}
 
 message StageOrgRequest {
   string name = 1;

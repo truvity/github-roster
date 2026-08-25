@@ -48,6 +48,23 @@ export async function stageOrg(input: StageOrgInput): Promise<void> {
   });
 }
 
+// Operational mutations (operator-only; the server rejects a viewer).
+export async function addDirectory(input: { name: string; domains: string[]; endpoint: string; probeGroup?: string }): Promise<void> {
+  await rosterClient.addDirectory({ name: input.name, domains: input.domains, endpoint: input.endpoint, probeGroup: input.probeGroup ?? "" });
+}
+
+export async function deleteDirectory(name: string): Promise<void> {
+  await rosterClient.deleteDirectory({ name });
+}
+
+export async function setPaused(org: string, paused: boolean): Promise<void> {
+  await rosterClient.setPaused({ org, paused });
+}
+
+export async function runReconcile(): Promise<void> {
+  await rosterClient.runReconcile({});
+}
+
 // Types mirror the console's JSON API (/api/roster). Kept minimal — the
 // fields the People view reads.
 export interface Membership {

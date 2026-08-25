@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   fetchRoster, fetchStatus, fetchAudit, flattenAudit,
   fetchSettings, fetchVersion, fetchMe, stageOrg,
+  addDirectory, deleteDirectory, setPaused, runReconcile,
   type Person, type ReconcileStatus, type Change, type Settings, type SettingsOrg,
 } from "./api";
 
@@ -92,7 +93,15 @@ function PeopleView() {
 }
 
 function StatusView() {
-  const { data, error } = useAsync(fetchStatus);
+  const [reload, setReload] = useState(0);
+  const { data, error } = useAsync(fetchStatus, [reload]);
+  const [busy, setBusy] = useState("");
+  const [actErr, setActErr] = useState("");
+  const refresh = () => setReload((r) => r + 1);
+  const act = async (key: string, fn: () => Promise<void>) => {
+    setActErr(""); setBusy(key);
+    try { await fn(); refresh(); } catch (e) { setActErr(e instanceof Error ? e.message : String(e)); } finally { setBusy(""); }
+  };
   if (error) return <div className="banner">{error}</div>;
   if (data === null) return <p className="muted">Loading…</p>;
   const outcome = (s: ReconcileStatus) => {
@@ -103,21 +112,32 @@ function StatusView() {
     return s.actions ? <span className="muted">pending next tick</span> : <span className="badge ok">in sync</span>;
   };
   return (
-    <table>
-      <thead><tr><th>Organization</th><th>Loop</th><th>Pending</th><th>Last run</th><th>Outcome</th></tr></thead>
-      <tbody>
-        {data.map((s) => (
-          <tr key={s.org}>
-            <td>{s.org}</td>
-            <td>{s.enabled ? <span className="badge ok">enabled</span> : <span className="badge warn">disabled</span>}{s.paused && <> <span className="badge danger">paused</span></>}</td>
-            <td>{s.actions || <span className="muted">none</span>}</td>
-            <td className="muted">{s.at ? s.at.slice(0, 16).replace("T", " ") : "—"}</td>
-            <td>{outcome(s)}</td>
-          </tr>
-        ))}
-        {data.length === 0 && <tr><td colSpan={5} className="muted">No reconcile status yet.</td></tr>}
-      </tbody>
-    </table>
+    <>
+      <div className="presets">
+        <button className="chip" disabled={busy !== ""} onClick={() => act("run", runReconcile)}>{busy === "run" ? "Reconciling…" : "Sync now"}</button>
+      </div>
+      {actErr && <div className="banner">{actErr}</div>}
+      <table>
+        <thead><tr><th>Organization</th><th>Loop</th><th>Pending</th><th>Last run</th><th>Outcome</th><th></th></tr></thead>
+        <tbody>
+          {data.map((s) => (
+            <tr key={s.org}>
+              <td>{s.org}</td>
+              <td>{s.enabled ? <span className="badge ok">enabled</span> : <span className="badge warn">disabled</span>}{s.paused && <> <span className="badge danger">paused</span></>}</td>
+              <td>{s.actions || <span className="muted">none</span>}</td>
+              <td className="muted">{s.at ? s.at.slice(0, 16).replace("T", " ") : "—"}</td>
+              <td>{outcome(s)}</td>
+              <td>
+                <button className="chip" disabled={busy !== ""} onClick={() => act(`pause-${s.org}`, () => setPaused(s.org, !s.paused))}>
+                  {s.paused ? "Resume" : "Pause"}
+                </button>
+              </td>
+            </tr>
+          ))}
+          {data.length === 0 && <tr><td colSpan={6} className="muted">No reconcile status yet.</td></tr>}
+        </tbody>
+      </table>
+    </>
   );
 }
 
@@ -235,17 +255,56 @@ function StageOrgForm({ onStaged }: { onStaged: () => void }) {
   );
 }
 
+// DirectoryForm adds an operator-added resolver-backed directory (operator-only).
+function DirectoryForm({ onAdded }: { onAdded: () => void }) {
+  const [name, setName] = useState("");
+  const [domains, setDomains] = useState("");
+  const [endpoint, setEndpoint] = useState("");
+  const [probeGroup, setProbeGroup] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    setErr(""); setBusy(true);
+    try {
+      await addDirectory({ name: name.trim(), domains: domains.split(",").map((x) => x.trim()).filter(Boolean), endpoint: endpoint.trim(), probeGroup: probeGroup.trim() });
+      setName(""); setDomains(""); setEndpoint(""); setProbeGroup("");
+      onAdded();
+    } catch (e2) {
+      setErr(e2 instanceof Error ? e2.message : String(e2));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <form onSubmit={submit} style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
+      <label>Name<br /><input value={name} onChange={(e) => setName(e.target.value)} required /></label>
+      <label>Domains (comma-separated)<br /><input value={domains} onChange={(e) => setDomains(e.target.value)} style={{ width: 240 }} required /></label>
+      <label>DirectoryService endpoint<br /><input type="url" value={endpoint} onChange={(e) => setEndpoint(e.target.value)} style={{ width: 260 }} placeholder="http://google-group-sync:8090" required /></label>
+      <label>Probe group (optional)<br /><input value={probeGroup} onChange={(e) => setProbeGroup(e.target.value)} /></label>
+      <button type="submit" disabled={busy}>{busy ? "Adding…" : "Add directory"}</button>
+      {err && <span className="banner">{err}</span>}
+    </form>
+  );
+}
+
 function SettingsView() {
   const [reload, setReload] = useState(0);
+  const [actErr, setActErr] = useState("");
   const { data, error } = useAsync<Settings>(fetchSettings, [reload]);
+  const refresh = () => setReload((r) => r + 1);
+  const act = async (fn: () => Promise<void>) => {
+    setActErr("");
+    try { await fn(); refresh(); } catch (e) { setActErr(e instanceof Error ? e.message : String(e)); }
+  };
   if (error) return <div className="banner">{error}</div>;
   if (data === null) return <p className="muted">Loading…</p>;
   return (
     <>
-      <p className="muted">From the git-delivered configuration — <span className="badge muted">managed in git</span>.</p>
+      <p className="muted">Git-declared entries are <span className="badge muted">managed in git</span>; operator-added ones can be removed here.</p>
       <h2>Directories</h2>
       <table>
-        <thead><tr><th>Name</th><th>Domains</th><th>Reads via</th><th>Probe group</th></tr></thead>
+        <thead><tr><th>Name</th><th>Domains</th><th>Reads via</th><th>Probe group</th><th></th></tr></thead>
         <tbody>
           {(data.sources ?? []).map((s) => (
             <tr key={s.name}>
@@ -253,6 +312,7 @@ function SettingsView() {
               <td className="muted">{(s.domains ?? []).join(", ")}</td>
               <td>{s.endpoint ? <span className="muted">DirectoryService</span> : <span className="muted">in-process Google</span>}</td>
               <td className="muted">{s.probeGroup || "—"}</td>
+              <td></td>
             </tr>
           ))}
           {(data.storeSources ?? []).map((s) => (
@@ -261,11 +321,14 @@ function SettingsView() {
               <td className="muted">{(s.domains ?? []).join(", ")}</td>
               <td><span className="muted">DirectoryService</span></td>
               <td className="muted">{s.probeGroup || "—"}</td>
+              <td><button className="chip" onClick={() => act(() => deleteDirectory(s.name))}>Delete</button></td>
             </tr>
           ))}
-          {(data.sources ?? []).length === 0 && (data.storeSources ?? []).length === 0 && <tr><td colSpan={4} className="muted">No directories.</td></tr>}
+          {(data.sources ?? []).length === 0 && (data.storeSources ?? []).length === 0 && <tr><td colSpan={5} className="muted">No directories.</td></tr>}
         </tbody>
       </table>
+      {actErr && <div className="banner">{actErr}</div>}
+      <DirectoryForm onAdded={refresh} />
       <h2>Organizations</h2>
       {(data.orgs ?? []).map((o) => <OrgSection key={o.name} org={o} />)}
       {(data.storeOrgs ?? []).map((o) => <OrgSection key={`store-${o.name}`} org={o} staged />)}

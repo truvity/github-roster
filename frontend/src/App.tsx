@@ -49,7 +49,7 @@ function peopleMatches(p: Person, preset: Preset, q: string): boolean {
 // PersonForm adds (or re-approves) a roster mapping entry — the operator fills
 // the data and blesses the person in one action (approvedBy/At are stamped
 // server-side). Editing an existing name replaces its entry.
-function PersonForm({ onSaved }: { onSaved: () => void }) {
+function PersonForm({ onSaved, onCancel }: { onSaved: () => void; onCancel: () => void }) {
   const [name, setName] = useState("");
   const [github, setGithub] = useState("");
   const [k8s, setK8s] = useState("");
@@ -62,22 +62,21 @@ function PersonForm({ onSaved }: { onSaved: () => void }) {
     setErr(""); setBusy(true);
     try {
       await putPerson({ name: name.trim(), github: github.trim(), k8s: k8s.trim(), class: cls, emails: emails.split(",").map((x) => x.trim()).filter(Boolean) });
-      setName(""); setGithub(""); setK8s(""); setEmails("");
       onSaved();
     } catch (e2) {
       setErr(e2 instanceof Error ? e2.message : String(e2));
-    } finally {
       setBusy(false);
     }
   };
   return (
-    <form onSubmit={submit} style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
+    <form onSubmit={submit} style={{ margin: "12px 0", padding: 12, border: "1px solid var(--border, #ddd)", borderRadius: 8, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
       <label>Name<br /><input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ada Lovelace" required /></label>
       <label>GitHub login<br /><input value={github} onChange={(e) => setGithub(e.target.value)} placeholder="ada" required /></label>
       <label>Namespace (k8s)<br /><input value={k8s} onChange={(e) => setK8s(e.target.value)} placeholder="alovelace" /></label>
       <label>Class<br /><select value={cls} onChange={(e) => setCls(e.target.value)}><option value="employee">employee</option><option value="bot">bot</option></select></label>
-      <label>Emails (comma-separated)<br /><input value={emails} onChange={(e) => setEmails(e.target.value)} style={{ width: 240 }} placeholder="ada@acme.com" /></label>
-      <button type="submit" disabled={busy}>{busy ? "Saving…" : "Approve / Add"}</button>
+      <label>Emails (comma-separated)<br /><input value={emails} onChange={(e) => setEmails(e.target.value)} style={{ width: 220 }} placeholder="ada@acme.com" /></label>
+      <button type="submit" disabled={busy}>{busy ? "Saving…" : "Add person"}</button>
+      <button type="button" className="chip" onClick={onCancel}>Cancel</button>
       {err && <span className="banner">{err}</span>}
     </form>
   );
@@ -107,74 +106,73 @@ function CandidateRow({ c, onApproved }: { c: Candidate; onApproved: () => void 
   );
 }
 
+// A candidate (awaiting approval) belongs to the operator's worklist, so it
+// shows under "Needs me" and "All", and matches the search box.
+function candidateMatches(c: Candidate, preset: Preset, q: string): boolean {
+  if (q && !`${c.name} ${c.github}`.toLowerCase().includes(q.toLowerCase())) return false;
+  return preset === "needs" || preset === "all";
+}
+
+// orgCell renders a person's per-org membership as compact badges in one cell,
+// so members and candidates share the same columns.
+function orgCell(p: Person) {
+  const entries = Object.entries(p.orgs ?? {}).filter(([, m]) => m.state);
+  if (entries.length === 0) return <span className="muted">—</span>;
+  return <>{entries.map(([o, m]) => { const b = badge(m.state); return <span key={o} className={`badge ${b.cls}`} style={{ marginRight: 4 }}>{o}: {b.label}</span>; })}</>;
+}
+
 function PeopleView() {
   const [reload, setReload] = useState(0);
   const [actErr, setActErr] = useState("");
+  const [preset, setPreset] = useState<Preset>("needs");
+  const [q, setQ] = useState("");
+  const [adding, setAdding] = useState(false);
   const { data, error } = useAsync((s) => fetchRoster(s), [reload]);
-  const people = data?.people ?? null;
-  const candidates = data?.candidates ?? [];
   const refresh = () => setReload((r) => r + 1);
   const remove = async (name: string) => {
     setActErr("");
     try { await deletePerson(name); refresh(); } catch (e) { setActErr(e instanceof Error ? e.message : String(e)); }
   };
-  const [preset, setPreset] = useState<Preset>("all");
-  const [q, setQ] = useState("");
-  const orgs = useMemo(() => {
-    const set = new Set<string>();
-    (people ?? []).forEach((p) => Object.keys(p.orgs ?? {}).forEach((o) => set.add(o)));
-    return [...set].sort();
-  }, [people]);
+  const people = data?.people ?? null;
+  const candidates = data?.candidates ?? [];
+  const shownCandidates = useMemo(() => candidates.filter((c) => candidateMatches(c, preset, q)), [candidates, preset, q]);
   const rows = useMemo(
     () => (people ?? []).filter((p) => peopleMatches(p, preset, q)).sort((a, b) => a.name.localeCompare(b.name)),
     [people, preset, q],
   );
   if (error) return <div className="banner">{error}</div>;
   if (people === null) return <p className="muted">Loading…</p>;
-  const presets: [Preset, string][] = [["needs", "Needs me"], ["active", "Active"], ["left", "Left"], ["bots", "Bots"], ["all", "All"]];
+  const needs = candidates.length;
+  const presets: [Preset, string][] = [["needs", needs ? `Needs me (${needs})` : "Needs me"], ["active", "Active"], ["left", "Left"], ["bots", "Bots"], ["all", "All"]];
+  const empty = shownCandidates.length === 0 && rows.length === 0;
   return (
     <>
-      <div className="presets">
+      <div className="presets" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
         {presets.map(([k, l]) => <button key={k} className={preset === k ? "chip cur" : "chip"} onClick={() => setPreset(k)}>{l}</button>)}
         <input placeholder="name or login…" value={q} onChange={(e) => setQ(e.target.value)} />
+        <button style={{ marginLeft: "auto" }} onClick={() => setAdding((a) => !a)}>{adding ? "Close" : "+ Add person"}</button>
       </div>
       {actErr && <div className="banner">{actErr}</div>}
-      {candidates.length > 0 && (
-        <section style={{ marginBottom: 18 }}>
-          <h3>Needs approval ({candidates.length})</h3>
-          <p className="muted">People the loop detected but nobody has approved. Fill the missing field (a GitHub login for <b>new</b> people, a name for <b>unknown</b> members) and approve — each approval invites/keeps that one person.</p>
-          <table>
-            <thead><tr><th>Kind</th><th>Name</th><th>GitHub</th><th>Why</th><th></th></tr></thead>
-            <tbody>
-              {candidates.map((c, i) => <CandidateRow key={`${c.kind}-${c.name}-${c.github}-${i}`} c={c} onApproved={refresh} />)}
-            </tbody>
-          </table>
-        </section>
-      )}
+      {adding && <PersonForm onSaved={() => { setAdding(false); refresh(); }} onCancel={() => setAdding(false)} />}
       <table>
-        <thead><tr><th>Name</th><th>GitHub</th><th>State</th>{orgs.map((o) => <th key={o}>{o}</th>)}<th></th></tr></thead>
+        <thead><tr><th>State</th><th>Name</th><th>GitHub</th><th>Organizations</th><th></th></tr></thead>
         <tbody>
+          {shownCandidates.map((c, i) => <CandidateRow key={`c-${c.kind}-${c.name}-${c.github}-${i}`} c={c} onApproved={refresh} />)}
           {rows.map((p) => {
             const b = badge(p.state);
             return (
               <tr key={p.name}>
-                <td>{p.name}</td><td className="mono">{p.github || "—"}</td>
                 <td><span className={`badge ${b.cls}`}>{b.label}</span></td>
-                {orgs.map((o) => {
-                  const s = p.orgs?.[o]?.state;
-                  const ob = badge(s);
-                  return <td key={o}>{s ? <span className={`badge ${ob.cls}`}>{ob.label}</span> : <span className="muted">—</span>}</td>;
-                })}
+                <td>{p.name}</td>
+                <td className="mono">{p.github || "—"}</td>
+                <td>{orgCell(p)}</td>
                 <td><button className="chip" onClick={() => remove(p.name)} title="Remove from the roster">Remove</button></td>
               </tr>
             );
           })}
-          {rows.length === 0 && <tr><td colSpan={4 + orgs.length} className="muted">Nobody matches.</td></tr>}
+          {empty && <tr><td colSpan={5} className="muted">Nobody matches this filter.</td></tr>}
         </tbody>
       </table>
-      <h3 style={{ marginTop: 18 }}>Approve / add a person</h3>
-      <p className="muted">Fill the person's data (their GitHub login above all) and bless them in one action — the reconcile loop invites them. Operator-only.</p>
-      <PersonForm onSaved={refresh} />
     </>
   );
 }

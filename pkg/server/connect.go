@@ -188,10 +188,18 @@ func (s *rosterConnect) GetStatus(
 	out := make([]*rosterv1.ReconcileStatus, 0, len(statuses))
 	for i := range statuses {
 		st := &statuses[i]
+
+		// The broker's snapshot carries the enabled/paused it resolved on its
+		// LAST pass; an operator who just clicked Enable/Pause would see the
+		// stale value until the next tick. Overlay the LIVE control flags so
+		// the badges reflect the click at once (the plan/last-run stay as the
+		// snapshot — truthful: "enabled now, plan pending, applies next tick").
+		enabled, paused := s.liveControl(ctx, st.Org, st.Enabled, st.Paused)
+
 		out = append(out, &rosterv1.ReconcileStatus{
 			Org:         st.Org,
-			Enabled:     st.Enabled,
-			Paused:      st.Paused,
+			Enabled:     enabled,
+			Paused:      paused,
 			At:          rfc3339(st.At),
 			Actions:     int32(st.Actions),     //nolint:gosec // small action count
 			Adds:        int32(st.Adds),        //nolint:gosec // small count
@@ -207,6 +215,36 @@ func (s *rosterConnect) GetStatus(
 	}
 
 	return connect.NewResponse(&rosterv1.GetStatusResponse{Statuses: out}), nil
+}
+
+// liveControl overlays the current pause/enable flags from the console's
+// control store onto the broker snapshot's values, so a just-made change shows
+// immediately. On any read error it falls back to the snapshot value (never
+// worse than before). An unset enable override resolves to the org's config
+// day-0 default — the same rule the broker's loop applies.
+func (s *rosterConnect) liveControl(ctx context.Context, org string, snapEnabled, snapPaused bool) (enabled, paused bool) {
+	enabled, paused = snapEnabled, snapPaused
+
+	if s.deps.Control == nil {
+		return enabled, paused
+	}
+
+	if override, err := s.deps.Control.EnabledOverride(ctx, org); err == nil {
+		switch {
+		case override != nil:
+			enabled = *override
+		default:
+			if o, ok := s.deps.Config.Org(org); ok {
+				enabled = o.ReconcileEnabled
+			}
+		}
+	}
+
+	if p, err := s.deps.Control.Paused(ctx, org); err == nil {
+		paused = p
+	}
+
+	return enabled, paused
 }
 
 // GetAudit returns audit records newest-first (History view).

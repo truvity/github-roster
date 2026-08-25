@@ -131,6 +131,32 @@ func TestSetReconcileEnabledWritesViaControlWithoutBroker(t *testing.T) {
 	}
 }
 
+// The Status badges must reflect the LIVE control flags, not the broker's
+// last-pass snapshot — the "Enable succeeded but still shows disabled" bug.
+func TestLiveControlOverlaysSnapshot(t *testing.T) {
+	ctrl := newFakeControl()
+	ctrl.enabled["acme"] = true // operator just enabled it
+	ctrl.paused["acme"] = true  // and paused it
+
+	cfg := &config.Config{Orgs: []config.Org{{Name: "acme", ReconcileEnabled: false}}}
+	s := &rosterConnect{deps: &Deps{Control: ctrl, Config: cfg}}
+
+	// Snapshot says disabled+unpaused (stale); overlay must win.
+	enabled, paused := s.liveControl(context.Background(), "acme", false, false)
+	if !enabled || !paused {
+		t.Fatalf("overlay = (enabled=%v paused=%v), want both true", enabled, paused)
+	}
+
+	// No override set → fall back to the org's config default (here false),
+	// not the stale snapshot's true.
+	cfg.Orgs[0].ReconcileEnabled = false
+	fresh := newFakeControl()
+	s2 := &rosterConnect{deps: &Deps{Control: fresh, Config: cfg}}
+	if enabled, _ := s2.liveControl(context.Background(), "acme", true, false); enabled {
+		t.Fatal("unset override should resolve to the config default (false), not the snapshot")
+	}
+}
+
 func TestSetReconcileEnabledGate(t *testing.T) {
 	s := &rosterConnect{deps: &Deps{Control: newFakeControl()}}
 

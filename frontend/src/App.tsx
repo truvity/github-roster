@@ -3,7 +3,7 @@ import {
   fetchRoster, fetchStatus, fetchAudit, flattenAudit,
   fetchSettings, fetchVersion, fetchMe, stageOrg,
   addDirectory, deleteDirectory, setPaused, runReconcile, putPerson, deletePerson,
-  type Person, type ReconcileStatus, type Change, type Settings, type SettingsOrg,
+  type Person, type ReconcileStatus, type Change, type Settings, type SettingsOrg, type Candidate,
 } from "./api";
 
 type Tab = "people" | "status" | "history" | "settings";
@@ -83,10 +83,36 @@ function PersonForm({ onSaved }: { onSaved: () => void }) {
   );
 }
 
+// CandidateRow is one awaiting-approval worklist row: editable name + login
+// (each prefilled from the side the join knows), approved with one click.
+function CandidateRow({ c, onApproved }: { c: Candidate; onApproved: () => void }) {
+  const [name, setName] = useState(c.name);
+  const [github, setGithub] = useState(c.github);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const approve = async () => {
+    setErr(""); setBusy(true);
+    try { await putPerson({ name: name.trim(), github: github.trim(), k8s: name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-"), class: "employee" }); onApproved(); }
+    catch (e) { setErr(e instanceof Error ? e.message : String(e)); setBusy(false); }
+  };
+  const ready = name.trim() !== "" && github.trim() !== "";
+  return (
+    <tr>
+      <td><span className={`badge ${c.kind === "unknown" ? "danger" : "warn"}`}>{c.kind === "unknown" ? "unknown" : "new"}</span></td>
+      <td><input value={name} onChange={(e) => setName(e.target.value)} placeholder="Full Name" style={{ width: 160 }} /></td>
+      <td><input className="mono" value={github} onChange={(e) => setGithub(e.target.value)} placeholder="login" style={{ width: 140 }} /></td>
+      <td className="muted">{c.org || ""} {c.detail}</td>
+      <td><button className="chip" disabled={!ready || busy} onClick={approve} title={c.kind === "unknown" ? "Adopt this member" : "Approve & invite"}>{busy ? "…" : c.kind === "unknown" ? "Adopt" : "Approve"}</button>{err && <span className="banner">{err}</span>}</td>
+    </tr>
+  );
+}
+
 function PeopleView() {
   const [reload, setReload] = useState(0);
   const [actErr, setActErr] = useState("");
-  const { data: people, error } = useAsync((s) => fetchRoster(s).then((r) => r.people ?? []), [reload]);
+  const { data, error } = useAsync((s) => fetchRoster(s), [reload]);
+  const people = data?.people ?? null;
+  const candidates = data?.candidates ?? [];
   const refresh = () => setReload((r) => r + 1);
   const remove = async (name: string) => {
     setActErr("");
@@ -113,6 +139,18 @@ function PeopleView() {
         <input placeholder="name or login…" value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
       {actErr && <div className="banner">{actErr}</div>}
+      {candidates.length > 0 && (
+        <section style={{ marginBottom: 18 }}>
+          <h3>Needs approval ({candidates.length})</h3>
+          <p className="muted">People the loop detected but nobody has approved. Fill the missing field (a GitHub login for <b>new</b> people, a name for <b>unknown</b> members) and approve — each approval invites/keeps that one person.</p>
+          <table>
+            <thead><tr><th>Kind</th><th>Name</th><th>GitHub</th><th>Why</th><th></th></tr></thead>
+            <tbody>
+              {candidates.map((c, i) => <CandidateRow key={`${c.kind}-${c.name}-${c.github}-${i}`} c={c} onApproved={refresh} />)}
+            </tbody>
+          </table>
+        </section>
+      )}
       <table>
         <thead><tr><th>Name</th><th>GitHub</th><th>State</th>{orgs.map((o) => <th key={o}>{o}</th>)}<th></th></tr></thead>
         <tbody>

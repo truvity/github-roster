@@ -16,7 +16,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file roster/v1/roster.proto.
  */
 export const file_roster_v1_roster: GenFile = /*@__PURE__*/
-  fileDesc("ChZyb3N0ZXIvdjEvcm9zdGVyLnByb3RvEglyb3N0ZXIudjEibAoQUHV0UGVyc29uUmVxdWVzdBIMCgRuYW1lGAEgASgJEg4KBmdpdGh1YhgCIAEoCRIOCgZlbWFpbHMYAyADKAkSCwoDazhzGAQgASgJEg0KBWNsYXNzGAUgASgJEg4KBnBpbm5lZBgGIAMoCSITChFQdXRQZXJzb25SZXNwb25zZSIjChNEZWxldGVQZXJzb25SZXF1ZXN0EgwKBG5hbWUYASABKAkiFgoURGVsZXRlUGVyc29uUmVzcG9uc2UiWwoTQWRkRGlyZWN0b3J5UmVxdWVzdBIMCgRuYW1lGAEgASgJEg8KB2RvbWFpbnMYAiADKAkSEAoIZW5kcG9pbnQYAyABKAkSEwoLcHJvYmVfZ3JvdXAYBCABKAkiFgoUQWRkRGlyZWN0b3J5UmVzcG9uc2UiJgoWRGVsZXRlRGlyZWN0b3J5UmVxdWVzdBIMCgRuYW1lGAEgASgJIhkKF0RlbGV0ZURpcmVjdG9yeVJlc3BvbnNlIi8KEFNldFBhdXNlZFJlcXVlc3QSCwoDb3JnGAEgASgJEg4KBnBhdXNlZBgCIAEoCCITChFTZXRQYXVzZWRSZXNwb25zZSIVChNSdW5SZWNvbmNpbGVSZXF1ZXN0IhYKFFJ1blJlY29uY2lsZVJlc3BvbnNlImIKD1N0YWdlT3JnUmVxdWVzdBIMCgRuYW1lGAEgASgJEhIKCm1pbl9hZG1pbnMYAiABKAUSDAoEdGVhbRgDIAEoCRIOCgZncm91cHMYBCADKAkSDwoHbWVtYmVycxgFIAMoCSISChBTdGFnZU9yZ1Jlc3BvbnNlIg4KDEdldE1lUmVxdWVzdCI6Cg1HZXRNZVJlc3BvbnNlEgwKBG5hbWUYASABKAkSDQoFZW1haWwYAiABKAkSDAoEcm9sZRgDIAEoCSITChFHZXRWZXJzaW9uUmVxdWVzdCI1ChJHZXRWZXJzaW9uUmVzcG9uc2USDwoHdmVyc2lvbhgBIAEoCRIOCgZjb21taXQYAiABKAkiFAoSR2V0U2V0dGluZ3NSZXF1ZXN0IrcBChNHZXRTZXR0aW5nc1Jlc3BvbnNlEisKB3NvdXJjZXMYASADKAsyGi5yb3N0ZXIudjEuRGlyZWN0b3J5U291cmNlEjEKDXN0b3JlX3NvdXJjZXMYAiADKAsyGi5yb3N0ZXIudjEuRGlyZWN0b3J5U291cmNlEhwKBG9yZ3MYAyADKAsyDi5yb3N0ZXIudjEuT3JnEiIKCnN0b3JlX29yZ3MYBCADKAsyDi5yb3N0ZXIudjEuT3JnIlcKD0RpcmVjdG9yeVNvdXJjZRIMCgRuYW1lGAEgASgJEg8KB2RvbWFpbnMYAiADKAkSEAoIZW5kcG9pbnQYAyABKAkSEwoLcHJvYmVfZ3JvdXAYBCABKAkihwEKA09yZxIMCgRuYW1lGAEgASgJEg8KB2NvbXBhbnkYAiABKAkSEgoKbWluX2FkbWlucxgDIAEoBRIZChFyZWNvbmNpbGVfZW5hYmxlZBgEIAEoCBIeCgV0ZWFtcxgFIAMoCzIPLnJvc3Rlci52MS5UZWFtEhIKCnByb3ZlbmFuY2UYBiABKAkiRQoEVGVhbRIMCgRuYW1lGAEgASgJEg4KBmdyb3VwcxgCIAMoCRIPCgdtZW1iZXJzGAMgAygJEg4KBnBpbm5lZBgEIAEoCCISChBHZXRSb3N0ZXJSZXF1ZXN0IjYKEUdldFJvc3RlclJlc3BvbnNlEiEKBnBlb3BsZRgBIAMoCzIRLnJvc3Rlci52MS5QZXJzb24iwQEKBlBlcnNvbhIMCgRuYW1lGAEgASgJEg4KBmdpdGh1YhgCIAEoCRINCgVjbGFzcxgDIAEoCRIMCgRsaXZlGAQgASgIEg0KBXN0YXRlGAUgASgJEikKBG9yZ3MYBiADKAsyGy5yb3N0ZXIudjEuUGVyc29uLk9yZ3NFbnRyeRpCCglPcmdzRW50cnkSCwoDa2V5GAEgASgJEiQKBXZhbHVlGAIgASgLMhUucm9zdGVyLnYxLk1lbWJlcnNoaXA6AjgBIkYKCk1lbWJlcnNoaXASDgoGbWVtYmVyGAEgASgIEhoKEmludml0YXRpb25fcGVuZGluZxgCIAEoCBIMCgRyb2xlGAMgASgJIhIKEEdldFN0YXR1c1JlcXVlc3QiQQoRR2V0U3RhdHVzUmVzcG9uc2USLAoIc3RhdHVzZXMYASADKAsyGi5yb3N0ZXIudjEuUmVjb25jaWxlU3RhdHVzIpoBCg9SZWNvbmNpbGVTdGF0dXMSCwoDb3JnGAEgASgJEg8KB2VuYWJsZWQYAiABKAgSDgoGcGF1c2VkGAMgASgIEgoKAmF0GAQgASgJEg8KB2FjdGlvbnMYBSABKAUSDwoHYXBwbGllZBgGIAEoCBIMCgRoZWxkGAcgASgIEg4KBnJlYXNvbhgIIAEoCRINCgVlcnJvchgJIAEoCSItCg9HZXRBdWRpdFJlcXVlc3QSCwoDb3JnGAEgASgJEg0KBWxpbWl0GAIgASgFIjsKEEdldEF1ZGl0UmVzcG9uc2USJwoHcmVjb3JkcxgBIAMoCzIWLnJvc3Rlci52MS5BdWRpdFJlY29yZCLFAQoLQXVkaXRSZWNvcmQSCgoCYXQYASABKAkSCwoDb3JnGAIgASgJEgwKBGtpbmQYAyABKAkSEQoJY29uZmlybWVkGAQgASgIEg0KBWFjdG9yGAUgASgJEhMKC2FjdG9yX2VtYWlsGAYgASgJEg4KBmFkZGluZxgHIAMoCRIQCghyZW1vdmluZxgIIAMoCRInCgdjaGFuZ2VzGAkgAygLMhYucm9zdGVyLnYxLkF1ZGl0Q2hhbmdlEg0KBWVycm9yGAogASgJIkoKC0F1ZGl0Q2hhbmdlEgwKBHZlcmIYASABKAkSDwoHc3ViamVjdBgCIAEoCRIMCgR0ZWFtGAMgASgJEg4KBmRldGFpbBgEIAEoCTLbBwoNUm9zdGVyU2VydmljZRJJCgpHZXRWZXJzaW9uEhwucm9zdGVyLnYxLkdldFZlcnNpb25SZXF1ZXN0Gh0ucm9zdGVyLnYxLkdldFZlcnNpb25SZXNwb25zZRJMCgtHZXRTZXR0aW5ncxIdLnJvc3Rlci52MS5HZXRTZXR0aW5nc1JlcXVlc3QaHi5yb3N0ZXIudjEuR2V0U2V0dGluZ3NSZXNwb25zZRJGCglHZXRSb3N0ZXISGy5yb3N0ZXIudjEuR2V0Um9zdGVyUmVxdWVzdBocLnJvc3Rlci52MS5HZXRSb3N0ZXJSZXNwb25zZRJGCglHZXRTdGF0dXMSGy5yb3N0ZXIudjEuR2V0U3RhdHVzUmVxdWVzdBocLnJvc3Rlci52MS5HZXRTdGF0dXNSZXNwb25zZRJDCghHZXRBdWRpdBIaLnJvc3Rlci52MS5HZXRBdWRpdFJlcXVlc3QaGy5yb3N0ZXIudjEuR2V0QXVkaXRSZXNwb25zZRI6CgVHZXRNZRIXLnJvc3Rlci52MS5HZXRNZVJlcXVlc3QaGC5yb3N0ZXIudjEuR2V0TWVSZXNwb25zZRJDCghTdGFnZU9yZxIaLnJvc3Rlci52MS5TdGFnZU9yZ1JlcXVlc3QaGy5yb3N0ZXIudjEuU3RhZ2VPcmdSZXNwb25zZRJPCgxBZGREaXJlY3RvcnkSHi5yb3N0ZXIudjEuQWRkRGlyZWN0b3J5UmVxdWVzdBofLnJvc3Rlci52MS5BZGREaXJlY3RvcnlSZXNwb25zZRJYCg9EZWxldGVEaXJlY3RvcnkSIS5yb3N0ZXIudjEuRGVsZXRlRGlyZWN0b3J5UmVxdWVzdBoiLnJvc3Rlci52MS5EZWxldGVEaXJlY3RvcnlSZXNwb25zZRJGCglTZXRQYXVzZWQSGy5yb3N0ZXIudjEuU2V0UGF1c2VkUmVxdWVzdBocLnJvc3Rlci52MS5TZXRQYXVzZWRSZXNwb25zZRJPCgxSdW5SZWNvbmNpbGUSHi5yb3N0ZXIudjEuUnVuUmVjb25jaWxlUmVxdWVzdBofLnJvc3Rlci52MS5SdW5SZWNvbmNpbGVSZXNwb25zZRJGCglQdXRQZXJzb24SGy5yb3N0ZXIudjEuUHV0UGVyc29uUmVxdWVzdBocLnJvc3Rlci52MS5QdXRQZXJzb25SZXNwb25zZRJPCgxEZWxldGVQZXJzb24SHi5yb3N0ZXIudjEuRGVsZXRlUGVyc29uUmVxdWVzdBofLnJvc3Rlci52MS5EZWxldGVQZXJzb25SZXNwb25zZUKaAQoNY29tLnJvc3Rlci52MUILUm9zdGVyUHJvdG9QAVo3Z2l0aHViLmNvbS90cnV2aXR5L2dpdGh1Yi1yb3N0ZXIvZ2VuL3Jvc3Rlci92MTtyb3N0ZXJ2MaICA1JYWKoCCVJvc3Rlci5WMcoCCVJvc3RlclxWMeICFVJvc3RlclxWMVxHUEJNZXRhZGF0YeoCClJvc3Rlcjo6VjFiBnByb3RvMw");
+  fileDesc("ChZyb3N0ZXIvdjEvcm9zdGVyLnByb3RvEglyb3N0ZXIudjEibAoQUHV0UGVyc29uUmVxdWVzdBIMCgRuYW1lGAEgASgJEg4KBmdpdGh1YhgCIAEoCRIOCgZlbWFpbHMYAyADKAkSCwoDazhzGAQgASgJEg0KBWNsYXNzGAUgASgJEg4KBnBpbm5lZBgGIAMoCSITChFQdXRQZXJzb25SZXNwb25zZSIjChNEZWxldGVQZXJzb25SZXF1ZXN0EgwKBG5hbWUYASABKAkiFgoURGVsZXRlUGVyc29uUmVzcG9uc2UiWwoTQWRkRGlyZWN0b3J5UmVxdWVzdBIMCgRuYW1lGAEgASgJEg8KB2RvbWFpbnMYAiADKAkSEAoIZW5kcG9pbnQYAyABKAkSEwoLcHJvYmVfZ3JvdXAYBCABKAkiFgoUQWRkRGlyZWN0b3J5UmVzcG9uc2UiJgoWRGVsZXRlRGlyZWN0b3J5UmVxdWVzdBIMCgRuYW1lGAEgASgJIhkKF0RlbGV0ZURpcmVjdG9yeVJlc3BvbnNlIi8KEFNldFBhdXNlZFJlcXVlc3QSCwoDb3JnGAEgASgJEg4KBnBhdXNlZBgCIAEoCCITChFTZXRQYXVzZWRSZXNwb25zZSIVChNSdW5SZWNvbmNpbGVSZXF1ZXN0IhYKFFJ1blJlY29uY2lsZVJlc3BvbnNlImIKD1N0YWdlT3JnUmVxdWVzdBIMCgRuYW1lGAEgASgJEhIKCm1pbl9hZG1pbnMYAiABKAUSDAoEdGVhbRgDIAEoCRIOCgZncm91cHMYBCADKAkSDwoHbWVtYmVycxgFIAMoCSISChBTdGFnZU9yZ1Jlc3BvbnNlIg4KDEdldE1lUmVxdWVzdCI6Cg1HZXRNZVJlc3BvbnNlEgwKBG5hbWUYASABKAkSDQoFZW1haWwYAiABKAkSDAoEcm9sZRgDIAEoCSITChFHZXRWZXJzaW9uUmVxdWVzdCI1ChJHZXRWZXJzaW9uUmVzcG9uc2USDwoHdmVyc2lvbhgBIAEoCRIOCgZjb21taXQYAiABKAkiFAoSR2V0U2V0dGluZ3NSZXF1ZXN0IrcBChNHZXRTZXR0aW5nc1Jlc3BvbnNlEisKB3NvdXJjZXMYASADKAsyGi5yb3N0ZXIudjEuRGlyZWN0b3J5U291cmNlEjEKDXN0b3JlX3NvdXJjZXMYAiADKAsyGi5yb3N0ZXIudjEuRGlyZWN0b3J5U291cmNlEhwKBG9yZ3MYAyADKAsyDi5yb3N0ZXIudjEuT3JnEiIKCnN0b3JlX29yZ3MYBCADKAsyDi5yb3N0ZXIudjEuT3JnIlcKD0RpcmVjdG9yeVNvdXJjZRIMCgRuYW1lGAEgASgJEg8KB2RvbWFpbnMYAiADKAkSEAoIZW5kcG9pbnQYAyABKAkSEwoLcHJvYmVfZ3JvdXAYBCABKAkihwEKA09yZxIMCgRuYW1lGAEgASgJEg8KB2NvbXBhbnkYAiABKAkSEgoKbWluX2FkbWlucxgDIAEoBRIZChFyZWNvbmNpbGVfZW5hYmxlZBgEIAEoCBIeCgV0ZWFtcxgFIAMoCzIPLnJvc3Rlci52MS5UZWFtEhIKCnByb3ZlbmFuY2UYBiABKAkiRQoEVGVhbRIMCgRuYW1lGAEgASgJEg4KBmdyb3VwcxgCIAMoCRIPCgdtZW1iZXJzGAMgAygJEg4KBnBpbm5lZBgEIAEoCCISChBHZXRSb3N0ZXJSZXF1ZXN0ImAKEUdldFJvc3RlclJlc3BvbnNlEiEKBnBlb3BsZRgBIAMoCzIRLnJvc3Rlci52MS5QZXJzb24SKAoKY2FuZGlkYXRlcxgCIAMoCzIULnJvc3Rlci52MS5DYW5kaWRhdGUiVAoJQ2FuZGlkYXRlEgwKBGtpbmQYASABKAkSDAoEbmFtZRgCIAEoCRIOCgZnaXRodWIYAyABKAkSCwoDb3JnGAQgASgJEg4KBmRldGFpbBgFIAEoCSLBAQoGUGVyc29uEgwKBG5hbWUYASABKAkSDgoGZ2l0aHViGAIgASgJEg0KBWNsYXNzGAMgASgJEgwKBGxpdmUYBCABKAgSDQoFc3RhdGUYBSABKAkSKQoEb3JncxgGIAMoCzIbLnJvc3Rlci52MS5QZXJzb24uT3Jnc0VudHJ5GkIKCU9yZ3NFbnRyeRILCgNrZXkYASABKAkSJAoFdmFsdWUYAiABKAsyFS5yb3N0ZXIudjEuTWVtYmVyc2hpcDoCOAEiRgoKTWVtYmVyc2hpcBIOCgZtZW1iZXIYASABKAgSGgoSaW52aXRhdGlvbl9wZW5kaW5nGAIgASgIEgwKBHJvbGUYAyABKAkiEgoQR2V0U3RhdHVzUmVxdWVzdCJBChFHZXRTdGF0dXNSZXNwb25zZRIsCghzdGF0dXNlcxgBIAMoCzIaLnJvc3Rlci52MS5SZWNvbmNpbGVTdGF0dXMimgEKD1JlY29uY2lsZVN0YXR1cxILCgNvcmcYASABKAkSDwoHZW5hYmxlZBgCIAEoCBIOCgZwYXVzZWQYAyABKAgSCgoCYXQYBCABKAkSDwoHYWN0aW9ucxgFIAEoBRIPCgdhcHBsaWVkGAYgASgIEgwKBGhlbGQYByABKAgSDgoGcmVhc29uGAggASgJEg0KBWVycm9yGAkgASgJIi0KD0dldEF1ZGl0UmVxdWVzdBILCgNvcmcYASABKAkSDQoFbGltaXQYAiABKAUiOwoQR2V0QXVkaXRSZXNwb25zZRInCgdyZWNvcmRzGAEgAygLMhYucm9zdGVyLnYxLkF1ZGl0UmVjb3JkIsUBCgtBdWRpdFJlY29yZBIKCgJhdBgBIAEoCRILCgNvcmcYAiABKAkSDAoEa2luZBgDIAEoCRIRCgljb25maXJtZWQYBCABKAgSDQoFYWN0b3IYBSABKAkSEwoLYWN0b3JfZW1haWwYBiABKAkSDgoGYWRkaW5nGAcgAygJEhAKCHJlbW92aW5nGAggAygJEicKB2NoYW5nZXMYCSADKAsyFi5yb3N0ZXIudjEuQXVkaXRDaGFuZ2USDQoFZXJyb3IYCiABKAkiSgoLQXVkaXRDaGFuZ2USDAoEdmVyYhgBIAEoCRIPCgdzdWJqZWN0GAIgASgJEgwKBHRlYW0YAyABKAkSDgoGZGV0YWlsGAQgASgJMtsHCg1Sb3N0ZXJTZXJ2aWNlEkkKCkdldFZlcnNpb24SHC5yb3N0ZXIudjEuR2V0VmVyc2lvblJlcXVlc3QaHS5yb3N0ZXIudjEuR2V0VmVyc2lvblJlc3BvbnNlEkwKC0dldFNldHRpbmdzEh0ucm9zdGVyLnYxLkdldFNldHRpbmdzUmVxdWVzdBoeLnJvc3Rlci52MS5HZXRTZXR0aW5nc1Jlc3BvbnNlEkYKCUdldFJvc3RlchIbLnJvc3Rlci52MS5HZXRSb3N0ZXJSZXF1ZXN0Ghwucm9zdGVyLnYxLkdldFJvc3RlclJlc3BvbnNlEkYKCUdldFN0YXR1cxIbLnJvc3Rlci52MS5HZXRTdGF0dXNSZXF1ZXN0Ghwucm9zdGVyLnYxLkdldFN0YXR1c1Jlc3BvbnNlEkMKCEdldEF1ZGl0Ehoucm9zdGVyLnYxLkdldEF1ZGl0UmVxdWVzdBobLnJvc3Rlci52MS5HZXRBdWRpdFJlc3BvbnNlEjoKBUdldE1lEhcucm9zdGVyLnYxLkdldE1lUmVxdWVzdBoYLnJvc3Rlci52MS5HZXRNZVJlc3BvbnNlEkMKCFN0YWdlT3JnEhoucm9zdGVyLnYxLlN0YWdlT3JnUmVxdWVzdBobLnJvc3Rlci52MS5TdGFnZU9yZ1Jlc3BvbnNlEk8KDEFkZERpcmVjdG9yeRIeLnJvc3Rlci52MS5BZGREaXJlY3RvcnlSZXF1ZXN0Gh8ucm9zdGVyLnYxLkFkZERpcmVjdG9yeVJlc3BvbnNlElgKD0RlbGV0ZURpcmVjdG9yeRIhLnJvc3Rlci52MS5EZWxldGVEaXJlY3RvcnlSZXF1ZXN0GiIucm9zdGVyLnYxLkRlbGV0ZURpcmVjdG9yeVJlc3BvbnNlEkYKCVNldFBhdXNlZBIbLnJvc3Rlci52MS5TZXRQYXVzZWRSZXF1ZXN0Ghwucm9zdGVyLnYxLlNldFBhdXNlZFJlc3BvbnNlEk8KDFJ1blJlY29uY2lsZRIeLnJvc3Rlci52MS5SdW5SZWNvbmNpbGVSZXF1ZXN0Gh8ucm9zdGVyLnYxLlJ1blJlY29uY2lsZVJlc3BvbnNlEkYKCVB1dFBlcnNvbhIbLnJvc3Rlci52MS5QdXRQZXJzb25SZXF1ZXN0Ghwucm9zdGVyLnYxLlB1dFBlcnNvblJlc3BvbnNlEk8KDERlbGV0ZVBlcnNvbhIeLnJvc3Rlci52MS5EZWxldGVQZXJzb25SZXF1ZXN0Gh8ucm9zdGVyLnYxLkRlbGV0ZVBlcnNvblJlc3BvbnNlQpoBCg1jb20ucm9zdGVyLnYxQgtSb3N0ZXJQcm90b1ABWjdnaXRodWIuY29tL3RydXZpdHkvZ2l0aHViLXJvc3Rlci9nZW4vcm9zdGVyL3YxO3Jvc3RlcnYxogIDUlhYqgIJUm9zdGVyLlYxygIJUm9zdGVyXFYx4gIVUm9zdGVyXFYxXEdQQk1ldGFkYXRh6gIKUm9zdGVyOjpWMWIGcHJvdG8z");
 
 /**
  * @generated from message roster.v1.PutPersonRequest
@@ -556,6 +556,15 @@ export type GetRosterResponse = Message<"roster.v1.GetRosterResponse"> & {
    * @generated from field: repeated roster.v1.Person people = 1;
    */
   people: Person[];
+
+  /**
+   * Candidates are the awaiting-approval worklist: people the join detected but
+   * nobody has approved — NEW (live in a mapped group, no entry) and UNKNOWN
+   * (a GitHub member matching no entry).
+   *
+   * @generated from field: repeated roster.v1.Candidate candidates = 2;
+   */
+  candidates: Candidate[];
 };
 
 /**
@@ -564,6 +573,55 @@ export type GetRosterResponse = Message<"roster.v1.GetRosterResponse"> & {
  */
 export const GetRosterResponseSchema: GenMessage<GetRosterResponse> = /*@__PURE__*/
   messageDesc(file_roster_v1_roster, 24);
+
+/**
+ * Candidate is an awaiting-approval row. For NEW the name is known and a
+ * GitHub login must be supplied; for UNKNOWN the login is known and a name
+ * must be supplied. Approving one is a PutPerson.
+ *
+ * @generated from message roster.v1.Candidate
+ */
+export type Candidate = Message<"roster.v1.Candidate"> & {
+  /**
+   * Kind is "new" (unmapped live person) or "unknown" (unmapped GitHub member).
+   *
+   * @generated from field: string kind = 1;
+   */
+  kind: string;
+
+  /**
+   * Name is set for NEW (the directory display name); empty for UNKNOWN.
+   *
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * Github is set for UNKNOWN (the member login); empty for NEW.
+   *
+   * @generated from field: string github = 3;
+   */
+  github: string;
+
+  /**
+   * Org is set for UNKNOWN (the organization the member was found in).
+   *
+   * @generated from field: string org = 4;
+   */
+  org: string;
+
+  /**
+   * @generated from field: string detail = 5;
+   */
+  detail: string;
+};
+
+/**
+ * Describes the message roster.v1.Candidate.
+ * Use `create(CandidateSchema)` to create a new message.
+ */
+export const CandidateSchema: GenMessage<Candidate> = /*@__PURE__*/
+  messageDesc(file_roster_v1_roster, 25);
 
 /**
  * @generated from message roster.v1.Person
@@ -605,7 +663,7 @@ export type Person = Message<"roster.v1.Person"> & {
  * Use `create(PersonSchema)` to create a new message.
  */
 export const PersonSchema: GenMessage<Person> = /*@__PURE__*/
-  messageDesc(file_roster_v1_roster, 25);
+  messageDesc(file_roster_v1_roster, 26);
 
 /**
  * @generated from message roster.v1.Membership
@@ -632,7 +690,7 @@ export type Membership = Message<"roster.v1.Membership"> & {
  * Use `create(MembershipSchema)` to create a new message.
  */
 export const MembershipSchema: GenMessage<Membership> = /*@__PURE__*/
-  messageDesc(file_roster_v1_roster, 26);
+  messageDesc(file_roster_v1_roster, 27);
 
 /**
  * @generated from message roster.v1.GetStatusRequest
@@ -645,7 +703,7 @@ export type GetStatusRequest = Message<"roster.v1.GetStatusRequest"> & {
  * Use `create(GetStatusRequestSchema)` to create a new message.
  */
 export const GetStatusRequestSchema: GenMessage<GetStatusRequest> = /*@__PURE__*/
-  messageDesc(file_roster_v1_roster, 27);
+  messageDesc(file_roster_v1_roster, 28);
 
 /**
  * @generated from message roster.v1.GetStatusResponse
@@ -662,7 +720,7 @@ export type GetStatusResponse = Message<"roster.v1.GetStatusResponse"> & {
  * Use `create(GetStatusResponseSchema)` to create a new message.
  */
 export const GetStatusResponseSchema: GenMessage<GetStatusResponse> = /*@__PURE__*/
-  messageDesc(file_roster_v1_roster, 28);
+  messageDesc(file_roster_v1_roster, 29);
 
 /**
  * @generated from message roster.v1.ReconcileStatus
@@ -721,7 +779,7 @@ export type ReconcileStatus = Message<"roster.v1.ReconcileStatus"> & {
  * Use `create(ReconcileStatusSchema)` to create a new message.
  */
 export const ReconcileStatusSchema: GenMessage<ReconcileStatus> = /*@__PURE__*/
-  messageDesc(file_roster_v1_roster, 29);
+  messageDesc(file_roster_v1_roster, 30);
 
 /**
  * @generated from message roster.v1.GetAuditRequest
@@ -747,7 +805,7 @@ export type GetAuditRequest = Message<"roster.v1.GetAuditRequest"> & {
  * Use `create(GetAuditRequestSchema)` to create a new message.
  */
 export const GetAuditRequestSchema: GenMessage<GetAuditRequest> = /*@__PURE__*/
-  messageDesc(file_roster_v1_roster, 30);
+  messageDesc(file_roster_v1_roster, 31);
 
 /**
  * @generated from message roster.v1.GetAuditResponse
@@ -764,7 +822,7 @@ export type GetAuditResponse = Message<"roster.v1.GetAuditResponse"> & {
  * Use `create(GetAuditResponseSchema)` to create a new message.
  */
 export const GetAuditResponseSchema: GenMessage<GetAuditResponse> = /*@__PURE__*/
-  messageDesc(file_roster_v1_roster, 31);
+  messageDesc(file_roster_v1_roster, 32);
 
 /**
  * @generated from message roster.v1.AuditRecord
@@ -828,7 +886,7 @@ export type AuditRecord = Message<"roster.v1.AuditRecord"> & {
  * Use `create(AuditRecordSchema)` to create a new message.
  */
 export const AuditRecordSchema: GenMessage<AuditRecord> = /*@__PURE__*/
-  messageDesc(file_roster_v1_roster, 32);
+  messageDesc(file_roster_v1_roster, 33);
 
 /**
  * @generated from message roster.v1.AuditChange
@@ -860,7 +918,7 @@ export type AuditChange = Message<"roster.v1.AuditChange"> & {
  * Use `create(AuditChangeSchema)` to create a new message.
  */
 export const AuditChangeSchema: GenMessage<AuditChange> = /*@__PURE__*/
-  messageDesc(file_roster_v1_roster, 33);
+  messageDesc(file_roster_v1_roster, 34);
 
 /**
  * RosterService is the read/console surface. Methods are added as the SPA

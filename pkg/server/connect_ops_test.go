@@ -40,7 +40,7 @@ func TestAddDirectoryStoresForOperator(t *testing.T) {
 	}
 
 	if store.put.Name != "acme" || store.put.Endpoint != "http://ggs" ||
-		len(store.put.Domains) != 1 || store.put.Domains[0] != "acme.example" {
+		len(store.put.Domains) != 1 || store.put.Domains[0].Name != "acme.example" {
 		t.Fatalf("stored = %+v", store.put)
 	}
 }

@@ -13,11 +13,14 @@ func TestSourcesFromSkipsIncomplete(t *testing.T) {
 	if len(got) != 1 || got[0].Name != "good" {
 		t.Fatalf("only the complete directory should survive, got %+v", got)
 	}
-	if len(got[0].Domains) != 2 || got[0].Domains[0] != "a.example" {
+	if len(got[0].Domains) != 2 || got[0].Domains[0].Name != "a.example" {
 		t.Fatalf("domains not parsed/trimmed: %+v", got[0].Domains)
 	}
-	if got[0].Endpoint != "http://ggs" || got[0].ProbeGroup != "all@a.example" {
+	if got[0].Endpoint != "http://ggs" || got[0].Domains[0].ProbeGroup != "all@a.example" {
 		t.Fatalf("fields not mapped: %+v", got[0])
+	}
+	if got[0].Domains[1].ProbeGroup != "" {
+		t.Fatalf("probe must attach only to its own domain: %+v", got[0].Domains)
 	}
 }
 

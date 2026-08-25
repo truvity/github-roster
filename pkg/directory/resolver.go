@@ -26,11 +26,11 @@ import (
 // team-backing group (NEW = live and in such a group), and DirectoryService
 // exposes no whole-directory enumeration by design.
 type Resolver struct {
-	name       string
-	domains    []string
-	groups     []string // mapped groups this source owns
-	probeGroup string
-	client     directoryv1connect.DirectoryServiceClient
+	name    string
+	domains []string
+	groups  []string // mapped groups this source owns
+	probes  []string
+	client  directoryv1connect.DirectoryServiceClient
 }
 
 // ResolverConfig configures a DirectoryService-backed source.
@@ -44,8 +44,8 @@ type ResolverConfig struct {
 	// Groups are the mapped groups this source owns — the only ones it
 	// asks about, mirroring the Google reader's scoping.
 	Groups []string
-	// ProbeGroup is the health canary; optional.
-	ProbeGroup string
+	// Probes are the health canaries, one per domain that has one; optional.
+	Probes []string
 	// HTTPClient is optional; defaults to a 30s client.
 	HTTPClient connect.HTTPClient
 }
@@ -66,11 +66,11 @@ func NewResolver(cfg ResolverConfig) (*Resolver, error) {
 	}
 
 	return &Resolver{
-		name:       cfg.Name,
-		domains:    cfg.Domains,
-		groups:     cfg.Groups,
-		probeGroup: cfg.ProbeGroup,
-		client:     directoryv1connect.NewDirectoryServiceClient(httpClient, cfg.Endpoint),
+		name:    cfg.Name,
+		domains: cfg.Domains,
+		groups:  cfg.Groups,
+		probes:  cfg.Probes,
+		client:  directoryv1connect.NewDirectoryServiceClient(httpClient, cfg.Endpoint),
 	}, nil
 }
 

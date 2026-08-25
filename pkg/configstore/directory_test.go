@@ -8,10 +8,10 @@ import (
 )
 
 func TestMergeDirectories(t *testing.T) {
-	iac := []config.Source{{Name: "acme", Domains: []string{"acme.example"}}}
+	iac := []config.Source{{Name: "acme", Domains: []config.Domain{{Name: "acme.example"}}}}
 	store := []config.Source{
-		{Name: "acme", Domains: []string{"store-should-lose"}, Endpoint: "http://x"},
-		{Name: "beta", Domains: []string{"beta.example"}, Endpoint: "http://b"},
+		{Name: "acme", Domains: []config.Domain{{Name: "store-should-lose"}}, Endpoint: "http://x"},
+		{Name: "beta", Domains: []config.Domain{{Name: "beta.example"}}, Endpoint: "http://b"},
 	}
 
 	got := configstore.MergeDirectories(iac, store)

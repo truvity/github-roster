@@ -23,7 +23,7 @@ func (s stubSource) Fetch(context.Context) (*directory.Snapshot, error) {
 
 func TestEffectiveConfigAndReload(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	git := &config.Config{Sources: []config.Source{{Name: "acme", Domains: []string{"acme.example"}}}}
+	git := &config.Config{Sources: []config.Source{{Name: "acme", Domains: []config.Domain{{Name: "acme.example"}}}}}
 
 	d := &Deps{
 		Logger:      log,
@@ -31,7 +31,7 @@ func TestEffectiveConfigAndReload(t *testing.T) {
 		Directories: directory.NewSet(log, stubSource{"acme"}),
 		GitSources:  []directory.Source{stubSource{"acme"}},
 		DirStore: fakeDirStore{dirs: []config.Source{
-			{Name: "beta", Domains: []string{"beta.example"}, Endpoint: "http://ggs-beta"},
+			{Name: "beta", Domains: []config.Domain{{Name: "beta.example"}}, Endpoint: "http://ggs-beta"},
 		}},
 	}
 

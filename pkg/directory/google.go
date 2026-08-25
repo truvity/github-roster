@@ -24,10 +24,10 @@ var _ Source = (*Google)(nil)
 // two read-only scopes below — a token request including anything else is
 // rejected outright, which is a feature.
 type Google struct {
-	name       string
-	domains    []string
-	groups     []string
-	probeGroup string
+	name    string
+	domains []string
+	groups  []string
+	probes  []string
 
 	keyJSON []byte
 	subject string
@@ -47,11 +47,12 @@ type GoogleConfig struct {
 	// service has no use for.
 	Groups []string
 
-	// ProbeGroup is the health canary: a group that always exists (the
-	// directory's all@, typically). When set, the fetch requires it to be
-	// readable, and in exchange tolerates a 404 on a MAPPED group as a
-	// recorded absence instead of a failed fetch. Optional.
-	ProbeGroup string
+	// Probes are the health canaries, one per domain that has one: a
+	// group that always exists there (its all@, typically). When any are
+	// set, the fetch requires every one to be readable — the error names
+	// the failing domain's canary — and in exchange tolerates a 404 on a
+	// MAPPED group as a recorded absence instead of a failed fetch.
+	Probes []string
 
 	// KeyJSON is the service-account key.
 	KeyJSON []byte
@@ -73,12 +74,12 @@ func NewGoogle(cfg GoogleConfig) (*Google, error) {
 	}
 
 	return &Google{
-		name:       cfg.Name,
-		domains:    cfg.Domains,
-		groups:     cfg.Groups,
-		probeGroup: cfg.ProbeGroup,
-		keyJSON:    cfg.KeyJSON,
-		subject:    cfg.Subject,
+		name:    cfg.Name,
+		domains: cfg.Domains,
+		groups:  cfg.Groups,
+		probes:  cfg.Probes,
+		keyJSON: cfg.KeyJSON,
+		subject: cfg.Subject,
 	}, nil
 }
 
@@ -115,16 +116,16 @@ func (g *Google) Fetch(ctx context.Context) (*Snapshot, error) {
 	// With the canary green, a 404 on a MAPPED group is a real absence —
 	// recorded per group so its teams fail safe individually — rather
 	// than a reason to distrust the whole directory.
-	if g.probeGroup != "" {
-		if _, err := g.membersOf(ctx, svc, g.probeGroup); err != nil {
-			return nil, fmt.Errorf("probe group %q: %w", g.probeGroup, err)
+	for _, probe := range g.probes {
+		if _, err := g.membersOf(ctx, svc, probe); err != nil {
+			return nil, fmt.Errorf("probe group %q: %w", probe, err)
 		}
 	}
 
 	for _, group := range g.groups {
 		members, err := g.membersOf(ctx, svc, group)
 		if err != nil {
-			if g.probeGroup != "" && isNotFound(err) {
+			if len(g.probes) > 0 && isNotFound(err) {
 				snapshot.AbsentGroups = append(snapshot.AbsentGroups, strings.ToLower(group))
 
 				continue

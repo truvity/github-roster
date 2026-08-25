@@ -115,11 +115,20 @@ func protoSources(srcs []config.Source) []*rosterv1.DirectorySource {
 	out := make([]*rosterv1.DirectorySource, 0, len(srcs))
 	for i := range srcs {
 		s := &srcs[i]
+
+		domains := make([]*rosterv1.DomainInfo, 0, len(s.Domains))
+		for _, d := range s.Domains {
+			domains = append(domains, &rosterv1.DomainInfo{
+				Domain:     d.Name,
+				ProbeGroup: d.ProbeGroup,
+				Sync:       d.Syncs(),
+			})
+		}
+
 		out = append(out, &rosterv1.DirectorySource{
-			Name:       s.Name,
-			Domains:    s.Domains,
-			Endpoint:   s.Endpoint,
-			ProbeGroup: s.ProbeGroup,
+			Name:     s.Name,
+			Domains:  domains,
+			Endpoint: s.Endpoint,
 		})
 	}
 
@@ -435,7 +444,21 @@ func (s *rosterConnect) AddDirectory(
 			errors.New("a name, an endpoint and at least one domain are required"))
 	}
 
-	src := config.Source{Name: name, Endpoint: endpoint, Domains: domains, ProbeGroup: strings.TrimSpace(m.GetProbeGroup())}
+	// The operator form takes flat domains plus one probe group; attach the
+	// probe to the domain it lives in (the same expansion the store uses).
+	probe := strings.TrimSpace(m.GetProbeGroup())
+	domainCfgs := make([]config.Domain, 0, len(domains))
+
+	for _, d := range domains {
+		dc := config.Domain{Name: d}
+		if probe != "" && strings.HasSuffix(strings.ToLower(probe), "@"+strings.ToLower(d)) {
+			dc.ProbeGroup = probe
+		}
+
+		domainCfgs = append(domainCfgs, dc)
+	}
+
+	src := config.Source{Name: name, Endpoint: endpoint, Domains: domainCfgs}
 	if err := s.deps.DirStore.Put(ctx, src); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}

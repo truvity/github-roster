@@ -350,3 +350,38 @@ func TestReconcileConfig(t *testing.T) {
 		require.Error(t, err)
 	})
 }
+
+// The per-domain form: each domain carries its own probe group and sync
+// switch; the scalar shorthand ("example.com") means a synced domain with no
+// probe. A probe outside its own domain is rejected — the canary must prove
+// the domain it stands for.
+func TestPerDomainDirectoryConfig(t *testing.T) {
+	t.Parallel()
+
+	doc := strings.Replace(minimal,
+		"      domains: [example.com]\n",
+		"      domains:\n"+
+			"        - domain: example.com\n"+
+			"          probeGroup: all@example.com\n"+
+			"        - domain: shown.example\n"+
+			"          sync: false\n", 1)
+
+	cfg, err := config.Parse([]byte(doc))
+	require.NoError(t, err)
+
+	src := cfg.Sources[0]
+	require.Equal(t, []string{"example.com", "shown.example"}, src.DomainNames())
+	require.Equal(t, []string{"all@example.com"}, src.ProbeGroups())
+	require.True(t, src.Domains[0].Syncs())
+	require.False(t, src.Domains[1].Syncs(), "sync: false must stick")
+
+	// A probe living in a sibling domain proves the wrong thing.
+	bad := strings.Replace(minimal,
+		"      domains: [example.com]\n",
+		"      domains:\n"+
+			"        - domain: example.com\n"+
+			"          probeGroup: all@other.example\n", 1)
+
+	_, err = config.Parse([]byte(bad))
+	require.ErrorContains(t, err, "outside its domain")
+}

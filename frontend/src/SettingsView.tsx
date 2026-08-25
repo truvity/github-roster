@@ -13,8 +13,28 @@ import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import { addDirectory, deleteDirectory, fetchSettings, stageOrg, type Settings, type SettingsOrg } from "./api";
+import { addDirectory, deleteDirectory, fetchSettings, stageOrg, type Settings, type SettingsDomain, type SettingsOrg } from "./api";
 import { useAsync } from "./hooks";
+
+// DomainList renders a directory's domains, each with its probe group and its
+// sync switch — one row per domain, so a multi-domain Workspace reads as the
+// independent domains it actually is.
+function DomainList({ domains }: { domains?: SettingsDomain[] }) {
+  if (!domains?.length) return <Typography variant="body2" color="text.secondary">—</Typography>;
+  return (
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+      {domains.map((d) => (
+        <Box key={d.domain} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Typography variant="body2">{d.domain}</Typography>
+          {d.probeGroup
+            ? <Chip label={`probe: ${d.probeGroup}`} variant="outlined" />
+            : <Chip label="no probe" variant="outlined" color="default" />}
+          <Chip label={d.sync === false ? "display only" : "synced"} color={d.sync === false ? "warning" : "success"} variant="outlined" />
+        </Box>
+      ))}
+    </Box>
+  );
+}
 
 // OrgSection renders one organization and its teams; `staged` marks a
 // store-added org (present in the config store, born disabled, not yet run).
@@ -148,30 +168,28 @@ export function SettingsView() {
         <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell>Name</TableCell><TableCell>Domains</TableCell><TableCell>Reads via</TableCell><TableCell>Probe group</TableCell><TableCell />
+              <TableCell>Name</TableCell><TableCell>Domains</TableCell><TableCell>Reads via</TableCell><TableCell />
             </TableRow>
           </TableHead>
           <TableBody>
             {(data.sources ?? []).map((s) => (
               <TableRow key={s.name} hover>
                 <TableCell>{s.name}</TableCell>
-                <TableCell><Typography variant="body2" color="text.secondary">{(s.domains ?? []).join(", ")}</Typography></TableCell>
+                <TableCell><DomainList domains={s.domains} /></TableCell>
                 <TableCell><Typography variant="body2" color="text.secondary">{s.endpoint ? "DirectoryService" : "in-process Google"}</Typography></TableCell>
-                <TableCell><Typography variant="body2" color="text.secondary">{s.probeGroup || "—"}</Typography></TableCell>
                 <TableCell />
               </TableRow>
             ))}
             {(data.storeSources ?? []).map((s) => (
               <TableRow key={`store-${s.name}`} hover>
                 <TableCell>{s.name} <Chip label="added here" variant="outlined" /></TableCell>
-                <TableCell><Typography variant="body2" color="text.secondary">{(s.domains ?? []).join(", ")}</Typography></TableCell>
+                <TableCell><DomainList domains={s.domains} /></TableCell>
                 <TableCell><Typography variant="body2" color="text.secondary">DirectoryService</Typography></TableCell>
-                <TableCell><Typography variant="body2" color="text.secondary">{s.probeGroup || "—"}</Typography></TableCell>
                 <TableCell><Button color="error" onClick={() => act(() => deleteDirectory(s.name))}>Delete</Button></TableCell>
               </TableRow>
             ))}
             {(data.sources ?? []).length === 0 && (data.storeSources ?? []).length === 0 && (
-              <TableRow><TableCell colSpan={5}><Typography color="text.secondary">No directories.</Typography></TableCell></TableRow>
+              <TableRow><TableCell colSpan={4}><Typography color="text.secondary">No directories.</Typography></TableCell></TableRow>
             )}
           </TableBody>
         </Table>

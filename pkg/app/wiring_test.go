@@ -33,7 +33,7 @@ func (s stubSource) Fetch(context.Context) (*directory.Snapshot, error) {
 // name, and the git config object is never mutated.
 func TestReloadDirectories(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	git := &config.Config{Sources: []config.Source{{Name: "acme", Domains: []string{"acme.example"}}}}
+	git := &config.Config{Sources: []config.Source{{Name: "acme", Domains: []config.Domain{{Name: "acme.example"}}}}}
 
 	l := &readLayers{
 		cfg:         git,
@@ -41,10 +41,10 @@ func TestReloadDirectories(t *testing.T) {
 		Directories: directory.NewSet(log, stubSource{"acme"}),
 		DirStore: fakeDirStore{dirs: []config.Source{
 			// A fresh store directory (resolver-backed) …
-			{Name: "beta", Domains: []string{"beta.example"}, Endpoint: "http://ggs-beta"},
+			{Name: "beta", Domains: []config.Domain{{Name: "beta.example"}}, Endpoint: "http://ggs-beta"},
 			// … and one that collides with a git source by name: git wins,
 			// so this must NOT replace acme (which keeps its live client).
-			{Name: "acme", Domains: []string{"acme.example"}, Endpoint: "http://ggs-acme"},
+			{Name: "acme", Domains: []config.Domain{{Name: "acme.example"}}, Endpoint: "http://ggs-acme"},
 		}},
 	}
 

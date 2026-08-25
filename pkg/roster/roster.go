@@ -995,7 +995,7 @@ func expectedSources(cfg *config.Config, entry mapping.Entry) []string {
 			src := &cfg.Sources[i]
 
 			for _, d := range src.Domains {
-				if strings.EqualFold(d, domain) {
+				if strings.EqualFold(d.Name, domain) {
 					out = appendUnique(out, src.Name)
 				}
 			}

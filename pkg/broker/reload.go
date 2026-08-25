@@ -63,11 +63,11 @@ func (d *Deps) reloadDirectories(ctx context.Context) {
 		}
 
 		resolver, rerr := directory.NewResolver(directory.ResolverConfig{
-			Name:       src.Name,
-			Endpoint:   src.Endpoint,
-			Domains:    src.Domains,
-			Groups:     eff.MappedGroupsForDomains(src.Domains),
-			ProbeGroup: src.ProbeGroup,
+			Name:     src.Name,
+			Endpoint: src.Endpoint,
+			Domains:  src.DomainNames(),
+			Groups:   eff.MappedGroupsForDomains(src.DomainNames()),
+			Probes:   src.ProbeGroups(),
 		})
 		if rerr != nil {
 			d.Logger.WarnContext(ctx, "config reload: skipping malformed store directory",

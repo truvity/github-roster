@@ -685,6 +685,16 @@ func membership(in Inputs, org *config.Org, entry mapping.Entry, l *liveness, is
 	}
 
 	for team, logins := range state.TeamMembers {
+		// Only teams the roster MANAGES count. A person's membership in an
+		// unmanaged team (a CI/infra team the config never names) is outside
+		// this service's scope — planTeams never touches it, so counting it
+		// here would make the person show "pending" forever against a change
+		// the reconciler will never make. Managed-current vs managed-desired
+		// is the comparison that matches what the loop would actually do.
+		if _, managed := org.Teams[team]; !managed {
+			continue
+		}
+
 		for _, login := range logins {
 			if strings.EqualFold(login, entry.GitHub) {
 				m.Teams = appendUnique(m.Teams, team)

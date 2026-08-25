@@ -146,6 +146,35 @@ func TestLiveMappedPerson(t *testing.T) {
 	require.Equal(t, roster.PersonSynced, ada.State)
 }
 
+// Membership in a team the roster does NOT manage must not make a person look
+// "pending": planTeams only ever touches configured teams, so an unmanaged
+// team (a CI/infra team the config never names) is outside scope. Comparing it
+// would leave the person pending forever against a change that never happens.
+func TestUnmanagedTeamMembershipDoesNotBlockSynced(t *testing.T) {
+	t.Parallel()
+
+	state := orgState()
+	// Ada is also in "role-ci", which the config never names.
+	state.Teams = append(state.Teams, orgstate.Team{Slug: "role-ci"})
+	state.TeamMembers["role-ci"] = []string{"ada"}
+
+	r := roster.Join(roster.Inputs{
+		Config:         cfg(t),
+		Snapshots:      []*directory.Snapshot{snapshot()},
+		SourceStatuses: []directory.Status{{Source: "corp", Healthy: true, Ready: true}},
+		Entries:        entries(),
+		Orgs:           map[string]*orgstate.State{"example-org": state},
+		Now:            time.Date(2026, 7, 29, 12, 0, 0, 0, time.UTC),
+	})
+
+	ada := person(t, r, "Ada Lovelace")
+	m := ada.Orgs["example-org"]
+
+	require.NotContains(t, m.Teams, "role-ci", "unmanaged team must not appear in the person's tracked teams")
+	require.Equal(t, roster.StateSynced, m.State, "an unmanaged-team membership must not force pending")
+	require.Equal(t, roster.PersonSynced, ada.State)
+}
+
 // An invited person occupies a seat and is absent from the members API.
 // Counting them as a non-member sends a second invitation; counting them as
 // a plain member hides that they have not accepted.

@@ -127,6 +127,8 @@ func (d *Deps) Routes(app *fiber.App) {
 	v1.Post("/reconcile", d.handleRunReconcile)
 	v1.Post("/orgs/:org/pause", d.handlePause)
 	v1.Post("/orgs/:org/unpause", d.handleUnpause)
+	v1.Post("/orgs/:org/enable", d.handleEnable)
+	v1.Post("/orgs/:org/disable", d.handleDisable)
 	v1.Post("/orgs/:org/plans", d.handlePlan)
 	v1.Get("/orgs/:org/plans/:hash", d.handleGetPlan)
 	v1.Post("/orgs/:org/plans/:hash/apply", d.handleApply)

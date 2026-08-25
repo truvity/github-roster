@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   fetchRoster, fetchStatus, fetchAudit, flattenAudit,
   fetchSettings, fetchVersion, fetchMe, stageOrg,
-  addDirectory, deleteDirectory, setPaused, runReconcile, putPerson, deletePerson,
+  addDirectory, deleteDirectory, setPaused, runReconcile, putPerson, deletePerson, setReconcileEnabled,
   type Person, type ReconcileStatus, type Change, type Settings, type SettingsOrg, type Candidate,
 } from "./api";
 
@@ -189,12 +189,27 @@ function StatusView() {
   };
   if (error) return <div className="banner">{error}</div>;
   if (data === null) return <p className="muted">Loading…</p>;
+  const pending = (s: ReconcileStatus) => {
+    if (!s.actions) return <span className="muted">in sync</span>;
+    return (
+      <span style={{ display: "inline-flex", gap: 4, flexWrap: "wrap" }}>
+        {s.adds ? <span className="badge ok">+{s.adds} invite</span> : null}
+        {s.removes ? <span className="badge danger">−{s.removes} remove</span> : null}
+        {s.roleChanges ? <span className="badge warn">{s.roleChanges} role</span> : null}
+        {s.teamChanges ? <span className="badge muted">{s.teamChanges} team</span> : null}
+      </span>
+    );
+  };
   const outcome = (s: ReconcileStatus) => {
     if (s.error) return <span className="badge danger">failed</span>;
     if (s.held) return <><span className="badge warn">held</span> <span className="muted">{s.reason}</span></>;
     if (s.applied) return <span className="badge ok">applied</span>;
-    if (!s.enabled) return s.actions ? <span className="badge warn">would change {s.actions}</span> : <span className="badge ok">in sync</span>;
-    return s.actions ? <span className="muted">pending next tick</span> : <span className="badge ok">in sync</span>;
+    if (!s.actions) return <span className="badge ok">in sync</span>;
+    return s.enabled ? <span className="muted">applying next tick</span> : <span className="badge warn">would apply on enable</span>;
+  };
+  const toggleEnabled = (s: ReconcileStatus) => {
+    if (!s.enabled && !window.confirm(`Enable the reconcile loop for ${s.org}? It will start applying the pending changes to GitHub.`)) return;
+    act(`enable-${s.org}`, () => setReconcileEnabled(s.org, !s.enabled));
   };
   return (
     <>
@@ -203,19 +218,24 @@ function StatusView() {
       </div>
       {actErr && <div className="banner">{actErr}</div>}
       <table>
-        <thead><tr><th>Organization</th><th>Loop</th><th>Pending</th><th>Last run</th><th>Outcome</th><th></th></tr></thead>
+        <thead><tr><th>Organization</th><th>Loop</th><th>Pending</th><th>Last run</th><th>Outcome</th><th>Controls</th></tr></thead>
         <tbody>
           {data.map((s) => (
             <tr key={s.org}>
               <td>{s.org}</td>
               <td>{s.enabled ? <span className="badge ok">enabled</span> : <span className="badge warn">disabled</span>}{s.paused && <> <span className="badge danger">paused</span></>}</td>
-              <td>{s.actions || <span className="muted">none</span>}</td>
+              <td>{pending(s)}</td>
               <td className="muted">{s.at ? s.at.slice(0, 16).replace("T", " ") : "—"}</td>
               <td>{outcome(s)}</td>
-              <td>
-                <button className="chip" disabled={busy !== ""} onClick={() => act(`pause-${s.org}`, () => setPaused(s.org, !s.paused))}>
-                  {s.paused ? "Resume" : "Pause"}
+              <td style={{ display: "flex", gap: 6 }}>
+                <button className="chip" disabled={busy !== ""} onClick={() => toggleEnabled(s)} title={s.enabled ? "Stop the reconcile loop" : "Start the reconcile loop (applies changes)"}>
+                  {s.enabled ? "Disable" : "Enable"}
                 </button>
+                {s.enabled && (
+                  <button className="chip" disabled={busy !== ""} onClick={() => act(`pause-${s.org}`, () => setPaused(s.org, !s.paused))} title="Temporarily halt without disabling">
+                    {s.paused ? "Resume" : "Pause"}
+                  </button>
+                )}
               </td>
             </tr>
           ))}

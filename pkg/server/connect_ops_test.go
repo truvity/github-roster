@@ -71,3 +71,18 @@ func TestSetPausedNeedsBroker(t *testing.T) {
 		t.Fatalf("SetPaused without broker code = %v, want Unavailable", connect.CodeOf(err))
 	}
 }
+
+func TestSetReconcileEnabledGate(t *testing.T) {
+	s := &rosterConnect{deps: &Deps{}}
+
+	// Viewer is refused before the broker is even consulted.
+	viewer := auth.WithIdentity(context.Background(), auth.Identity{Role: auth.RoleViewer})
+	if _, err := s.SetReconcileEnabled(viewer, connect.NewRequest(&rosterv1.SetReconcileEnabledRequest{Org: "acme", Enabled: true})); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("viewer SetReconcileEnabled code = %v, want PermissionDenied", connect.CodeOf(err))
+	}
+
+	// Operator with no broker configured gets Unavailable.
+	if _, err := s.SetReconcileEnabled(operatorCtx(), connect.NewRequest(&rosterv1.SetReconcileEnabledRequest{Org: "acme", Enabled: true})); connect.CodeOf(err) != connect.CodeUnavailable {
+		t.Fatalf("SetReconcileEnabled without broker code = %v, want Unavailable", connect.CodeOf(err))
+	}
+}

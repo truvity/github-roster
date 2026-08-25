@@ -200,3 +200,13 @@ func (c *Client) SetPaused(ctx context.Context, org string, paused bool, token s
 	}
 	return c.call(ctx, http.MethodPost, fmt.Sprintf("/v1/orgs/%s/%s", org, verb), token, nil)
 }
+
+// SetReconcileEnabled turns an organization's reconcile loop on or off — the
+// operator's UI override of the config day-0 default.
+func (c *Client) SetReconcileEnabled(ctx context.Context, org string, enabled bool, token string) error {
+	verb := "disable"
+	if enabled {
+		verb = "enable"
+	}
+	return c.call(ctx, http.MethodPost, fmt.Sprintf("/v1/orgs/%s/%s", org, verb), token, nil)
+}

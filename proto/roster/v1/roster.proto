@@ -59,6 +59,10 @@ service RosterService {
   // waiting for the next tick. Operator-only.
   rpc RunReconcile(RunReconcileRequest) returns (RunReconcileResponse);
 
+  // SetReconcileEnabled turns an organization's reconcile loop on or off — the
+  // operator's UI override of the config day-0 default. Operator-only.
+  rpc SetReconcileEnabled(SetReconcileEnabledRequest) returns (SetReconcileEnabledResponse);
+
   // PutPerson creates or updates a roster mapping entry — the Approve/Add
   // (NEW), Adopt (UNKNOWN) and Edit actions. Operator-only. Creating (or
   // first-blessing) an entry stamps approvedBy/approvedAt; edits preserve them.
@@ -106,6 +110,13 @@ message SetPausedRequest {
 }
 
 message SetPausedResponse {}
+
+message SetReconcileEnabledRequest {
+  string org = 1;
+  bool enabled = 2;
+}
+
+message SetReconcileEnabledResponse {}
 
 message RunReconcileRequest {}
 
@@ -235,6 +246,11 @@ message ReconcileStatus {
   bool held = 7;
   string reason = 8;
   string error = 9;
+  // Breakdown of `actions` by kind, so the operator sees what would change.
+  int32 adds = 10;
+  int32 removes = 11;
+  int32 role_changes = 12;
+  int32 team_changes = 13;
 }
 
 message GetAuditRequest {

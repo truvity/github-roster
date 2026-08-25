@@ -73,10 +73,6 @@ func TestRoleFor(t *testing.T) {
 }
 
 // Providers disagree about whether a single group is a string or a
-// one-element array, and a decoded token yields []any where hand-built one
-// yields []string. Getting this wrong silently strips everyone's role.
-
-
 func TestRolePermissions(t *testing.T) {
 	t.Parallel()
 

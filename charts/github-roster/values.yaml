@@ -16,7 +16,9 @@ image:
 # default tag — the chart's appVersion — always runs the tests matching the
 # deployed version. A drifting tag here would quietly test the wrong thing.
 testImage:
-  repository: ghcr.io/truvity/github-roster-acceptance
+  # ko names the image after the cmd directory (roster-acceptance), not the
+  # goreleaser `repositories:` key — that key is inert under base_import_paths.
+  repository: ghcr.io/truvity/roster-acceptance
   tag: ""  # defaults to appVersion
 
 # helm test behavior. `selftest` always renders (read-only, safe on prod);

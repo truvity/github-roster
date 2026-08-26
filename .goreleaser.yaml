@@ -72,10 +72,11 @@ kos:
     base_import_paths: true
     base_image: gcr.io/distroless/static:nonroot
     sbom: none
-    repositories:
-      - github-roster-acceptance
+    # No `repositories:` override — it is inert with base_import_paths: true
+    # (ko always names the image after the cmd dir), so the published slug is
+    # ghcr.io/truvity/roster-acceptance. The chart's testImage must match it.
     labels:
-      org.opencontainers.image.title: github-roster-acceptance
+      org.opencontainers.image.title: roster-acceptance
       org.opencontainers.image.version: "{{ .Version }}"
       org.opencontainers.image.source: https://github.com/truvity/github-roster
 

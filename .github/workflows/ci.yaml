@@ -27,7 +27,7 @@ concurrency:
 
 jobs:
   recipes:
-    uses: truvity/ci-workflows/.github/workflows/check.yaml@4f7331832697394a62c49f7ac8253aee6e705c4e # v2.13.0
+    uses: truvity/ci-workflows/.github/workflows/check.yaml@9a25893002065e1502fc2957252a67b9892af71d # v2.12.3
     with:
       recipes: '["build","test","lint","chart-lint"]'
 

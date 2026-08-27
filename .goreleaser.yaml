@@ -4,7 +4,7 @@ version: 2
 
 builds:
   - id: github-roster
-    main: ./cmd/github-roster
+    main: ./cmd/server
     binary: github-roster
     env:
       - CGO_ENABLED=0
@@ -18,7 +18,7 @@ builds:
       - -s -w -X main.Version={{.Version}} -X main.Commit={{.FullCommit}}
 
   - id: roster-acceptance
-    main: ./cmd/roster-acceptance
+    main: ./cmd/acceptance
     binary: roster-acceptance
     env:
       - CGO_ENABLED=0
@@ -61,6 +61,9 @@ kos:
   # while the service image carries no test code at all.
   - id: roster-acceptance
     build: roster-acceptance
+    # base_import_paths appends basename(cmd dir): with the caller's
+    # ko-docker-repo ghcr.io/truvity/github-roster the published slugs
+    # nest as github-roster/{server,acceptance} (INF-575 / INF-584 N1).
     tags:
       - "{{ .Version }}"
       - "{{ if not .IsSnapshot }}latest{{ end }}"
@@ -72,9 +75,6 @@ kos:
     base_import_paths: true
     base_image: gcr.io/distroless/static:nonroot
     sbom: none
-    # No `repositories:` override — it is inert with base_import_paths: true
-    # (ko always names the image after the cmd dir), so the published slug is
-    # ghcr.io/truvity/roster-acceptance. The chart's testImage must match it.
     labels:
       org.opencontainers.image.title: roster-acceptance
       org.opencontainers.image.version: "{{ .Version }}"
@@ -87,7 +87,7 @@ release:
   header: |
     ## github-roster {{ .Tag }}
 
-    Docker image: `ghcr.io/truvity/github-roster:{{ .Version }}`
+    Docker image: `ghcr.io/truvity/github-roster/server:{{ .Version }}`
     Helm chart: `oci://ghcr.io/truvity/charts/github-roster:{{ .Version }}`
 
 changelog:

@@ -19,8 +19,8 @@ build-ui:
 
 # Build the binary
 build: fmt
-    go build -o bin/github-roster ./cmd/github-roster/
-    go build -o bin/roster-acceptance ./cmd/roster-acceptance/
+    go build -o bin/github-roster ./cmd/server/
+    go build -o bin/roster-acceptance ./cmd/acceptance/
 
 # Run unit tests
 test:

@@ -70,8 +70,9 @@ Configuration is a single YAML document; see
 ## Deployment
 
 A Helm chart lives in [charts/github-roster](charts/github-roster). Each
-tagged release publishes an image to
-`ghcr.io/truvity/github-roster` and the chart to
+tagged release publishes the images to
+`ghcr.io/truvity/github-roster/server` and
+`ghcr.io/truvity/github-roster/acceptance`, and the chart to
 `oci://ghcr.io/truvity/charts/github-roster`.
 
 ## Contributing

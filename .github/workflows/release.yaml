@@ -38,3 +38,7 @@ jobs:
     uses: truvity/ci-workflows/.github/workflows/release-public.yaml@681547390267ac3474ffed005d0723a9dd202b3d # v2.12.2
     with:
       charts: '["github-roster"]'
+      # Nest the images under the repo namespace (INF-575 / INF-584 N1):
+      # ko appends basename(cmd dir), so the published slugs are
+      # ghcr.io/truvity/github-roster/{server,acceptance}.
+      ko-docker-repo: ghcr.io/truvity/github-roster

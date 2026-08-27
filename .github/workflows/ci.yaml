@@ -27,9 +27,13 @@ concurrency:
 
 jobs:
   recipes:
-    uses: truvity/ci-workflows/.github/workflows/check.yaml@681547390267ac3474ffed005d0723a9dd202b3d # v2.12.2
+    uses: truvity/ci-workflows/.github/workflows/check.yaml@4f7331832697394a62c49f7ac8253aee6e705c4e # v2.13.0
     with:
       recipes: '["build","test","lint","chart-lint"]'
+      # The frontend's `npm ci` resolves through the CI plane's
+      # read-through cache when it answers (INF-583); a down cache
+      # falls back to direct npmjs with a warning.
+      node-cache: true
 
   # Stable name for branch protection: the matrix reports as
   # "recipes / build" and so on, so a required context called "check"

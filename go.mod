@@ -15,7 +15,7 @@ require (
 	github.com/neilotoole/slogt/v2 v2.0.0
 	github.com/samber/slog-fiber v1.22.2
 	github.com/stretchr/testify v1.12.0
-	github.com/truvity/gateway-auth v0.5.3
+	github.com/truvity/gateway-auth v0.5.5
 	github.com/truvity/google-group-sync v0.14.0
 	github.com/urfave/cli/v3 v3.11.0
 	github.com/valyala/fasthttp v1.73.0
@@ -23,7 +23,7 @@ require (
 	golang.org/x/oauth2 v0.36.0
 	golang.org/x/sync v0.22.0
 	google.golang.org/api v0.293.0
-	google.golang.org/protobuf v1.36.13-0.20260818231350-f4a54025970a
+	google.golang.org/protobuf v1.36.13-0.20260828232543-ac1e76034d92
 	k8s.io/api v0.37.0
 	k8s.io/apimachinery v0.37.0
 	k8s.io/client-go v0.37.0

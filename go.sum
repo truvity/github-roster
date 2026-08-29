@@ -201,6 +201,8 @@ github.com/truvity/gateway-auth v0.5.2 h1:uTSaMroryWVmZJagK5t1cEo76INkYTdcUPUF0D
 github.com/truvity/gateway-auth v0.5.2/go.mod h1:Id7lnygD+DZK95iDJxvfjrA/FM6dHmlCJHifrlNd7EM=
 github.com/truvity/gateway-auth v0.5.3 h1:DrhCc1D1S1xtaLhrn8O8h+csyZN5GUtcdrYGihgac7Y=
 github.com/truvity/gateway-auth v0.5.3/go.mod h1:Id7lnygD+DZK95iDJxvfjrA/FM6dHmlCJHifrlNd7EM=
+github.com/truvity/gateway-auth v0.5.5 h1:w+sawEkvWhjp2oLPSt0ekkhEPWAh/UIFWQBG8AlgLHo=
+github.com/truvity/gateway-auth v0.5.5/go.mod h1:Id7lnygD+DZK95iDJxvfjrA/FM6dHmlCJHifrlNd7EM=
 github.com/truvity/google-group-sync v0.13.0 h1:NvtyDvYTiaIc8tKqFXBmeoZ38bqSn87gwBbU79VD0tU=
 github.com/truvity/google-group-sync v0.13.0/go.mod h1:j4TYsjPSAgqQROTjfRyUiylxQd5q6CH69JvxFA3qjA0=
 github.com/truvity/google-group-sync v0.14.0 h1:34BuJvWVxP8nata63rITY+/W8uzVR6t22/SZ6q4djYw=
@@ -267,6 +269,8 @@ google.golang.org/grpc v1.83.0 h1:JeNZEKJFbQxArAMl+hiytHauacDNqJUllNfmIMmpqnQ=
 google.golang.org/grpc v1.83.0/go.mod h1:kDyl6SKsiHKt0uylY5gtn5cEjkrIOhQOGDgIc4JGwzQ=
 google.golang.org/protobuf v1.36.13-0.20260818231350-f4a54025970a h1:7UzQHHFGdMTMInS7OR+iqrwJ4bGIdRV3JPO2LSvsrHY=
 google.golang.org/protobuf v1.36.13-0.20260818231350-f4a54025970a/go.mod h1:HTf+CrKn2C3g5S8VImy6tdcUvCska2kB7j23XfzDpco=
+google.golang.org/protobuf v1.36.13-0.20260828232543-ac1e76034d92 h1:PlEVkuUokn5fWF4MmbnEfkeZIJzcqT+9gTvg9b6UW4I=
+google.golang.org/protobuf v1.36.13-0.20260828232543-ac1e76034d92/go.mod h1:HTf+CrKn2C3g5S8VImy6tdcUvCska2kB7j23XfzDpco=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c h1:Hei/4ADfdWqJk1ZMxUNpqntNwaWcugrBjAiHlqqRiVk=
 gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c/go.mod h1:JHkPIbrfpd72SG/EVd6muEfDQjcINNoR0C8j2r3qZ4Q=

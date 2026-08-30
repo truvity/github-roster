@@ -1,17 +1,17 @@
 {
-  "packages": [
-    "buf@latest",
-    "go@latest",
-    "golangci-lint@latest",
-    "gopls@latest",
-    "goreleaser@latest",
-    "govulncheck@latest",
-    "just-lsp@latest",
-    "just@latest",
-    "ko@latest",
-    "kubernetes-helm@latest",
-    "lefthook@latest"
-  ],
+  "packages": {
+    "buf": "latest",
+    "go": "1.27.0",
+    "golangci-lint": "2.13.1",
+    "gopls": "latest",
+    "goreleaser": "latest",
+    "govulncheck": "1.7.0",
+    "just-lsp": "latest",
+    "just": "latest",
+    "ko": "latest",
+    "kubernetes-helm": "latest",
+    "lefthook": "latest"
+  },
   "env": {
     "GOEXPERIMENT": "jsonv2"
   },

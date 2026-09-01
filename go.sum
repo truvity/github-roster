@@ -207,6 +207,8 @@ github.com/truvity/google-group-sync v0.13.0 h1:NvtyDvYTiaIc8tKqFXBmeoZ38bqSn87g
 github.com/truvity/google-group-sync v0.13.0/go.mod h1:j4TYsjPSAgqQROTjfRyUiylxQd5q6CH69JvxFA3qjA0=
 github.com/truvity/google-group-sync v0.14.0 h1:34BuJvWVxP8nata63rITY+/W8uzVR6t22/SZ6q4djYw=
 github.com/truvity/google-group-sync v0.14.0/go.mod h1:j4TYsjPSAgqQROTjfRyUiylxQd5q6CH69JvxFA3qjA0=
+github.com/truvity/google-group-sync v0.14.1 h1:Kv1mffSAlkpL4j2E5B9roFx1shPE3ADn8RVFzoczN8E=
+github.com/truvity/google-group-sync v0.14.1/go.mod h1:kVClLe1/q+MVLM6tyW6NK4X0eYPXot8Un0TmppafF8g=
 github.com/urfave/cli/v3 v3.11.0 h1:P/euJp99kb9p0tlVY+iYTLYYTAQlfl0hR2gUO1Img1Q=
 github.com/urfave/cli/v3 v3.11.0/go.mod h1:ysVLtOEmg2tOy6PknnYVhDoouyC/6N42TMeoMzskhso=
 github.com/valyala/bytebufferpool v1.0.0 h1:GqA5TC/0021Y/b9FG4Oi9Mr3q7XYx6KllzawFIhcdPw=

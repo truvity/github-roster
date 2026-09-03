@@ -131,7 +131,7 @@ broker:
 insuranceCronJob:
   enabled: true
   schedule: "37 * * * *"
-  image: curlimages/curl:8.21.0
+  image: curlimages/curl:8.22.0
 
 # The audit trail. Records go here rather than to the pod's logs, so they
 # outlive the container that wrote them.

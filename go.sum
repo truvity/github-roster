@@ -203,6 +203,8 @@ github.com/truvity/gateway-auth v0.5.3 h1:DrhCc1D1S1xtaLhrn8O8h+csyZN5GUtcdrYGih
 github.com/truvity/gateway-auth v0.5.3/go.mod h1:Id7lnygD+DZK95iDJxvfjrA/FM6dHmlCJHifrlNd7EM=
 github.com/truvity/gateway-auth v0.5.5 h1:w+sawEkvWhjp2oLPSt0ekkhEPWAh/UIFWQBG8AlgLHo=
 github.com/truvity/gateway-auth v0.5.5/go.mod h1:Id7lnygD+DZK95iDJxvfjrA/FM6dHmlCJHifrlNd7EM=
+github.com/truvity/gateway-auth v0.6.0 h1:Giqw3DDJr8rs2OoD/vNVnJCS1Keksr5h6IeHAbick0c=
+github.com/truvity/gateway-auth v0.6.0/go.mod h1:5ZrYGw0qmVo+Xgpa/Au5BiDVkxSKcz+ZUil4JlQo+eU=
 github.com/truvity/google-group-sync v0.13.0 h1:NvtyDvYTiaIc8tKqFXBmeoZ38bqSn87gwBbU79VD0tU=
 github.com/truvity/google-group-sync v0.13.0/go.mod h1:j4TYsjPSAgqQROTjfRyUiylxQd5q6CH69JvxFA3qjA0=
 github.com/truvity/google-group-sync v0.14.0 h1:34BuJvWVxP8nata63rITY+/W8uzVR6t22/SZ6q4djYw=

@@ -27,6 +27,17 @@
         "go"
       ],
       "enabled": false
+    },
+    {
+      "description": "vite, @vitejs/plugin-react and vitest are ONE peer-locked unit and cannot move separately. @vitejs/plugin-react v6 declares peer vite ^8.0.0; vitest 5 declares peer vite ^6.4.0 || ^7.0.0 || ^8.0.0. Opened as separate PRs they deadlock -- the plugin PR cannot resolve because vite is too old, the vite PR cannot resolve because the plugin is too old -- and the failure surfaces as `renovate/artifacts` going red, which reads like a lockfile flake rather than a peer conflict. Grouping them is what makes the upgrade expressible at all.",
+      "matchPackageNames": [
+        "vite",
+        "@vitejs/plugin-react",
+        "vitest",
+        "@vitest/**"
+      ],
+      "groupName": "vite toolchain (peer-locked, must move together)",
+      "automerge": false
     }
   ],
   "vulnerabilityAlerts": {
